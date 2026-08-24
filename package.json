@@ -1,0 +1,23 @@
+{
+  "name": "nvault",
+  "version": "1.0.0",
+  "private": true,
+  "description": "EnvVault - a secure, zero-knowledge developer environment/configuration vault (web + CLI)",
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@11.23.0",
+  "scripts": {
+    "build": "pnpm -r --filter=./packages/* run build && pnpm -r --filter=./apps/* run build",
+    "dev:api": "pnpm --filter @envvault/api run start:dev",
+    "dev:web": "pnpm --filter @envvault/web run dev",
+    "cli": "pnpm --filter @envvault/cli run start",
+    "test": "pnpm -r run test",
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm -r run typecheck",
+    "prisma:generate": "pnpm --filter @envvault/api run prisma:generate",
+    "prisma:migrate": "pnpm --filter @envvault/api run prisma:migrate"
+  }
+}

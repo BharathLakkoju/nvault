@@ -1,0 +1,33 @@
+version: "3.9"
+
+# Local development infrastructure only. The API works with STORAGE_PROVIDER=local
+# and no object storage at all — MinIO here is just for exercising the S3 code path.
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: envvault
+      POSTGRES_PASSWORD: envvault
+      POSTGRES_DB: envvault
+    ports:
+      - "5432:5432"
+    volumes:
+      - envvault-postgres-data:/var/lib/postgresql/data
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: envvault
+      MINIO_ROOT_PASSWORD: envvault-dev-secret
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - envvault-minio-data:/data
+
+volumes:
+  envvault-postgres-data:
+  envvault-minio-data:
