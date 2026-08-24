@@ -83,7 +83,11 @@ export const EncryptedPayloadSchema = z.object({
   ciphertext: z.string().min(1),
 });
 
-export const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MiB plaintext ceiling for config files
+// 2.5 MiB plaintext ceiling for config files. Kept well under Vercel's fixed
+// ~4.5MB serverless request-body limit even after base64 inflation
+// (~3.3MB) plus JSON overhead — a deliberately portable default so the
+// same limit works unmodified on every supported deployment target.
+export const MAX_FILE_SIZE_BYTES = 2.5 * 1024 * 1024;
 
 export const UploadFileVersionRequestSchema = z.object({
   filename: FilenameSchema,

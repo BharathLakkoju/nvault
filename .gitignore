@@ -7,6 +7,9 @@ dist/
 .next/
 out/
 *.tsbuildinfo
+.vercel/
+.vercel-check-dist/
+apps/cli/binaries/
 
 # Environment / secrets — never commit real credentials
 .env

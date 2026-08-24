@@ -12,7 +12,13 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // Pooled connection string (e.g. a Neon/Supabase PgBouncer endpoint) —
+  // required on serverless deployments (Vercel) where each invocation can
+  // open a fresh connection. directUrl is optional: only used by
+  // `prisma migrate`, which needs an unpooled connection. Non-serverless
+  // deployments can safely point both at the same plain connection string.
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 model User {

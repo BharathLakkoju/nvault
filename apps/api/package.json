@@ -9,6 +9,7 @@
     "start": "node dist/main.js",
     "start:dev": "nest start --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck:vercel": "tsc -p tsconfig.vercel-check.json",
     "lint": "eslint \"src/**/*.ts\"",
     "test": "jest",
     "test:e2e": "jest --config jest.e2e.config.cjs",

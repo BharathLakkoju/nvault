@@ -5,6 +5,7 @@ import { resolveProject } from "../lib/resolve-project";
 import { unlockVaultForThisCommand } from "../lib/vault-session";
 import { openProjectKey, decryptFile, bytesToUtf8 } from "../lib/vault-client";
 import { parseDotenv } from "../lib/dotenv-parse";
+import { resolveExecutable } from "../lib/which";
 import type { DownloadedFileDto, FileDto } from "../lib/types";
 
 /**
@@ -41,7 +42,7 @@ export async function runCommand(projectName: string | undefined, commandParts: 
   }
 
   const [command, ...args] = commandParts;
-  const child = spawn(command, args, {
+  const child = spawn(resolveExecutable(command), args, {
     stdio: "inherit",
     env: { ...process.env, ...injected },
   });

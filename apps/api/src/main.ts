@@ -11,8 +11,9 @@ async function bootstrap() {
   app.use(helmet());
   app.use(cookieParser());
   // Base64-encoded ciphertext bodies inflate ~33% over the plaintext size
-  // cap (see MAX_FILE_SIZE_BYTES); 10mb comfortably covers that with headroom.
-  app.use(express.json({ limit: "10mb" }));
+  // cap (see MAX_FILE_SIZE_BYTES); kept in sync with api/index.ts's Vercel
+  // serverless entry point, which additionally can't exceed ~4.5MB.
+  app.use(express.json({ limit: "6mb" }));
 
   const webOrigin = process.env.WEB_ORIGIN ?? "http://localhost:3000";
   app.enableCors({ origin: webOrigin, credentials: true });
