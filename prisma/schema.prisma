@@ -1,0 +1,193 @@
+// EnvVault data model.
+//
+// Security invariant: this schema stores ONLY encrypted blobs and wrapped
+// keys (ciphertext) plus non-secret metadata. Every column that looks like
+// key material (wrapped*Key*, *Iv, *Ciphertext) is opaque to the server —
+// it is produced and consumed exclusively by client-side code in
+// src/lib/crypto. Nothing here allows the API to recover plaintext.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // DATABASE_URL: the pooled connection string (a Neon / Supabase PgBouncer
+  // endpoint). Required on Vercel — each serverless invocation can open a
+  // fresh connection, and an unpooled URL exhausts the database's connection
+  // limit fast. DIRECT_DATABASE_URL: the unpooled string, used only by
+  // `prisma migrate`. On a plain local Postgres, point both at the same URL.
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+model User {
+  id           String  @id @default(cuid())
+  email        String  @unique
+  passwordHash String // argon2id hash of the ACCOUNT login password (auth only, not key material)
+  name         String?
+
+  // Vault key material: wraps the user's master key under a KEK derived
+  // client-side from the user's vault passphrase. Opaque to the server.
+  kdfSalt                    String
+  kdfIterations              Int
+  wrappedMasterKeyIv         String
+  wrappedMasterKeyCiphertext String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions  Session[]
+  projects  Project[]
+  auditLogs AuditLog[]
+
+  @@map("users")
+}
+
+/// An authenticated browser session — the unit of session revocation.
+model Session {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  refreshTokenHash String  @unique // sha256(refresh token) — the raw token is never stored
+  userAgent        String?
+  ipAddress        String?
+
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+
+  createdVersions FileVersion[]
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Project {
+  // Client-generated UUID (see CreateProjectRequestSchema in src/lib/schemas):
+  // the project key must be wrapped with this id bound as AAD before the row
+  // exists, so the client originates the id rather than the server assigning
+  // one on insert.
+  id      String @id
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  name String
+
+  // Normalized git remote ("github.com/org/repo") for project auto-detection.
+  // Optional — git is never required.
+  gitRemoteUrl String?
+
+  // The project's data-encryption key, wrapped under the owner's master key.
+  wrappedProjectKeyIv         String
+  wrappedProjectKeyCiphertext String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  files ProjectFile[]
+
+  @@unique([ownerId, name])
+  @@index([ownerId, gitRemoteUrl])
+  @@map("projects")
+}
+
+model ProjectFile {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  filename String // validated server-side against a strict allowlist pattern
+
+  currentVersionId String?      @unique
+  currentVersion   FileVersion? @relation("CurrentVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  versions FileVersion[] @relation("FileVersions")
+
+  @@unique([projectId, filename])
+  @@map("project_files")
+}
+
+model FileVersion {
+  id     String      @id @default(cuid())
+  fileId String
+  file   ProjectFile @relation("FileVersions", fields: [fileId], references: [id], onDelete: Cascade)
+
+  versionNumber Int
+
+  // Encrypted blob location (storage key) + AEAD parameters. storageKey is
+  // generated server-side from opaque ids only — never from the user-supplied
+  // filename, so it cannot path-traverse.
+  storageKey String
+  ivBase64   String
+  // Client-chosen AAD tag bound into the AEAD encryption of this version's
+  // content (see UploadFileVersionRequestSchema) — opaque to the server.
+  contentId  String
+
+  plaintextSize   Int
+  plaintextSha256 String // integrity/dedup metadata only — never used as key material
+
+  createdAt DateTime @default(now())
+
+  createdBySessionId String?
+  createdBySession   Session? @relation(fields: [createdBySessionId], references: [id], onDelete: SetNull)
+
+  currentOfFile ProjectFile? @relation("CurrentVersion")
+
+  @@unique([fileId, versionNumber])
+  @@map("file_versions")
+}
+
+/// Encrypted file bytes, stored in Postgres (the only storage backend).
+/// `data` is doubly encrypted: the client's AES-256-GCM ciphertext, then
+/// wrapped again server-side under STORAGE_ENCRYPTION_KEY (see
+/// src/server/storage.ts) with a 1-byte format-version prefix. A raw
+/// database dump therefore reveals nothing without the Vercel-held key, and
+/// even with it only yields the client ciphertext (still needs the user's
+/// vault passphrase).
+model StorageObject {
+  key  String @id
+  data Bytes
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("storage_objects")
+}
+
+/// Fixed-window rate-limit counters. Keyed by "<route>:<ip>" and a truncated
+/// window start, so the limit holds across all concurrent serverless
+/// instances without an external store. Old rows are pruned opportunistically.
+model RateLimitHit {
+  bucket      String
+  windowStart DateTime
+  count       Int      @default(1)
+
+  @@id([bucket, windowStart])
+  @@index([windowStart])
+  @@map("rate_limit_hits")
+}
+
+/// Security-sensitive action log. Never stores secret contents — only
+/// action metadata (who, what kind of object, when, from where).
+model AuditLog {
+  id     String  @id @default(cuid())
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  action     String
+  targetType String?
+  targetId   String?
+  metadata   Json?
+  ipAddress  String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("audit_logs")
+}
