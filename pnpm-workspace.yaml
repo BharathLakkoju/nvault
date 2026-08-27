@@ -1,18 +1,19 @@
-# Not a monorepo — this file only carries pnpm settings (there is no
-# `packages:` key). Single application, single package.json.
-allowBuilds:
-  '@prisma/client': true
-  '@prisma/engines': true
-  prisma: true
-  unrs-resolver: true
-  '@node-rs/argon2': true
-  esbuild: true
-  sharp: true
+# Not a monorepo. This file has no `packages:` key — it exists only because
+# pnpm 11 reads dependency-build permissions from here rather than
+# package.json. Single application, single package.json.
 onlyBuiltDependencies:
+  - "@node-rs/argon2"
   - "@prisma/client"
   - "@prisma/engines"
-  - prisma
-  - unrs-resolver
-  - "@node-rs/argon2"
   - esbuild
+  - prisma
   - sharp
+  - unrs-resolver
+allowBuilds:
+  "@node-rs/argon2": true
+  "@prisma/client": true
+  "@prisma/engines": true
+  esbuild: true
+  prisma: true
+  sharp: true
+  unrs-resolver: true
