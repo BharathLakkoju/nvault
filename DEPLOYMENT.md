@@ -17,7 +17,7 @@ production, why the request body cap is what it is).
      `https://envvault-api.vercel.app/api/v1`
 4. Deploy. That's it — it's a standard Next.js app from here.
 
-## 2. API → Vercel
+## 2. API → Vercel, free serverless path
 
 The NestJS API runs on Vercel as a serverless function
 (`apps/api/api/index.ts` wraps the same Nest app `main.ts` boots for any
@@ -35,9 +35,16 @@ other host — same modules, same guards, same everything).
      when you run `prisma migrate deploy` (do this from your machine or CI,
      not from the serverless function itself — see step 5).
    - `JWT_SECRET`, `WEB_ORIGIN`, and the rest as documented in `.env.example`.
-   - `STORAGE_PROVIDER=s3` with `STORAGE_S3_*` pointed at S3, Cloudflare R2,
-     or another S3-compatible bucket. **`STORAGE_PROVIDER=local` will not
-     work on Vercel** — serverless functions have no persistent disk.
+   - `STORAGE_PROVIDER=database` for the fully free, single-database Vercel
+     setup. This stores the encrypted file bytes in Postgres, alongside the
+     metadata. The API still never sees plaintext, and this is a good fit for
+     small `.env` / config files on a free database tier.
+   - Optional scale-up path: `STORAGE_PROVIDER=s3` with `STORAGE_S3_*` pointed
+     at S3, Cloudflare R2, or another S3-compatible bucket. This is better
+     once blob storage volume matters, but it is no longer required for a free
+     Vercel deployment.
+   - Do not use `STORAGE_PROVIDER=local` on Vercel — serverless functions have
+     no persistent disk.
 4. Known platform constraint: Vercel's Node runtime enforces a hard
    **~4.5MB request body limit that cannot be raised**. `MAX_FILE_SIZE_BYTES`
    in `packages/types` is set to 2.5 MiB specifically so base64-encoded

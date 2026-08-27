@@ -9,7 +9,7 @@ const EnvSchema = z.object({
   REFRESH_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(2_592_000),
   DEVICE_AUTH_TTL_SECONDS: z.coerce.number().int().positive().default(600),
   DEVICE_AUTH_POLL_INTERVAL_SECONDS: z.coerce.number().int().positive().default(5),
-  STORAGE_PROVIDER: z.enum(["local", "s3"]).default("local"),
+  STORAGE_PROVIDER: z.enum(["local", "database", "s3"]).default("local"),
   STORAGE_LOCAL_ROOT: z.string().default("./data/blobs"),
   STORAGE_S3_BUCKET: z.string().optional(),
   STORAGE_S3_REGION: z.string().optional(),

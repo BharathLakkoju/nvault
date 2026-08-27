@@ -105,9 +105,9 @@ interactively or must be passed explicitly.
 ## Architecture notes
 
 - **Storage** is behind a `StorageProvider` interface with a zero-dependency
-  local-filesystem implementation (the default) and an S3-compatible
-  implementation (works with AWS S3, Cloudflare R2, or MinIO via
-  `STORAGE_PROVIDER=s3`).
+  local-filesystem implementation for development, a Postgres-backed
+  `database` provider for free Vercel serverless deployments, and an
+  S3-compatible provider for larger production vaults.
 - **Authorization** is enforced on every project/file/version endpoint by
   checking `ownerId` against the authenticated session — mismatches return
   `404`, not `403`, so a project's existence can't be probed by id.

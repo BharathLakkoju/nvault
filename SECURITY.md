@@ -34,8 +34,11 @@ Project Data Key (one per project) — random 256 bits, generated on project cre
         │
         │  AES-256-GCM encrypt, AAD = "<clientGeneratedContentId>"
         ▼
-File version ciphertext            — persisted in object storage; DB stores iv,
-                                      contentId, storageKey, size, sha256 (metadata only)
+File version ciphertext            — persisted in the configured storage
+                                      backend; database storage keeps opaque
+                                      ciphertext bytes in Postgres, while
+                                      object storage keeps them behind
+                                      storageKey metadata
 ```
 
 Every wrap/encrypt step binds an identifier as AEAD "additional authenticated
@@ -68,9 +71,11 @@ device-authorization channel.
 - `users`: email, argon2id password hash, `kdfSalt`, `kdfIterations`,
   `wrappedMasterKeyIv/Ciphertext`.
 - `projects`: name, optional normalized git remote, `wrappedProjectKeyIv/Ciphertext`.
-- `project_files` / `file_versions`: filename, version number, object-storage
-  key, iv, `contentId`, plaintext size + sha256 (for status/dedup display —
-  a hash is not reversible and is not key material).
+- `project_files` / `file_versions`: filename, version number, storage key,
+  iv, `contentId`, plaintext size + sha256 (for status/dedup display — a
+  hash is not reversible and is not key material).
+- `storage_objects`: optional Postgres-backed storage rows containing only
+  opaque ciphertext bytes, keyed by server-generated storage keys.
 - `sessions`: hashed refresh tokens (sha256, not the raw token), client type,
   device name, IP/user-agent, timestamps.
 - `audit_logs`: action name + non-secret metadata (e.g. a filename, a

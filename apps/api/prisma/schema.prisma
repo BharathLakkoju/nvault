@@ -180,6 +180,20 @@ model FileVersion {
   @@map("file_versions")
 }
 
+/// Opaque encrypted file bytes stored in Postgres. This is the simplest
+/// serverless-friendly storage option for free-tier Vercel deployments with
+/// small env/config files; S3-compatible storage remains available for larger
+/// production vaults.
+model StorageObject {
+  key  String @id
+  data Bytes
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("storage_objects")
+}
+
 /// Security-sensitive action log. Never stores secret contents — only
 /// action metadata (who, what kind of object, when, from where).
 model AuditLog {
