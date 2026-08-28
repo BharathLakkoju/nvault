@@ -1,11 +1,53 @@
 import type { Metadata, Viewport } from "next";
 import { Providers } from "./providers";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
+import { siteConfig, SITE_URL } from "@/lib/site";
+import { OG_IMAGE } from "@/lib/seo";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "EnvVault",
-  description: "Your development environment, available anywhere.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${siteConfig.name} — ${siteConfig.tagline}`,
+    template: `%s — ${siteConfig.name}`,
+  },
+  description: siteConfig.metaDescription,
+  applicationName: siteConfig.name,
+  keywords: [...siteConfig.keywords],
+  authors: [{ name: siteConfig.creator, url: SITE_URL }],
+  creator: siteConfig.creator,
+  publisher: siteConfig.creator,
+  generator: "Next.js",
+  referrer: "no-referrer",
+  formatDetection: { email: false, address: false, telephone: false },
+  alternates: { canonical: "/" },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  openGraph: {
+    type: "website",
+    locale: siteConfig.locale,
+    url: SITE_URL,
+    siteName: siteConfig.name,
+    title: `${siteConfig.name} — ${siteConfig.tagline}`,
+    description: siteConfig.metaDescription,
+    images: [OG_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${siteConfig.name} — ${siteConfig.tagline}`,
+    description: siteConfig.metaDescription,
+    images: [OG_IMAGE.url],
+  },
+  category: "technology",
 };
 
 export const viewport: Viewport = {
