@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: envvault
+          POSTGRES_PASSWORD: envvault
+          POSTGRES_DB: envvault
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U envvault"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://envvault:envvault@localhost:5432/envvault?schema=public
+      DIRECT_DATABASE_URL: postgresql://envvault:envvault@localhost:5432/envvault?schema=public
+      JWT_SECRET: ci-jwt-secret-ci-jwt-secret-ci-jwt-secret
+      STORAGE_ENCRYPTION_KEY: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm version comes from package.json "packageManager"
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm prisma generate
+
+      - run: pnpm typecheck
+
+      - run: pnpm typecheck:test
+
+      - run: pnpm lint
+
+      - run: pnpm test
+
+      - run: pnpm prisma migrate deploy
+
+      - run: pnpm test:integration
+
+      - run: pnpm build

@@ -3,23 +3,16 @@ node_modules/
 .pnpm-store/
 
 # Build output
-dist/
 .next/
 out/
 *.tsbuildinfo
 .vercel/
-.vercel-check-dist/
-apps/cli/binaries/
 
 # Environment / secrets — never commit real credentials
 .env
 .env.local
 .env.*.local
 !.env.example
-!.env.local.example
-
-# Local encrypted blob storage (dev default STORAGE_PROVIDER=local)
-apps/api/data/
 
 # Logs
 *.log
