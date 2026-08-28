@@ -82,6 +82,66 @@ export function FaqJsonLd({ items }: { items: ReadonlyArray<{ question: string; 
   );
 }
 
+export function ArticleJsonLd({
+  title,
+  description,
+  path,
+  datePublished,
+  author,
+}: {
+  title: string;
+  description: string;
+  path: string;
+  datePublished: string;
+  author: string;
+}) {
+  const url = new URL(path, SITE_URL).toString();
+  return (
+    <JsonLd
+      data={{
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        headline: title,
+        description,
+        datePublished,
+        dateModified: datePublished,
+        author: { "@type": "Organization", name: author, url: SITE_URL },
+        publisher: { "@id": `${SITE_URL}/#organization` },
+        mainEntityOfPage: { "@type": "WebPage", "@id": url },
+        url,
+        image: `${SITE_URL}/opengraph-image`,
+      }}
+    />
+  );
+}
+
+export function BlogJsonLd({
+  posts,
+}: {
+  posts: ReadonlyArray<{ slug: string; title: string; description: string; datePublished: string }>;
+}) {
+  return (
+    <JsonLd
+      data={{
+        "@context": "https://schema.org",
+        "@type": "Blog",
+        "@id": `${SITE_URL}/blog#blog`,
+        url: `${SITE_URL}/blog`,
+        name: `${siteConfig.name} blog`,
+        description: `Notes on secure environment configuration, from the ${siteConfig.name} team.`,
+        publisher: { "@id": `${SITE_URL}/#organization` },
+        blogPost: posts.map((p) => ({
+          "@type": "BlogPosting",
+          headline: p.title,
+          description: p.description,
+          datePublished: p.datePublished,
+          url: `${SITE_URL}/blog/${p.slug}`,
+        })),
+      }}
+    />
+  );
+}
+
 export function BreadcrumbJsonLd({ items }: { items: ReadonlyArray<{ name: string; path: string }> }) {
   return (
     <JsonLd
