@@ -121,9 +121,13 @@ archive in the browser from already-decrypted files).
 - Access tokens are short-lived JWTs (default 15 min, HS256 via `jose`) and
   are **re-checked against the sessions table on every request** — revoking a
   session takes effect immediately.
-- Refresh tokens are opaque random values, stored only as a SHA-256 hash,
-  rotated on every use, scoped to an httpOnly `SameSite=Lax` cookie on
-  `/api/v1/auth`.
+- Refresh tokens are opaque random values, stored only as a SHA-256 hash, in
+  an httpOnly `SameSite=Lax` cookie scoped to `/api/v1/auth`. The cookie flow
+  does **not** rotate the token on each refresh (the browser can fire several
+  refreshes in one tick — Strict Mode, a 401 burst, multiple tabs — and a
+  rotated token races cookie propagation, logging the user out). The token
+  still expires (30 days, sliding) and a session can be revoked instantly.
+  The non-cookie flow (for a future CLI) does rotate.
 - Auth is deny-by-default: a route is public only if its handler never calls
   `requireAuth`.
 

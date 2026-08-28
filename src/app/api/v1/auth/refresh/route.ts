@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { me } from "@/server/auth/service";
-import { rotateRefreshToken } from "@/server/auth/session";
+import { refreshAccessToken, rotateRefreshToken } from "@/server/auth/session";
 import { verifyAccessToken } from "@/server/auth/tokens";
 import { readRefreshCookie, setRefreshCookie } from "@/server/auth/cookies";
 import { RefreshRequestSchema } from "@/server/auth/dto";
@@ -20,7 +20,11 @@ export const POST = handler(async (req) => {
   const refreshToken = cookieToken ?? body.refreshToken;
   if (!refreshToken) throw new ApiError(401, "Missing refresh token");
 
-  const tokens = await rotateRefreshToken(refreshToken);
+  // Cookie callers (the web app) get a non-rotating refresh — see
+  // refreshAccessToken's comment. Non-cookie callers get a rotated token.
+  const tokens = cookieToken
+    ? await refreshAccessToken(refreshToken)
+    : await rotateRefreshToken(refreshToken);
   const payload = await verifyAccessToken(tokens.accessToken);
   const profile = await me(payload.sub);
 
@@ -29,7 +33,6 @@ export const POST = handler(async (req) => {
     accessTokenExpiresInSeconds: tokens.accessTokenExpiresInSeconds,
     user: profile.user,
     vaultKeyMaterial: profile.vaultKeyMaterial,
-    // Only for non-cookie callers; a browser gets the rotated token as a cookie.
     refreshToken: cookieToken ? undefined : tokens.refreshToken,
   });
   if (cookieToken) {
