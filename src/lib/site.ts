@@ -59,6 +59,7 @@ export const marketingNav: ReadonlyArray<{ href: string; label: string }> = [
   { href: "/features", label: "Features" },
   { href: "/security", label: "Security" },
   { href: "/cli", label: "CLI" },
+  { href: "/blog", label: "Blog" },
   { href: "/pricing", label: "Pricing" },
   { href: "/faq", label: "FAQ" },
 ];
@@ -80,6 +81,7 @@ export const footerNav: ReadonlyArray<{
   {
     title: "Resources",
     links: [
+      { href: "/blog", label: "Blog" },
       { href: "/faq", label: "FAQ" },
       { href: "/about", label: "About" },
       { href: "/contact", label: "Contact" },

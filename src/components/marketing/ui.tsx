@@ -78,6 +78,20 @@ export function CtaLink({ href, children, variant = "primary", className }: CtaP
   );
 }
 
+/** A dark, horizontally-scrollable block for shell commands or code. */
+export function CommandBlock({ children, label }: { children: React.ReactNode; label?: string }) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-950 dark:border-slate-800">
+      {label && (
+        <div className="border-b border-white/10 px-4 py-2 text-xs font-medium text-slate-400">{label}</div>
+      )}
+      <pre className="overflow-x-auto px-4 py-3 text-[13px] leading-relaxed text-slate-200">
+        <code>{children}</code>
+      </pre>
+    </div>
+  );
+}
+
 /** Readable prose column for legal / long-form pages. */
 export function Prose({ children }: { children: React.ReactNode }) {
   return (
