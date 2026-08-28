@@ -71,6 +71,12 @@ export async function renameProject(
 export async function deleteProject(ownerId: string, projectId: string): Promise<void> {
   await getOwnedProject(ownerId, projectId);
   await db.project.delete({ where: { id: projectId } });
+  // The project's file/version rows cascade, but storage_objects has no FK
+  // back to them — every blob for this project is keyed `projects/<id>/…`,
+  // so one prefix delete cleans them all up.
+  await db.storageObject
+    .deleteMany({ where: { key: { startsWith: `projects/${projectId}/` } } })
+    .catch(() => {});
 }
 
 export function projectToDto(project: {
