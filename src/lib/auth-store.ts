@@ -21,6 +21,15 @@ interface AuthApiResult {
 
 type BootStatus = "loading" | "authenticated" | "unauthenticated";
 
+/**
+ * De-dupes concurrent refresh calls. The refresh token rotates on every use,
+ * so two overlapping calls (React 18 Strict Mode double-invoking bootstrap,
+ * or several 401s retrying at once) would race: the first rotates the token,
+ * the rest present the now-stale one and get logged out. All callers share
+ * the one in-flight promise instead.
+ */
+let inFlightRefresh: Promise<boolean> | null = null;
+
 interface AuthState {
   status: BootStatus;
   accessToken: string | null;
@@ -63,16 +72,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   async tryRefresh() {
-    try {
-      const result = await apiRequest<AuthApiResult & { refreshToken?: string }>("/auth/refresh", {
-        method: "POST",
-        skipAuthRetry: true,
-      });
-      get().setSession(result);
-      return true;
-    } catch {
-      return false;
-    }
+    if (inFlightRefresh) return inFlightRefresh;
+    inFlightRefresh = (async () => {
+      try {
+        const result = await apiRequest<AuthApiResult & { refreshToken?: string }>("/auth/refresh", {
+          method: "POST",
+          skipAuthRetry: true,
+        });
+        get().setSession(result);
+        return true;
+      } catch {
+        return false;
+      } finally {
+        inFlightRefresh = null;
+      }
+    })();
+    return inFlightRefresh;
   },
 
   async bootstrap() {
