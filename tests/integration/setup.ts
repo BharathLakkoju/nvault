@@ -39,4 +39,6 @@ if (!process.env.DATABASE_URL) {
   console.warn("\n[integration] DATABASE_URL not set — integration tests will be skipped.\n");
 }
 
-jest.setTimeout(30000);
+// Generous: each test does several argon2id hashes (~2s each at m=46MiB) plus
+// many sequential round trips to a remote Postgres.
+jest.setTimeout(120_000);
