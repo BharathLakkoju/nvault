@@ -9,11 +9,24 @@ import { resolve } from "node:path";
 // Minimal .env loader (jest, unlike `next`, does not read .env itself).
 const envPath = resolve(process.cwd(), ".env");
 if (existsSync(envPath)) {
-  for (const line of readFileSync(envPath, "utf8").split("\n")) {
-    const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/.exec(line);
-    if (m && !process.env[m[1]]) {
-      process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");
+  for (const rawLine of readFileSync(envPath, "utf8").split("\n")) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const eq = line.indexOf("=");
+    if (eq === -1) continue;
+    const key = line.slice(0, eq).trim();
+    let value = line.slice(eq + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    } else {
+      // strip an unquoted trailing "# inline comment"
+      const hash = value.indexOf(" #");
+      if (hash !== -1) value = value.slice(0, hash).trim();
     }
+    if (!process.env[key]) process.env[key] = value;
   }
 }
 

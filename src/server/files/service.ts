@@ -1,15 +1,60 @@
-import type { ProjectFile } from "@prisma/client";
+import { randomUUID } from "node:crypto";
+import { Prisma, type FileVersion, type ProjectFile } from "@prisma/client";
 import { assertSafeFilename, InvalidFilenameError } from "@/lib/schemas";
 import type { UploadFileVersionRequest } from "@/lib/schemas";
 import { db } from "../db";
 import { ApiError } from "../http";
 import { deleteObject, getObject, putObject } from "../storage";
 
-function storageKeyFor(projectId: string, fileId: string, versionNumber: number): string {
-  // Always derived from server-generated cuids, never from the user-supplied
-  // filename — this is what makes path traversal structurally impossible
-  // regardless of what filename the client sends.
-  return `projects/${projectId}/files/${fileId}/v${versionNumber}.bin`;
+function newStorageKey(projectId: string): string {
+  // Server-generated and random — never derived from the user-supplied
+  // filename, so path traversal is structurally impossible regardless of what
+  // the client sends.
+  return `projects/${projectId}/${randomUUID()}.bin`;
+}
+
+interface NewVersionData {
+  storageKey: string;
+  ivBase64: string;
+  contentId: string;
+  plaintextSize: number;
+  plaintextSha256: string;
+  createdBySessionId: string;
+}
+
+/**
+ * Appends a new version to a file and points `currentVersionId` at it.
+ *
+ * No interactive transaction: those require a session held across statements,
+ * which a transaction-mode connection pooler (Neon, Supabase, PgBouncer)
+ * does not provide. Instead the `@@unique([fileId, versionNumber])` constraint
+ * is the concurrency guard — a racing writer that grabs the same number gets
+ * a P2002 and we recompute and retry.
+ */
+async function appendVersion(fileId: string, data: NewVersionData): Promise<FileVersion> {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const last = await db.fileVersion.findFirst({
+      where: { fileId },
+      orderBy: { versionNumber: "desc" },
+      select: { versionNumber: true },
+    });
+    const versionNumber = (last?.versionNumber ?? 0) + 1;
+    try {
+      const version = await db.fileVersion.create({ data: { fileId, versionNumber, ...data } });
+      await db.projectFile.update({ where: { id: fileId }, data: { currentVersionId: version.id } });
+      return version;
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === "P2002" &&
+        attempt < 3
+      ) {
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new ApiError(409, "Concurrent update to this file, please retry");
 }
 
 export function listFiles(projectId: string) {
@@ -45,44 +90,30 @@ export async function uploadVersion(
     if (err instanceof InvalidFilenameError) throw new ApiError(400, err.message);
     throw err;
   }
-  const ciphertext = Buffer.from(dto.payload.ciphertext, "base64");
 
-  return db.$transaction(async (tx) => {
-    const file = await tx.projectFile.upsert({
+  const ciphertext = Buffer.from(dto.payload.ciphertext, "base64");
+  const storageKey = newStorageKey(projectId);
+  await putObject(storageKey, ciphertext);
+
+  try {
+    const file = await db.projectFile.upsert({
       where: { projectId_filename: { projectId, filename } },
       create: { projectId, filename },
       update: {},
     });
-
-    const last = await tx.fileVersion.findFirst({
-      where: { fileId: file.id },
-      orderBy: { versionNumber: "desc" },
+    const version = await appendVersion(file.id, {
+      storageKey,
+      ivBase64: dto.payload.iv,
+      contentId: dto.contentId,
+      plaintextSize: dto.plaintextSize,
+      plaintextSha256: dto.plaintextSha256,
+      createdBySessionId: sessionId,
     });
-    const versionNumber = (last?.versionNumber ?? 0) + 1;
-    const storageKey = storageKeyFor(projectId, file.id, versionNumber);
-
-    await putObject(storageKey, ciphertext);
-
-    const version = await tx.fileVersion.create({
-      data: {
-        fileId: file.id,
-        versionNumber,
-        storageKey,
-        ivBase64: dto.payload.iv,
-        contentId: dto.contentId,
-        plaintextSize: dto.plaintextSize,
-        plaintextSha256: dto.plaintextSha256,
-        createdBySessionId: sessionId,
-      },
-    });
-
-    await tx.projectFile.update({
-      where: { id: file.id },
-      data: { currentVersionId: version.id },
-    });
-
     return { file, version };
-  });
+  } catch (err) {
+    await deleteObject(storageKey).catch(() => {});
+    throw err;
+  }
 }
 
 export async function getVersionOwned(fileId: string, versionId: string) {
@@ -110,35 +141,33 @@ export async function restoreVersion(
 ) {
   const target = await getVersionOwned(fileId, versionId);
   const bytes = await getObject(target.storageKey);
+  const storageKey = newStorageKey(projectId);
+  await putObject(storageKey, bytes);
 
-  return db.$transaction(async (tx) => {
-    const last = await tx.fileVersion.findFirst({
-      where: { fileId },
-      orderBy: { versionNumber: "desc" },
+  try {
+    return await appendVersion(fileId, {
+      storageKey,
+      ivBase64: target.ivBase64,
+      contentId: target.contentId,
+      plaintextSize: target.plaintextSize,
+      plaintextSha256: target.plaintextSha256,
+      createdBySessionId: sessionId,
     });
-    const versionNumber = (last?.versionNumber ?? 0) + 1;
-    const storageKey = storageKeyFor(projectId, fileId, versionNumber);
-    await putObject(storageKey, bytes);
-
-    const version = await tx.fileVersion.create({
-      data: {
-        fileId,
-        versionNumber,
-        storageKey,
-        ivBase64: target.ivBase64,
-        contentId: target.contentId,
-        plaintextSize: target.plaintextSize,
-        plaintextSha256: target.plaintextSha256,
-        createdBySessionId: sessionId,
-      },
-    });
-    await tx.projectFile.update({ where: { id: fileId }, data: { currentVersionId: version.id } });
-    return version;
-  });
+  } catch (err) {
+    await deleteObject(storageKey).catch(() => {});
+    throw err;
+  }
 }
 
 export async function deleteFile(fileId: string): Promise<void> {
-  const versions = await db.fileVersion.findMany({ where: { fileId } });
+  const versions = await db.fileVersion.findMany({
+    where: { fileId },
+    select: { storageKey: true },
+  });
+  // Break the file -> currentVersion FK first so the cascade delete of
+  // versions has nothing pointing back at it, then delete the file (versions
+  // cascade). No interactive transaction (pooler-incompatible).
+  await db.projectFile.update({ where: { id: fileId }, data: { currentVersionId: null } });
   await db.projectFile.delete({ where: { id: fileId } });
   await Promise.allSettled(versions.map((v) => deleteObject(v.storageKey)));
 }
