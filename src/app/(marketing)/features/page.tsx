@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Container, Section, SectionHeading, CtaLink } from "@/components/marketing/ui";
+import { AuroraBackground } from "@/components/marketing/aurora-background";
 import { BreadcrumbJsonLd } from "@/components/marketing/json-ld";
 import { features } from "@/lib/marketing-content";
 import { pageMetadata } from "@/lib/seo";
@@ -48,7 +49,8 @@ export default function FeaturesPage() {
   return (
     <>
       <BreadcrumbJsonLd items={[{ name: "Home", path: "/" }, { name: "Features", path: "/features" }]} />
-      <Section>
+      <Section className="relative isolate">
+        <AuroraBackground />
         <Container>
           <SectionHeading
             eyebrow="Features"

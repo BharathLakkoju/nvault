@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Container, Section, SectionHeading, CtaLink } from "@/components/marketing/ui";
+import { AuroraBackground } from "@/components/marketing/aurora-background";
 import { BreadcrumbJsonLd, FaqJsonLd } from "@/components/marketing/json-ld";
 import { faqs } from "@/lib/marketing-content";
 import { pageMetadata } from "@/lib/seo";
@@ -17,7 +18,8 @@ export default function FaqPage() {
       <BreadcrumbJsonLd items={[{ name: "Home", path: "/" }, { name: "FAQ", path: "/faq" }]} />
       <FaqJsonLd items={faqs} />
 
-      <Section>
+      <Section className="relative isolate">
+        <AuroraBackground />
         <Container>
           <SectionHeading eyebrow="FAQ" title="Frequently asked questions" />
 

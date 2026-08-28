@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Container, Section, SectionHeading, Eyebrow, CtaLink } from "@/components/marketing/ui";
 import { RedirectIfAuthenticated } from "@/components/marketing/redirect-if-authenticated";
+import { AuroraBackground } from "@/components/marketing/aurora-background";
 import { SoftwareApplicationJsonLd } from "@/components/marketing/json-ld";
 import { features, howItWorks, faqs } from "@/lib/marketing-content";
 import { pageMetadata } from "@/lib/seo";
@@ -49,7 +50,8 @@ export default function HomePage() {
       <SoftwareApplicationJsonLd />
 
       {/* Hero */}
-      <Section className="pt-16 sm:pt-24">
+      <Section className="relative isolate pt-16 sm:pt-24">
+        <AuroraBackground />
         <Container>
           <div className="grid items-center gap-12 lg:grid-cols-2">
             <div>
@@ -210,7 +212,8 @@ export default function HomePage() {
       {/* Final CTA */}
       <Section>
         <Container>
-          <div className="rounded-2xl border border-slate-200 bg-white px-6 py-14 text-center dark:border-slate-800 dark:bg-slate-900">
+          <div className="relative isolate overflow-hidden rounded-2xl border border-slate-200 bg-white px-6 py-14 text-center dark:border-slate-800 dark:bg-slate-900">
+            <AuroraBackground grid={false} />
             <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
               Stop copying <code className="rounded bg-slate-100 px-1.5 py-0.5 text-[0.85em] dark:bg-slate-800">.env</code> files between machines
             </h2>

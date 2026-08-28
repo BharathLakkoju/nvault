@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Container, Section, SectionHeading, Prose, CtaLink } from "@/components/marketing/ui";
+import { AuroraBackground } from "@/components/marketing/aurora-background";
 import { BreadcrumbJsonLd } from "@/components/marketing/json-ld";
 import { pageMetadata } from "@/lib/seo";
 
@@ -37,7 +38,8 @@ export default function SecurityPage() {
   return (
     <>
       <BreadcrumbJsonLd items={[{ name: "Home", path: "/" }, { name: "Security", path: "/security" }]} />
-      <Section>
+      <Section className="relative isolate">
+        <AuroraBackground />
         <Container>
           <SectionHeading
             eyebrow="Security"

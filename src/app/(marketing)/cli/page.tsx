@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Container, Section, SectionHeading, Prose } from "@/components/marketing/ui";
+import { AuroraBackground } from "@/components/marketing/aurora-background";
 import { BreadcrumbJsonLd } from "@/components/marketing/json-ld";
 import { pageMetadata } from "@/lib/seo";
 
@@ -25,7 +26,8 @@ export default function CliPage() {
   return (
     <>
       <BreadcrumbJsonLd items={[{ name: "Home", path: "/" }, { name: "CLI", path: "/cli" }]} />
-      <Section>
+      <Section className="relative isolate">
+        <AuroraBackground />
         <Container>
           <SectionHeading
             eyebrow="CLI"

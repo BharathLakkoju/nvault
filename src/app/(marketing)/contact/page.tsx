@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Container, Section, SectionHeading } from "@/components/marketing/ui";
+import { AuroraBackground } from "@/components/marketing/aurora-background";
 import { BreadcrumbJsonLd } from "@/components/marketing/json-ld";
 import { pageMetadata } from "@/lib/seo";
 import { siteConfig } from "@/lib/site";
@@ -29,7 +30,8 @@ export default function ContactPage() {
   return (
     <>
       <BreadcrumbJsonLd items={[{ name: "Home", path: "/" }, { name: "Contact", path: "/contact" }]} />
-      <Section>
+      <Section className="relative isolate">
+        <AuroraBackground />
         <Container>
           <SectionHeading
             eyebrow="Contact"

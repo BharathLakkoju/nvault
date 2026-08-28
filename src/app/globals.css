@@ -85,3 +85,57 @@ body {
 .focus-ring {
   @apply outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-950;
 }
+
+/*
+ * Marketing background decoration
+ * ------------------------------
+ * `.bg-grid` is a static, GPU-cheap grid rendered behind hero content and
+ * faded at the edges with a radial mask. The `aurora-*` keyframes drift a few
+ * large, heavily-blurred colour blobs; they are only ever applied through
+ * Tailwind's `motion-safe:` variant, so users with "reduce motion" get the
+ * static gradient with no movement.
+ */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, rgb(15 23 42 / 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(15 23 42 / 0.05) 1px, transparent 1px);
+  background-size: 3.5rem 3.5rem;
+  -webkit-mask-image: radial-gradient(ellipse 60% 60% at 50% 0%, #000 40%, transparent 100%);
+  mask-image: radial-gradient(ellipse 60% 60% at 50% 0%, #000 40%, transparent 100%);
+}
+
+:root.dark .bg-grid {
+  background-image:
+    linear-gradient(to right, rgb(226 232 240 / 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(226 232 240 / 0.06) 1px, transparent 1px);
+}
+
+@keyframes aurora-a {
+  0%,
+  100% {
+    transform: translate(-50%, 0) scale(1);
+  }
+  50% {
+    transform: translate(-42%, 6%) scale(1.15);
+  }
+}
+
+@keyframes aurora-b {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-8%, 10%) scale(1.1);
+  }
+}
+
+@keyframes aurora-c {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(10%, -8%) scale(1.12);
+  }
+}
