@@ -2,8 +2,80 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Accent palettes
+ * ---------------
+ * Each variable is an "R G B" channel triple consumed by tailwind's `accent`
+ * colour (see tailwind.config.ts). `:root` holds the default (indigo); a
+ * `[data-accent="…"]` attribute on <html> swaps in another palette at runtime.
+ * Keep these in sync with the ACCENTS list in src/lib/theme.ts.
+ */
 :root {
   color-scheme: light dark;
+
+  --accent-50: 238 242 255;
+  --accent-100: 224 231 255;
+  --accent-200: 199 210 254;
+  --accent-300: 165 180 252;
+  --accent-400: 129 140 248;
+  --accent-500: 99 102 241;
+  --accent-600: 79 70 229;
+  --accent-700: 67 56 202;
+}
+
+:root[data-accent="violet"] {
+  --accent-50: 245 243 255;
+  --accent-100: 237 233 254;
+  --accent-200: 221 214 254;
+  --accent-300: 196 181 253;
+  --accent-400: 167 139 250;
+  --accent-500: 139 92 246;
+  --accent-600: 124 58 237;
+  --accent-700: 109 40 217;
+}
+
+:root[data-accent="emerald"] {
+  --accent-50: 236 253 245;
+  --accent-100: 209 250 229;
+  --accent-200: 167 243 208;
+  --accent-300: 110 231 183;
+  --accent-400: 52 211 153;
+  --accent-500: 16 185 129;
+  --accent-600: 5 150 105;
+  --accent-700: 4 120 87;
+}
+
+:root[data-accent="rose"] {
+  --accent-50: 255 241 242;
+  --accent-100: 255 228 230;
+  --accent-200: 254 205 211;
+  --accent-300: 253 164 175;
+  --accent-400: 251 113 133;
+  --accent-500: 244 63 94;
+  --accent-600: 225 29 72;
+  --accent-700: 190 18 60;
+}
+
+:root[data-accent="amber"] {
+  --accent-50: 255 251 235;
+  --accent-100: 254 243 199;
+  --accent-200: 253 230 138;
+  --accent-300: 252 211 77;
+  --accent-400: 251 191 36;
+  --accent-500: 217 119 6;
+  --accent-600: 180 83 9;
+  --accent-700: 146 64 14;
+}
+
+:root[data-accent="sky"] {
+  --accent-50: 240 249 255;
+  --accent-100: 224 242 254;
+  --accent-200: 186 230 253;
+  --accent-300: 125 211 252;
+  --accent-400: 56 189 248;
+  --accent-500: 14 165 233;
+  --accent-600: 2 132 199;
+  --accent-700: 3 105 161;
 }
 
 body {

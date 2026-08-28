@@ -52,7 +52,7 @@ export function VersionHistoryDialog({
           {versions?.map((v) => (
             <li
               key={v.id}
-              className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2 text-sm dark:border-slate-800"
+              className="flex flex-col gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
                 <span className="font-medium text-slate-900 dark:text-slate-100">v{v.versionNumber}</span>
@@ -65,7 +65,7 @@ export function VersionHistoryDialog({
                   {formatRelativeTime(v.createdAt)} · {formatBytes(v.plaintextSize)}
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex shrink-0 gap-2">
                 <Button variant="secondary" onClick={() => handleDownload(v.id, v.versionNumber)}>
                   Download
                 </Button>

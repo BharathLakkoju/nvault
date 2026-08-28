@@ -9,6 +9,7 @@ import { useAuthStore } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
 import { Input, Label, FieldError } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -72,6 +73,9 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-10">
+      <div className="fixed right-3 top-3">
+        <ThemeToggle />
+      </div>
       <Card className="w-full max-w-md p-6">
         <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Create your EnvVault account</h1>
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
@@ -131,7 +135,7 @@ export default function RegisterPage() {
         </form>
         <p className="mt-4 text-center text-sm text-slate-500 dark:text-slate-400">
           Already have an account?{" "}
-          <Link href="/login" className="font-medium text-accent-600 hover:underline">
+          <Link href="/login" className="font-medium text-accent-600 hover:underline dark:text-accent-400">
             Log in
           </Link>
         </p>

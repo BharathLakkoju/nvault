@@ -222,10 +222,13 @@ function FilesCard({
       )}
       <ul className="divide-y divide-slate-200 dark:divide-slate-800">
         {files.map((file) => (
-          <li key={file.id} className="flex items-center justify-between gap-4 px-5 py-3">
-            <div>
+          <li
+            key={file.id}
+            className="flex flex-col gap-3 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+          >
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-sm text-slate-900 dark:text-slate-100">{file.filename}</span>
+                <span className="truncate font-mono text-sm text-slate-900 dark:text-slate-100">{file.filename}</span>
                 {isDotenvStyleFile(file.filename) && (
                   <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                     env
@@ -239,7 +242,7 @@ function FilesCard({
                 </p>
               )}
             </div>
-            <div className="flex shrink-0 gap-2">
+            <div className="flex shrink-0 flex-wrap gap-2">
               <Button variant="secondary" onClick={() => handleDownload(file)}>
                 Download
               </Button>

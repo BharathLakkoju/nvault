@@ -52,8 +52,8 @@ function SecurityContent() {
         {!isLoading && data?.length === 0 && <p className="p-5 text-sm text-slate-500">No activity yet.</p>}
         <ul className="divide-y divide-slate-200 dark:divide-slate-800">
           {data?.map((entry) => (
-            <li key={entry.id} className="flex items-center justify-between gap-4 px-5 py-3 text-sm">
-              <div>
+            <li key={entry.id} className="flex items-start justify-between gap-3 px-5 py-3 text-sm">
+              <div className="min-w-0">
                 <span className="font-medium text-slate-900 dark:text-slate-100">
                   {ACTION_LABELS[entry.action] ?? entry.action}
                 </span>

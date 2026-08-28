@@ -30,7 +30,7 @@ function DashboardContent() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Projects</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -39,7 +39,7 @@ function DashboardContent() {
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button>+ New Project</Button>
+            <Button className="w-full sm:w-auto">+ New Project</Button>
           </DialogTrigger>
           <DialogContent title="Create project" description="Give your project a name to get started.">
             <CreateProjectForm onDone={() => setOpen(false)} />

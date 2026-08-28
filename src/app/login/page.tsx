@@ -8,6 +8,7 @@ import { useAuthStore } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
 import { Input, Label, FieldError } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -37,6 +38,9 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
+      <div className="fixed right-3 top-3">
+        <ThemeToggle />
+      </div>
       <Card className="w-full max-w-sm p-6">
         <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Log in to EnvVault</h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Your development environment, available anywhere.</p>
@@ -63,7 +67,7 @@ export default function LoginPage() {
         </form>
         <p className="mt-4 text-center text-sm text-slate-500 dark:text-slate-400">
           Don&apos;t have an account?{" "}
-          <Link href="/register" className="font-medium text-accent-600 hover:underline">
+          <Link href="/register" className="font-medium text-accent-600 hover:underline dark:text-accent-400">
             Create one
           </Link>
         </p>
