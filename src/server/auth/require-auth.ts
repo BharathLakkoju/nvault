@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { ApiError } from "../http";
-import { verifyAccessToken } from "./tokens";
+import { requireApiToken } from "./api-tokens";
+import { isApiToken, verifyAccessToken } from "./tokens";
 
 export interface AuthContext {
   userId: string;
@@ -18,10 +19,18 @@ function extractBearer(req: Request): string | undefined {
  * simply never call this. The session row is re-checked on every request (not
  * cached) so that revoking a session takes effect immediately, even while the
  * access token is still cryptographically valid.
+ *
+ * Two credential kinds are accepted on the `Authorization: Bearer` header:
+ * short-lived browser JWTs, and opaque `evk_` CLI Personal Access Tokens
+ * (see api-tokens.ts). Both resolve to the same {@link AuthContext}.
  */
 export async function requireAuth(req: Request): Promise<AuthContext> {
   const token = extractBearer(req);
   if (!token) throw new ApiError(401, "Missing access token");
+
+  if (isApiToken(token)) {
+    return requireApiToken(token);
+  }
 
   let payload: { sub: string; sid: string };
   try {

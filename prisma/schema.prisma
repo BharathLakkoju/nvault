@@ -54,6 +54,16 @@ model Session {
   userAgent        String?
   ipAddress        String?
 
+  // Set ONLY for CLI Personal Access Tokens, never for browser sessions.
+  // A PAT is a long-lived session whose bearer credential is an opaque
+  // "evk_" token (only its sha256 is stored). `apiTokenName` is a
+  // user-supplied label; `apiTokenPrefix` is the first few characters of the
+  // raw token, kept for display only. Browser sessions leave all three null
+  // and are excluded from the CLI-token views (and vice-versa).
+  apiTokenHash   String? @unique
+  apiTokenPrefix String?
+  apiTokenName   String?
+
   createdAt  DateTime  @default(now())
   lastUsedAt DateTime  @default(now())
   expiresAt  DateTime

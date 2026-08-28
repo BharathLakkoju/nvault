@@ -58,3 +58,10 @@ jobs:
       - run: pnpm test:integration
 
       - run: pnpm build
+
+      # Standalone CLI package (cli/) — independent typecheck, tests, bundle.
+      - run: pnpm --filter envvault typecheck
+
+      - run: pnpm --filter envvault test
+
+      - run: pnpm --filter envvault build

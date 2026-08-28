@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    // "DOM" is for type declarations only (CryptoKey, BufferSource, Crypto)
+    // used by the shared @core/crypto — Node 20+ provides these globals at
+    // runtime. No DOM API is actually called.
+    "lib": ["ES2022", "DOM"],
+    "strict": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "types": ["node", "jest"],
+    "baseUrl": ".",
+    "paths": {
+      // The vault crypto is shared verbatim with the web app — one
+      // implementation, used on both sides of the wire. esbuild inlines it
+      // into dist/ at build time (see esbuild.config.js), so there is no
+      // runtime dependency on the app package.
+      "@core/crypto": ["../src/lib/crypto/index.ts"],
+      "@core/filename": ["../src/lib/schemas/filename.ts"]
+    }
+  },
+  "include": ["src"]
+}

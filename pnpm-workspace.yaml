@@ -1,6 +1,11 @@
-# Not a monorepo. This file has no `packages:` key — it exists only because
-# pnpm 11 reads dependency-build permissions from here rather than
-# package.json. Single application, single package.json.
+# Two packages: the Next.js app at the repo root, and the standalone
+# `envvault` CLI in cli/ (published to npm). The CLI has no runtime
+# dependency on the app — it imports the shared vault crypto from
+# ../src/lib/crypto at build time and esbuild inlines it (see
+# cli/esbuild.config.js).
+packages:
+  - "."
+  - "cli"
 onlyBuiltDependencies:
   - "@node-rs/argon2"
   - "@prisma/client"

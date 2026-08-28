@@ -1,0 +1,52 @@
+name: Publish CLI
+
+# Publishes the `envvault` npm package from cli/ when a tag matching
+# `cli-v*` is pushed (e.g. `cli-v0.1.0`). The tag version must match
+# cli/package.json's "version".
+#
+# Requires a repository secret `NPM_TOKEN` — an npm automation token with
+# publish rights to the `envvault` package. Provenance is attested via the
+# workflow's OIDC identity (id-token: write).
+
+on:
+  push:
+    tags:
+      - "cli-v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm provenance
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: "https://registry.npmjs.org"
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Verify tag matches cli/package.json version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#cli-v}"
+          PKG_VERSION="$(node -p "require('./cli/package.json').version")"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "Tag $GITHUB_REF_NAME implies version $TAG_VERSION but cli/package.json is $PKG_VERSION" >&2
+            exit 1
+          fi
+
+      - run: pnpm --filter envvault typecheck
+      - run: pnpm --filter envvault test
+      - run: pnpm --filter envvault build
+
+      - name: Publish to npm
+        run: pnpm --filter envvault publish --no-git-checks --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
