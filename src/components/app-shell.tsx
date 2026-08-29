@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
-  LockKey,
   ShieldCheck,
   FolderSimple,
   Buildings,
@@ -29,6 +28,7 @@ import { useOrganizations } from "@/hooks/use-organizations";
 import { useOrgContext } from "@/lib/org-context-store";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CommandPalette } from "@/components/command-palette";
+import { Logo, LogoMark } from "@/components/marketing/logo";
 import { cn } from "@/lib/cn";
 
 interface NavItem {
@@ -174,10 +174,10 @@ function Sidebar({
       )}
     >
       <div className={cn("flex flex-shrink-0 items-center gap-2.5 px-4 py-4", collapsed && "md:justify-center md:px-0")}>
-        <div className="flex h-[30px] w-[30px] flex-shrink-0 items-center justify-center rounded-md bg-accent-500/20">
-          <LockKey size={16} className="text-accent-600 dark:text-accent-300" />
-        </div>
-        <div className={cn("text-base font-medium tracking-tight", collapsed && "md:hidden")}>nvault</div>
+        <Link href="/dashboard" className="focus-ring rounded">
+          <Logo className={cn("text-[15px]", collapsed && "md:hidden")} />
+          <LogoMark className={cn("hidden", collapsed && "md:block")} />
+        </Link>
         <button
           onClick={onToggleCollapsed}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}

@@ -30,7 +30,7 @@ const config: Config = {
           600: accent(600),
           700: accent(700),
         },
-        // Nocturne semantic surface tokens — see globals.css.
+        // Semantic surface tokens — light/dark values in globals.css.
         canvas: token("bg"),
         surface: token("surface"),
         "surface-2": token("surface-2"),
@@ -38,17 +38,6 @@ const config: Config = {
         line: token("line"),
         ink: token("ink"),
         muted: token("muted"),
-      },
-      fontFamily: {
-        sans: [
-          "var(--font-inter)",
-          "ui-sans-serif",
-          "system-ui",
-          "-apple-system",
-          "Segoe UI",
-          "Roboto",
-          "sans-serif",
-        ],
       },
     },
   },

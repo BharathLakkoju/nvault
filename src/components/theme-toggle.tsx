@@ -98,7 +98,7 @@ export function ThemeToggle({ className }: { className?: string }) {
           <DropdownMenu.Label className="px-2 pb-1 pt-1 text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-muted">
             Accent
           </DropdownMenu.Label>
-          <div className="grid grid-cols-7 gap-1 px-1 py-1">
+          <div className="grid grid-cols-6 gap-1 px-1 py-1">
             {ACCENTS.map((a) => (
               <button
                 key={a.id}

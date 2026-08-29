@@ -5,20 +5,12 @@ import { cn } from "@/lib/cn";
 
 type Variant = "primary" | "secondary" | "danger" | "ghost";
 
-/**
- * Nocturne actions: the primary is an accent *outline* on a transparent
- * ground (never a flood), secondary is a hairline on the surface, ghost is
- * text-only. Every variant carries a themed hover + pressed tint.
- */
 const variantClasses: Record<Variant, string> = {
-  primary:
-    "border border-accent-500 text-accent-600 dark:text-accent-300 hover:bg-accent-500/10 active:bg-accent-500/20 disabled:text-accent-400",
+  primary: "bg-accent-600 text-white hover:bg-accent-700 disabled:bg-accent-300",
   secondary:
-    "border border-line text-ink hover:bg-ink/[0.06] active:bg-ink/[0.12]",
-  danger:
-    "bg-red-600 text-white hover:bg-red-700 active:bg-red-800 disabled:bg-red-400",
-  ghost:
-    "text-accent-600 dark:text-accent-300 hover:bg-accent-500/10 active:bg-accent-500/20",
+    "bg-white text-slate-900 border border-slate-300 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:hover:bg-slate-800",
+  danger: "bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300",
+  ghost: "bg-transparent text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800",
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -33,7 +25,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled || loading}
         className={cn(
-          "focus-ring inline-flex items-center justify-center gap-2 rounded-lg border border-transparent px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+          "focus-ring inline-flex items-center justify-center gap-2 rounded-md px-3.5 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed",
           variantClasses[variant],
           className,
         )}
