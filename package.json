@@ -2,7 +2,7 @@
   "name": "envvault-app",
   "version": "1.0.0",
   "private": true,
-  "description": "EnvVault — a secure, zero-knowledge developer environment/configuration vault. Single Next.js app, deployable to Vercel. (The published npm CLI is the `envvault` package in cli/.)",
+  "description": "EnvVault — a secure, zero-knowledge developer environment/configuration vault. Single Next.js app, deployable to Vercel. (The published npm CLI is the `envvault-cli` package in cli/.)",
   "license": "UNLICENSED",
   "engines": {
     "node": ">=20"

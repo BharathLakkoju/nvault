@@ -1,5 +1,5 @@
 {
-  "name": "envvault",
+  "name": "envvault-cli",
   "version": "0.1.0",
   "description": "Terminal CLI for EnvVault — a secure, zero-knowledge developer environment/configuration vault. Your development environment, available anywhere.",
   "type": "commonjs",

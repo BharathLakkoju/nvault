@@ -85,7 +85,7 @@ export default function CliPage() {
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">npm / pnpm / yarn</h3>
               <div className="mt-2">
                 <CommandBlock>
-                  {"npm install -g @envvault/cli\n# or: pnpm add -g @envvault/cli\n# or: yarn global add @envvault/cli"}
+                  {"npm install -g envvault-cli\n# or: pnpm add -g envvault-cli\n# or: yarn global add envvault-cli"}
                 </CommandBlock>
               </div>
             </div>

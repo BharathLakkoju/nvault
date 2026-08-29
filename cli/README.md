@@ -1,7 +1,8 @@
-# envvault
+# envvault-cli
 
 Terminal CLI for [EnvVault](https://github.com/BharathLakkoju/nvault) — a
 secure, zero-knowledge developer environment/configuration vault.
+Published as `envvault-cli`; installs the `envvault` command.
 
 > Your development environment, available anywhere.
 
@@ -12,9 +13,9 @@ SSH sessions, remote servers, CI — without a browser.
 ## Install
 
 ```bash
-npm install -g envvault
+npm install -g envvault-cli
 # or run without installing:
-npx envvault --help
+npx envvault-cli --help
 ```
 
 Requires Node.js ≥ 20.
