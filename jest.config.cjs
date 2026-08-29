@@ -15,7 +15,7 @@ const tsJest = [
 const moduleNameMapper = { "^@/(.*)$": "<rootDir>/src/$1" };
 
 // The standalone CLI package (cli/) has its own jest config and also a
-// package.json named "envvault-cli" — ignore it here so Haste doesn't see a
+// package.json named "@lbharath/nvault" — ignore it here so Haste doesn't see a
 // naming collision and so `pnpm test` never picks up its specs.
 const ignoreCli = ["<rootDir>/cli/"];
 

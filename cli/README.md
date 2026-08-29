@@ -2,7 +2,6 @@
 
 Terminal CLI for [nvault](https://github.com/BharathLakkoju/nvault) — a
 secure, zero-knowledge developer environment/configuration vault.
-Published as `envvault-cli`; installs the `envvault` command.
 
 > Your development environment, available anywhere.
 
