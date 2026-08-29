@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export const GET = handler(async (req, { params }) => {
   const auth = await requireAuth(req);
-  await authorizeOrg(auth.userId, params.id, "ADMIN");
+  await authorizeOrg(auth.userId, params.id, "ADMIN", "read");
   const invites = await listPendingInvites(params.id);
   return json({ invites: invites.map(inviteToDto) });
 });

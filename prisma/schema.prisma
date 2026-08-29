@@ -54,6 +54,7 @@ model User {
   membershipsInvited OrganizationMembership[] @relation("MembershipInvitedBy")
   invitesSent        OrganizationInvite[]     @relation("InviteInvitedBy")
   keyEpochsRotated   OrganizationKeyEpoch[]   @relation("KeyEpochRotatedBy")
+  subscriptionsOwned Subscription[]           @relation("SubscriptionOwner")
 
   @@map("users")
 }
@@ -256,6 +257,46 @@ enum OrgMembershipStatus {
   ACTIVE // holds the wrapped Org Key — full access to org projects
 }
 
+/// Billing lifecycle of an organization. An org is unusable until a Team
+/// subscription is paid (`PENDING_PAYMENT`), fully usable while paid
+/// (`ACTIVE`), and read-only when the subscription lapses (`SUSPENDED`).
+/// See src/server/billing and src/server/authz/org-access.ts.
+enum OrgStatus {
+  PENDING_PAYMENT
+  ACTIVE
+  SUSPENDED
+}
+
+/// Our local mirror of the Polar subscription state. Kept deliberately
+/// coarse — the fine-grained Polar statuses (incomplete, unpaid, paused, …)
+/// all collapse into one of these four.
+enum SubscriptionStatus {
+  PENDING // checkout created, not yet paid
+  ACTIVE // paid and current (or in a still-valid cancel-at-period-end window)
+  PAST_DUE // payment failed; Polar is retrying
+  CANCELED // ended — no further access
+}
+
+/// Which paid plan a subscription is for.
+///   PRO  — a single user; raises their personal-project cap. No org.
+///   TEAM — a single organization; unlocks org creation + shared projects.
+enum SubscriptionPlan {
+  PRO
+  TEAM
+}
+
+/// Flat Team size tiers. Each maps to its own Polar product; the tier caps
+/// how many members an organization may have (see
+/// src/server/billing/entitlements.ts).
+///   STARTER — up to 10 members
+///   GROWTH  — up to 25 members
+///   SCALE   — up to 100 members
+enum SubscriptionTier {
+  STARTER
+  GROWTH
+  SCALE
+}
+
 /// A team that owns projects shared across its members. The org row holds NO
 /// key material: the Organization Key exists only as ciphertext, wrapped once
 /// per member to that member's public key (OrganizationMembership).
@@ -269,14 +310,20 @@ model Organization {
   /// mismatch means "re-fetch, your key is stale".
   currentKeyEpoch Int @default(0)
 
+  /// Billing gate. New orgs start `PENDING_PAYMENT` and are unusable until
+  /// the Polar `subscription.active` webhook flips them to `ACTIVE`. A
+  /// lapsed subscription drops them to `SUSPENDED` (read-only).
+  status OrgStatus @default(PENDING_PAYMENT)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  memberships OrganizationMembership[]
-  invites     OrganizationInvite[]
-  keyEpochs   OrganizationKeyEpoch[]
-  projects    Project[]
-  auditLogs   AuditLog[]
+  subscription Subscription?
+  memberships  OrganizationMembership[]
+  invites      OrganizationInvite[]
+  keyEpochs    OrganizationKeyEpoch[]
+  projects     Project[]
+  auditLogs    AuditLog[]
 
   @@map("organizations")
 }
@@ -351,4 +398,69 @@ model OrganizationKeyEpoch {
 
   @@unique([organizationId, epoch])
   @@map("organization_key_epochs")
+}
+
+// ---------------------------------------------------------------------------
+// Billing (Polar)
+// ---------------------------------------------------------------------------
+
+/// Our local projection of one Polar subscription. Polar is the source of
+/// truth; the `subscription.*` webhooks (src/app/api/v1/webhooks/polar) keep
+/// this in sync. No card data is ever stored here — checkout and card
+/// management happen entirely on Polar-hosted pages.
+///
+/// A subscription belongs to EITHER an organization (`plan = TEAM`,
+/// `organizationId` set) OR a single user (`plan = PRO`, `organizationId`
+/// null). `ownerUserId` is always the human who pays and owns the Polar
+/// customer record — for TEAM they're also the org's billing manager.
+model Subscription {
+  id   String           @id @default(cuid())
+  plan SubscriptionPlan @default(TEAM)
+
+  /// Size tier — set for TEAM subscriptions only, null for PRO. Derived from
+  /// the Polar product the subscription is on; kept in sync by the webhook.
+  tier SubscriptionTier?
+
+  /// Set for TEAM subscriptions only. Null for PRO.
+  organizationId String?       @unique
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  /// The user who pays and owns the Polar customer record. For TEAM, the
+  /// only member who can open the billing portal. A user has at most one PRO
+  /// subscription row (partial unique index in the migration).
+  ownerUserId String
+  ownerUser   User   @relation("SubscriptionOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+
+  status SubscriptionStatus @default(PENDING)
+
+  /// Polar identifiers. Null until the first webhook lands (or forever, for
+  /// the grandfathered rows backfilled for pre-billing organizations).
+  polarCustomerId     String?
+  polarSubscriptionId String? @unique
+  polarProductId      String?
+
+  /// End of the paid period. While `cancelAtPeriodEnd` is true the org stays
+  /// ACTIVE until this instant, then the webhook drops it to SUSPENDED.
+  currentPeriodEnd  DateTime?
+  cancelAtPeriodEnd Boolean   @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // A partial unique index `(ownerUserId) WHERE plan = 'PRO'` is added in the
+  // migration (Prisma can't express the WHERE) — one PRO subscription per user.
+  @@index([ownerUserId])
+  @@map("subscriptions")
+}
+
+/// Idempotency ledger for inbound Polar webhooks, keyed by the Standard
+/// Webhooks `webhook-id` header. A redelivered event whose id is already
+/// here is acknowledged and skipped. Pruned opportunistically.
+model ProcessedWebhookEvent {
+  id        String   @id
+  type      String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("processed_webhook_events")
 }

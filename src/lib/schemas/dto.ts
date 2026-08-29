@@ -91,13 +91,20 @@ export const OrgSlugSchema = z
 // member's public key. ~512 bytes for a 3072-bit key; cap generously.
 export const WrappedOrgKeySchema = z.string().min(1).max(4_000);
 
+export const TeamTierSchema = z.enum(["STARTER", "GROWTH", "SCALE"]);
+
 export const CreateOrganizationRequestSchema = z.object({
   name: OrgNameSchema,
   slug: OrgSlugSchema,
   /** The freshly-generated Org Key, wrapped to the creator's own public key. */
   wrappedOrgKey: WrappedOrgKeySchema,
+  /** Team size tier to bill for. Defaults to the smallest. */
+  tier: TeamTierSchema.default("STARTER"),
 });
 export type CreateOrganizationRequest = z.infer<typeof CreateOrganizationRequestSchema>;
+
+export const ChangeTierRequestSchema = z.object({ tier: TeamTierSchema });
+export type ChangeTierRequest = z.infer<typeof ChangeTierRequestSchema>;
 
 export const UpdateOrganizationRequestSchema = z
   .object({

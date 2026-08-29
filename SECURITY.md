@@ -204,13 +204,50 @@ archive in the browser from already-decrypted files).
 
 ## Rate limiting
 
-`register`, `login`, `refresh`, org invite creation, and invite acceptance
-are rate-limited by `"<route>:<ip>"` (invite creation additionally per org)
+`register`, `login`, `refresh`, org invite creation, invite acceptance, and
+the billing checkout / portal endpoints are rate-limited by `"<route>:<ip>"`
+(invite creation additionally per org; billing additionally per user)
 using a Postgres fixed-window counter
 ([src/server/ratelimit.ts](src/server/ratelimit.ts)). Because the counter is
 in the database, the limit holds across every concurrent serverless instance
 without an external store. This is the deliberate trade for a Vercel-only,
 no-Redis deployment: one small upsert per limited request.
+
+## Billing (Polar)
+
+Paid plans (Pro — per user, raises the personal-project cap; Team — per
+organization in three flat size tiers, unlocks shared projects).
+Security-relevant properties:
+
+- **No card data touches nvault.** Checkout and the customer portal are
+  Polar-hosted pages; the server only ever stores opaque ids
+  (`polarCustomerId`, `polarSubscriptionId`) and a coarse status enum. The
+  `Subscription` table holds no secrets.
+- **The paywall is an authorization control, enforced server-side.**
+  `authorizeOrg` / `authorizeProject`
+  ([src/server/authz](src/server/authz)) return `402` for a
+  `PENDING_PAYMENT` org (all access) and for writes to a `SUSPENDED` org;
+  `createProject` enforces the free-tier personal-project cap (checking the
+  caller's live Pro status); `createInvite` enforces the org's Team-tier
+  member cap. The client's banners and disabled buttons are cosmetic —
+  every gate is re-checked on the API.
+- **Webhook authenticity** is the Standard Webhooks HMAC over
+  `${id}.${timestamp}.${body}`, verified against `POLAR_WEBHOOK_SECRET`
+  before any state change
+  ([src/server/billing/polar.ts](src/server/billing/polar.ts)). The endpoint
+  has no bearer auth by design; a bad or missing signature is `400`.
+  Deliveries are de-duplicated by `webhook-id` (`ProcessedWebhookEvent`), and
+  the id is recorded only after the effect succeeds, so a transient failure
+  stays replayable.
+- **Non-payment never destroys data.** A lapsed subscription drops the org
+  to `SUSPENDED` (read-only) and keeps every blob. The only automatic
+  deletion is the 7-day purge of orgs that were *never* paid for
+  (`PENDING_PAYMENT`), which by construction cannot hold any projects.
+- **CSP is unaffected**: checkout is a top-level navigation to `polar.sh`
+  (not an iframe or `fetch`), and server→Polar API calls are not subject to
+  the browser CSP.
+- The cron purge endpoint is gated by a constant-time compare against
+  `CRON_SECRET`.
 
 ## Transport & headers
 

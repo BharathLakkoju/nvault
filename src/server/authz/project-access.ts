@@ -54,12 +54,27 @@ export async function authorizeProject(
     where: {
       organizationId_userId: { organizationId: project.organizationId, userId },
     },
+    include: { organization: { select: { status: true } } },
   });
   if (!membership || membership.status !== "ACTIVE") {
     throw new ApiError(404, "Project not found");
   }
   if (!roleAtLeast(membership.role, MIN_ROLE_FOR_ACTION[action])) {
     throw new ApiError(403, "You do not have permission to do that in this organization.");
+  }
+
+  // Billing gate — same policy as authorizeOrg. A pending org's projects
+  // should never have been reachable (they can't be created), but guard
+  // anyway; a suspended org is read-only.
+  const orgStatus = membership.organization.status;
+  if (orgStatus === "PENDING_PAYMENT") {
+    throw new ApiError(404, "Project not found");
+  }
+  if (orgStatus === "SUSPENDED" && action !== "read") {
+    throw new ApiError(
+      402,
+      "This organization's subscription is inactive. The owner can renew it in the organization's billing settings.",
+    );
   }
   return {
     project,
