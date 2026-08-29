@@ -41,11 +41,11 @@ function OrganizationContent({ id }: { id: string }) {
   const router = useRouter();
   const setCurrentOrg = useOrgContext((s) => s.setCurrentOrg);
 
-  if (isLoading) return <p className="text-sm text-slate-500">Loading…</p>;
+  if (isLoading) return <p className="text-sm text-muted">Loading…</p>;
   if (error || !data) {
     return (
       <Card className="p-10 text-center">
-        <p className="text-sm text-slate-500 dark:text-slate-400">
+        <p className="text-sm text-muted">
           Organization not found, or you don&apos;t have access to it.
         </p>
         <Link href="/settings/organizations" className="mt-3 inline-block text-sm text-accent-600 hover:underline">
@@ -63,8 +63,8 @@ function OrganizationContent({ id }: { id: string }) {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{org.name}</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <h1 className="text-2xl font-medium text-ink sm:text-[28px]">{org.name}</h1>
+          <p className="text-sm text-muted">
             /{org.slug} · you are {ROLE_LABEL[self.role].toLowerCase()}
             {self.status === "INVITED" && " · awaiting key access from an admin"}
           </p>
@@ -92,8 +92,8 @@ function OrganizationContent({ id }: { id: string }) {
       </div>
 
       {self.status === "INVITED" && (
-        <Card className="border-amber-300 dark:border-amber-800">
-          <div className="p-5 text-sm text-slate-600 dark:text-slate-300">
+        <Card className="border-amber-500/40">
+          <div className="p-5 text-sm text-ink/70">
             You&apos;ve joined this organization, but an admin still needs to grant you access to its
             encryption key before you can open its projects.
           </div>
@@ -110,17 +110,17 @@ function OrganizationContent({ id }: { id: string }) {
             </Link>
           }
         />
-        <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+        <ul className="divide-y divide-line">
           {members.slice(0, 6).map((m) => (
             <li
               key={m.id}
               className="flex flex-col gap-1 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
             >
               <div className="min-w-0">
-                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                <div className="text-sm font-medium text-ink">
                   {m.name || m.email}
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-muted">
                   {m.email} · joined {formatRelativeTime(m.createdAt)}
                 </p>
               </div>
@@ -130,7 +130,7 @@ function OrganizationContent({ id }: { id: string }) {
                     no key yet
                   </span>
                 )}
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                <span className="rounded-md bg-ink/[0.08] px-2 py-0.5 text-xs font-medium text-ink/80">
                   {ROLE_LABEL[m.role]}
                 </span>
               </div>
@@ -140,7 +140,7 @@ function OrganizationContent({ id }: { id: string }) {
       </Card>
 
       {isOwner && (
-        <Card className="border-red-200 dark:border-red-900">
+        <Card className="border-red-500/30">
           <CardHeader title="Danger zone" description="Irreversible actions for this organization." />
           <div className="px-5 py-4">
             <DeleteOrgButton

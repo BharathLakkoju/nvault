@@ -21,6 +21,44 @@
   --accent-500: 99 102 241;
   --accent-600: 79 70 229;
   --accent-700: 67 56 202;
+
+  /*
+   * Nocturne semantic surface tokens
+   * --------------------------------
+   * Every authenticated surface reads from these ("R G B" triples consumed by
+   * tailwind's `canvas`/`surface`/`line`/`ink`/`muted` colours). `:root` holds
+   * the light values; `:root.dark` swaps in the Nocturne dark palette. The
+   * accent stays user-switchable through the `--accent-*` ramp above.
+   */
+  --c-bg: 255 255 255;
+  --c-surface: 255 255 255;
+  --c-surface-2: 248 250 252;
+  --c-surface-3: 241 245 249;
+  --c-line: 226 232 240;
+  --c-ink: 15 23 42;
+  --c-muted: 100 116 139;
+}
+
+/* Nocturne — the blurple the design system moves the accent to. */
+:root[data-accent="blurple"] {
+  --accent-50: 245 244 255;
+  --accent-100: 231 229 254;
+  --accent-200: 210 206 253;
+  --accent-300: 181 171 252;
+  --accent-400: 154 143 224;
+  --accent-500: 145 132 217;
+  --accent-600: 121 108 191;
+  --accent-700: 93 82 148;
+}
+
+:root.dark {
+  --c-bg: 22 24 38;
+  --c-surface: 35 37 50;
+  --c-surface-2: 41 43 49;
+  --c-surface-3: 30 31 42;
+  --c-line: 51 54 66;
+  --c-ink: 233 233 237;
+  --c-muted: 147 151 171;
 }
 
 :root[data-accent="violet"] {
@@ -78,12 +116,71 @@
   --accent-700: 3 105 161;
 }
 
+html {
+  font-family:
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
 body {
-  @apply bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100;
+  @apply bg-white text-slate-900 dark:bg-canvas dark:text-ink;
 }
 
 .focus-ring {
-  @apply outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-950;
+  @apply outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-canvas;
+}
+
+::selection {
+  background: rgb(var(--accent-500) / 0.3);
+}
+
+/*
+ * Nocturne detailing
+ * ------------------
+ * `.dc-rule` is a horizontal rule that fades to transparent over its last
+ * 48px at each end — a design-system signature used for table row/header
+ * separators. `.dc-scroll` themes the scrollbar to the surface palette.
+ */
+.dc-rule {
+  height: 1px;
+  border: 0;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgb(var(--c-line)) 48px,
+    rgb(var(--c-line)) calc(100% - 48px),
+    transparent
+  );
+}
+
+.dc-scroll::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+.dc-scroll::-webkit-scrollbar-thumb {
+  background: rgb(var(--c-line));
+  border-radius: 8px;
+}
+.dc-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes dc-pop-in {
+  from {
+    transform: scale(0.97);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes dc-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /*

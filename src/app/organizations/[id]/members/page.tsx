@@ -47,11 +47,11 @@ function MembersContent({ id }: { id: string }) {
   const isAdmin = data?.self.role === "ADMIN" || data?.self.role === "OWNER";
   const { data: invites } = useOrgInvites(id, !!isAdmin);
 
-  if (isLoading) return <p className="text-sm text-slate-500">Loading…</p>;
+  if (isLoading) return <p className="text-sm text-muted">Loading…</p>;
   if (error || !data) {
     return (
       <Card className="p-10 text-center">
-        <p className="text-sm text-slate-500 dark:text-slate-400">
+        <p className="text-sm text-muted">
           Organization not found, or you don&apos;t have access.
         </p>
       </Card>
@@ -66,7 +66,7 @@ function MembersContent({ id }: { id: string }) {
         <Link href={`/organizations/${id}`} className="text-sm text-accent-600 hover:underline">
           ← {org.name}
         </Link>
-        <h1 className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">Members</h1>
+        <h1 className="mt-1 text-2xl font-medium text-ink sm:text-[28px]">Members</h1>
       </div>
 
       {isAdmin && <InviteCard orgId={id} selfRole={self.role} />}
@@ -74,14 +74,14 @@ function MembersContent({ id }: { id: string }) {
       {isAdmin && invites && invites.length > 0 && (
         <Card>
           <CardHeader title="Pending invitations" />
-          <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+          <ul className="divide-y divide-line">
             {invites.map((inv) => (
               <li key={inv.id} className="flex items-center justify-between gap-4 px-5 py-3">
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                  <div className="truncate text-sm font-medium text-ink">
                     {inv.email}
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-muted">
                     {inv.role.toLowerCase()} · expires {formatRelativeTime(inv.expiresAt)}
                   </p>
                 </div>
@@ -94,7 +94,7 @@ function MembersContent({ id }: { id: string }) {
 
       <Card>
         <CardHeader title={`${members.length} member${members.length === 1 ? "" : "s"}`} />
-        <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+        <ul className="divide-y divide-line">
           {members.map((m) => (
             <MemberRow
               key={m.id}
@@ -209,7 +209,7 @@ function InviteCard({ orgId, selfRole }: { orgId: string; selfRole: OrgRole }) {
               id="invite-role"
               value={role}
               onChange={(e) => setRole(e.target.value as OrgRole)}
-              className="focus-ring w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className="focus-ring w-full rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink"
             >
               {assignable.map((r) => (
                 <option key={r} value={r}>
@@ -226,11 +226,11 @@ function InviteCard({ orgId, selfRole }: { orgId: string; selfRole: OrgRole }) {
       </form>
 
       {link && (
-        <div className="space-y-2 border-t border-slate-200 p-5 dark:border-slate-800">
-          <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+        <div className="space-y-2 border-t border-line p-5">
+          <p className="text-sm font-medium text-ink">
             Invitation link — copy it now, it won&apos;t be shown again
           </p>
-          <code className="block overflow-x-auto rounded-md bg-slate-100 px-3 py-2 font-mono text-xs text-slate-900 dark:bg-slate-800 dark:text-slate-100">
+          <code className="block overflow-x-auto rounded-md bg-surface-2 px-3 py-2 font-mono text-xs text-ink">
             {link}
           </code>
           <div className="flex gap-2">
@@ -300,11 +300,11 @@ function MemberRow({
   return (
     <li className="flex flex-col gap-2 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
       <div className="min-w-0">
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+        <div className="text-sm font-medium text-ink">
           {member.name || member.email}
-          {isSelf && <span className="ml-1 text-xs text-slate-400">(you)</span>}
+          {isSelf && <span className="ml-1 text-xs text-muted/70">(you)</span>}
         </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
+        <p className="text-xs text-muted">
           {member.email} · joined {formatRelativeTime(member.createdAt)}
           {member.status === "INVITED" && " · no key access yet"}
         </p>
@@ -321,7 +321,7 @@ function MemberRow({
                 .then(() => useToastStore.getState().push("success", "Role updated"))
                 .catch((err) => toastError(err, "Failed to change role"))
             }
-            className="focus-ring rounded-md border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="focus-ring rounded-md border border-line bg-surface px-2 py-1 text-xs text-ink"
           >
             {assignableRoles.map((r) => (
               <option key={r} value={r}>
@@ -330,7 +330,7 @@ function MemberRow({
             ))}
           </select>
         ) : (
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+          <span className="rounded-md bg-ink/[0.08] px-2 py-0.5 text-xs font-medium text-ink/80">
             {member.role.charAt(0) + member.role.slice(1).toLowerCase()}
           </span>
         )}

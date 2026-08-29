@@ -57,7 +57,7 @@ function SessionsContent() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Sessions</h1>
+        <h1 className="text-2xl font-medium text-ink sm:text-[28px]">Sessions</h1>
         {active.length > 1 && (
           <Button
             variant="secondary"
@@ -75,23 +75,23 @@ function SessionsContent() {
           title="Active sessions"
           description="Each browser you've signed in from. Revoke any you don't recognize — it takes effect immediately."
         />
-        {isLoading && <p className="p-5 text-sm text-slate-500">Loading…</p>}
-        <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+        {isLoading && <p className="p-5 text-sm text-muted">Loading…</p>}
+        <ul className="divide-y divide-line">
           {active.map((s) => (
             <li
               key={s.id}
               className="flex flex-col gap-2 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
             >
               <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-100">
+                <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-ink">
                   {shortUserAgent(s.userAgent)}
                   {s.current && (
-                    <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700 dark:bg-green-950 dark:text-green-300">
+                    <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-700 dark:text-emerald-300">
                       this session
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-muted">
                   {s.ipAddress ?? "unknown IP"} · last used {formatRelativeTime(s.lastUsedAt)}
                 </p>
               </div>

@@ -54,38 +54,38 @@ function ActivityContent({ id }: { id: string }) {
             ← {org.organization.name}
           </Link>
         )}
-        <h1 className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">Activity</h1>
+        <h1 className="mt-1 text-2xl font-medium text-ink sm:text-[28px]">Activity</h1>
       </div>
 
       <Card>
-        {(isLoading || (!org && !error)) && <p className="p-5 text-sm text-slate-500">Loading…</p>}
+        {(isLoading || (!org && !error)) && <p className="p-5 text-sm text-muted">Loading…</p>}
         {error && (
-          <p className="p-5 text-sm text-slate-500 dark:text-slate-400">
+          <p className="p-5 text-sm text-muted">
             You don&apos;t have permission to view this organization&apos;s activity.
           </p>
         )}
         {entries && entries.length === 0 && (
-          <p className="p-5 text-sm text-slate-500 dark:text-slate-400">No activity yet.</p>
+          <p className="p-5 text-sm text-muted">No activity yet.</p>
         )}
-        <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+        <ul className="divide-y divide-line">
           {entries?.map((e) => (
             <li key={e.id} className="px-5 py-3 text-sm">
-              <span className="font-medium text-slate-900 dark:text-slate-100">
+              <span className="font-medium text-ink">
                 {e.actorEmail ?? "Someone"}
               </span>{" "}
-              <span className="text-slate-600 dark:text-slate-300">
+              <span className="text-ink/70">
                 {ACTION_LABELS[e.action] ?? e.action}
               </span>
               {typeof e.metadata?.name === "string" && (
-                <span className="text-slate-500 dark:text-slate-400"> · {e.metadata.name}</span>
+                <span className="text-muted"> · {e.metadata.name}</span>
               )}
               {typeof e.metadata?.email === "string" && (
-                <span className="text-slate-500 dark:text-slate-400"> · {e.metadata.email}</span>
+                <span className="text-muted"> · {e.metadata.email}</span>
               )}
               {typeof e.metadata?.filename === "string" && (
-                <span className="text-slate-500 dark:text-slate-400"> · {e.metadata.filename}</span>
+                <span className="text-muted"> · {e.metadata.filename}</span>
               )}
-              <span className="ml-1 text-xs text-slate-400 dark:text-slate-500">
+              <span className="ml-1 text-xs text-muted/70">
                 {formatRelativeTime(e.createdAt)}
               </span>
             </li>

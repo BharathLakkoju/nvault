@@ -4,9 +4,9 @@ import { useToastStore } from "@/lib/toast-store";
 import { cn } from "@/lib/cn";
 
 const kindClasses = {
-  success: "border-green-300 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200",
-  error: "border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200",
-  info: "border-slate-300 bg-white text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200",
+  success: "border-emerald-500/50 text-emerald-700 dark:text-emerald-300",
+  error: "border-red-500/50 text-red-700 dark:text-red-300",
+  info: "border-line text-ink",
 };
 
 export function Toaster() {
@@ -20,7 +20,7 @@ export function Toaster() {
           key={t.id}
           role="status"
           className={cn(
-            "pointer-events-auto flex items-start gap-3 rounded-md border px-4 py-3 text-sm shadow-md",
+            "pointer-events-auto flex items-start gap-3 rounded-lg border bg-surface px-4 py-3 text-sm shadow-xl",
             kindClasses[t.kind],
           )}
         >

@@ -24,6 +24,7 @@ export interface AccentOption {
 }
 
 export const ACCENTS: readonly AccentOption[] = [
+  { id: "blurple", label: "Blurple", swatch: "rgb(145 132 217)" },
   { id: "indigo", label: "Indigo", swatch: "rgb(99 102 241)" },
   { id: "violet", label: "Violet", swatch: "rgb(139 92 246)" },
   { id: "sky", label: "Sky", swatch: "rgb(14 165 233)" },
@@ -33,7 +34,8 @@ export const ACCENTS: readonly AccentOption[] = [
 ];
 
 export const DEFAULT_MODE: ThemeMode = "system";
-export const DEFAULT_ACCENT = "indigo";
+/** Nocturne's blurple — the design system's chosen accent. */
+export const DEFAULT_ACCENT = "blurple";
 
 export const MODE_STORAGE_KEY = "nvault.theme.mode";
 export const ACCENT_STORAGE_KEY = "nvault.theme.accent";
