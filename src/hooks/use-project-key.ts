@@ -4,19 +4,32 @@ import { useEffect, useState } from "react";
 import { useAuthStore } from "@/lib/auth-store";
 import { openProjectKey } from "@/lib/vault-client";
 import type { ProjectDto } from "@/lib/types";
+import { useOrgKey } from "./use-org-key";
 
-/** Unwraps a project's data key with the (already-unlocked) vault master key. */
+/**
+ * Unwraps a project's data key.
+ *
+ * - Personal project: unwrapped with the vault master key.
+ * - Org project: unwrapped with the Organization Key (itself recovered from
+ *   the caller's RSA private key — see {@link useOrgKey}).
+ */
 export function useProjectKey(project: ProjectDto | undefined) {
   const masterKey = useAuthStore((s) => s.masterKey);
+  const isOrg = project?.scope === "org";
+  const { orgKey, error: orgKeyError, awaitingKeyGrant } = useOrgKey(
+    isOrg ? project?.organizationId : null,
+  );
+  const wrappingKey = isOrg ? orgKey : masterKey;
+
   const [projectKey, setProjectKey] = useState<Uint8Array | null>(null);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     setProjectKey(null);
     setError(null);
-    if (!masterKey || !project) return;
+    if (!wrappingKey || !project) return;
     let cancelled = false;
-    openProjectKey(masterKey, project.id, project.wrappedProjectKey)
+    openProjectKey(wrappingKey, project.id, project.wrappedProjectKey)
       .then((key) => {
         if (!cancelled) setProjectKey(key);
       })
@@ -26,7 +39,7 @@ export function useProjectKey(project: ProjectDto | undefined) {
     return () => {
       cancelled = true;
     };
-  }, [masterKey, project]);
+  }, [wrappingKey, project]);
 
-  return { projectKey, error };
+  return { projectKey, error: error ?? orgKeyError, awaitingKeyGrant };
 }

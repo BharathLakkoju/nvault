@@ -5,10 +5,12 @@ import { usePathname, useRouter } from "next/navigation";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useAuthStore } from "@/lib/auth-store";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { OrgSwitcher } from "@/components/org-switcher";
 import { cn } from "@/lib/cn";
 
 const NAV_LINKS = [
   { href: "/dashboard", label: "Projects" },
+  { href: "/settings/organizations", label: "Organizations" },
   { href: "/settings/sessions", label: "Sessions" },
   { href: "/settings/tokens", label: "CLI Tokens" },
   { href: "/settings/security", label: "Activity" },
@@ -67,6 +69,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 {link.label}
               </Link>
             ))}
+            <OrgSwitcher className="ml-2" />
             <span className="ml-2">{vaultBadge}</span>
             <ThemeToggle className="ml-1" />
             <DropdownMenu.Root>
@@ -102,6 +105,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           {/* Mobile navigation */}
           <div className="flex items-center gap-1 md:hidden">
+            <OrgSwitcher />
             {vaultBadge}
             <ThemeToggle />
             <DropdownMenu.Root>

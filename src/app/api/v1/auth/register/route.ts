@@ -25,6 +25,7 @@ export const POST = handler(async (req) => {
       accessTokenExpiresInSeconds: result.tokens.accessTokenExpiresInSeconds,
       user: result.user,
       vaultKeyMaterial: result.vaultKeyMaterial,
+      keyPairMaterial: result.keyPairMaterial,
     },
     { status: 201 },
   );

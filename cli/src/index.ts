@@ -6,6 +6,7 @@ import { loginCommand } from "./commands/login";
 import { logoutCommand } from "./commands/logout";
 import { whoamiCommand } from "./commands/whoami";
 import { projectsCommand } from "./commands/projects";
+import { orgsCommand } from "./commands/orgs";
 import { projectCreateCommand, projectDeleteCommand } from "./commands/project";
 import { filesCommand } from "./commands/files";
 import { pushCommand } from "./commands/push";
@@ -34,6 +35,10 @@ program.command("logout").description("Remove this machine's stored credentials"
 program.command("whoami").description("Show the currently logged-in account").action(whoamiCommand);
 
 program.command("projects").description("List your projects").action(projectsCommand);
+program
+  .command("orgs")
+  .description("List the organizations you belong to")
+  .action(orgsCommand);
 
 const project = program.command("project").description("Manage projects");
 project

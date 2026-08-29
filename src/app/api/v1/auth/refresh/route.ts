@@ -33,6 +33,7 @@ export const POST = handler(async (req) => {
     accessTokenExpiresInSeconds: tokens.accessTokenExpiresInSeconds,
     user: profile.user,
     vaultKeyMaterial: profile.vaultKeyMaterial,
+    keyPairMaterial: profile.keyPairMaterial,
     refreshToken: cookieToken ? undefined : tokens.refreshToken,
   });
   if (cookieToken) {

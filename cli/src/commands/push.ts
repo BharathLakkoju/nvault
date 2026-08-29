@@ -3,7 +3,8 @@ import { join } from "node:path";
 import { apiRequest } from "../lib/api-client";
 import { resolveProject } from "../lib/resolve-project";
 import { unlockVaultForThisCommand } from "../lib/vault-session";
-import { openProjectKey, encryptFile } from "../lib/vault-client";
+import { resolveProjectKey } from "../lib/project-key";
+import { encryptFile } from "../lib/vault-client";
 import { promptConfirm } from "../lib/prompt";
 import { color, symbols } from "../lib/colors";
 
@@ -61,8 +62,8 @@ export async function pushCommand(
     }
   }
 
-  const { masterKey } = await unlockVaultForThisCommand();
-  const projectKey = await openProjectKey(masterKey, project.id, project.wrappedProjectKey);
+  const session = await unlockVaultForThisCommand();
+  const projectKey = await resolveProjectKey(project, session);
 
   console.log();
   for (const f of targets) {

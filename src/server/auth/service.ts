@@ -5,6 +5,7 @@ import {
   createUser,
   findUserByEmail,
   findUserById,
+  toKeyPairMaterial,
   toPublicProfile,
   toVaultKeyMaterial,
 } from "../users";
@@ -21,6 +22,7 @@ export interface AuthResult {
   tokens: IssuedTokens;
   user: ReturnType<typeof toPublicProfile>;
   vaultKeyMaterial: ReturnType<typeof toVaultKeyMaterial>;
+  keyPairMaterial: ReturnType<typeof toKeyPairMaterial>;
 }
 
 export async function register(dto: RegisterRequest, meta: RequestMeta): Promise<AuthResult> {
@@ -47,6 +49,7 @@ export async function register(dto: RegisterRequest, meta: RequestMeta): Promise
     tokens,
     user: toPublicProfile(user),
     vaultKeyMaterial: toVaultKeyMaterial(user),
+    keyPairMaterial: toKeyPairMaterial(user),
   };
 }
 
@@ -78,6 +81,7 @@ export async function login(dto: LoginRequest, meta: RequestMeta): Promise<AuthR
     tokens,
     user: toPublicProfile(user),
     vaultKeyMaterial: toVaultKeyMaterial(user),
+    keyPairMaterial: toKeyPairMaterial(user),
   };
 }
 
@@ -87,6 +91,7 @@ export async function me(userId: string) {
   return {
     user: toPublicProfile(user),
     vaultKeyMaterial: toVaultKeyMaterial(user),
+    keyPairMaterial: toKeyPairMaterial(user),
   };
 }
 

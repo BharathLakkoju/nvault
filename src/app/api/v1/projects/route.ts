@@ -1,27 +1,19 @@
 import { CreateProjectRequestSchema } from "@/lib/schemas";
 import { audit } from "@/server/audit";
 import { requireAuth } from "@/server/auth/require-auth";
-import { handler, json, readJson } from "@/server/http";
-import { createProject, listProjectsForOwner, projectToDto } from "@/server/projects/service";
+import { clientIp, handler, json, readJson } from "@/server/http";
+import { createProject, listProjectsForUser, projectToDto } from "@/server/projects/service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export const GET = handler(async (req) => {
   const auth = await requireAuth(req);
-  const projects = await listProjectsForOwner(auth.userId);
+  const projects = await listProjectsForUser(auth.userId);
   return json({
     projects: projects.map((p) => ({
-      id: p.id,
-      name: p.name,
-      gitRemoteUrl: p.gitRemoteUrl,
+      ...projectToDto(p, p.organization),
       fileCount: p._count.files,
-      createdAt: p.createdAt,
-      updatedAt: p.updatedAt,
-      wrappedProjectKey: {
-        iv: p.wrappedProjectKeyIv,
-        ciphertext: p.wrappedProjectKeyCiphertext,
-      },
     })),
   });
 });
@@ -32,10 +24,12 @@ export const POST = handler(async (req) => {
   const project = await createProject(auth.userId, dto);
   await audit({
     userId: auth.userId,
+    organizationId: project.organizationId,
     action: "project.created",
     targetType: "project",
     targetId: project.id,
-    metadata: { name: project.name },
+    metadata: { name: project.name, scope: project.organizationId ? "org" : "personal" },
+    ipAddress: clientIp(req),
   });
   return json({ project: projectToDto(project) }, 201);
 });

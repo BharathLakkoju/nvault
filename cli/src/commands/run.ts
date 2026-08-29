@@ -3,7 +3,8 @@ import { isDotenvStyleFile } from "@core/filename";
 import { apiRequest } from "../lib/api-client";
 import { resolveProject } from "../lib/resolve-project";
 import { unlockVaultForThisCommand } from "../lib/vault-session";
-import { openProjectKey, decryptFile, bytesToUtf8 } from "../lib/vault-client";
+import { resolveProjectKey } from "../lib/project-key";
+import { decryptFile, bytesToUtf8 } from "../lib/vault-client";
 import { parseDotenv } from "../lib/dotenv-parse";
 import { resolveExecutable } from "../lib/which";
 import type { DownloadedFileDto, FileDto } from "../lib/types";
@@ -20,8 +21,8 @@ export async function runCommand(projectName: string | undefined, commandParts: 
   }
 
   const project = await resolveProject(projectName);
-  const { masterKey } = await unlockVaultForThisCommand();
-  const projectKey = await openProjectKey(masterKey, project.id, project.wrappedProjectKey);
+  const session = await unlockVaultForThisCommand();
+  const projectKey = await resolveProjectKey(project, session);
 
   const { files } = await apiRequest<{ files: FileDto[] }>(`/projects/${project.id}/files`);
   const envFiles = files.filter((f) => f.currentVersion && isDotenvStyleFile(f.filename));

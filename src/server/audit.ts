@@ -9,18 +9,33 @@ export type AuditAction =
   | "session.revoked_all"
   | "apitoken.created"
   | "apitoken.revoked"
+  | "vaultkeypair.provisioned"
   | "project.created"
   | "project.renamed"
   | "project.deleted"
+  | "project.moved_to_org"
   | "file.uploaded"
   | "file.downloaded"
   | "file.deleted"
-  | "file.version_restored";
+  | "file.version_restored"
+  | "org.created"
+  | "org.renamed"
+  | "org.deleted"
+  | "org.member_invited"
+  | "org.invite_revoked"
+  | "org.member_joined"
+  | "org.member_key_granted"
+  | "org.member_removed"
+  | "org.member_role_changed"
+  | "org.key_rotated"
+  | "org.ownership_transferred";
 
 export interface AuditEntry {
   userId?: string | null;
+  /** Set for organization-scoped actions so an org's admins can review them. */
+  organizationId?: string | null;
   action: AuditAction;
-  targetType?: "session" | "project" | "file" | "user" | "apitoken";
+  targetType?: "session" | "project" | "file" | "user" | "apitoken" | "organization" | "membership" | "invite";
   targetId?: string;
   /**
    * Non-secret context only (e.g. a filename or project name for display in
@@ -36,6 +51,7 @@ export async function audit(entry: AuditEntry): Promise<void> {
     await db.auditLog.create({
       data: {
         userId: entry.userId ?? null,
+        organizationId: entry.organizationId ?? null,
         action: entry.action,
         targetType: entry.targetType,
         targetId: entry.targetId,
@@ -55,5 +71,14 @@ export function listAuditForUser(userId: string, limit = 100) {
     where: { userId },
     orderBy: { createdAt: "desc" },
     take: Math.min(limit, 500),
+  });
+}
+
+export function listAuditForOrg(organizationId: string, limit = 100) {
+  return db.auditLog.findMany({
+    where: { organizationId },
+    orderBy: { createdAt: "desc" },
+    take: Math.min(limit, 500),
+    include: { user: { select: { email: true, name: true } } },
   });
 }

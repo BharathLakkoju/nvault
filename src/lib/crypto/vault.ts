@@ -93,6 +93,19 @@ export async function openProjectKey(
   return unwrapKey(masterKey, wrappedProjectKey, `project:${projectId}`);
 }
 
+/**
+ * Re-wraps an EXISTING project data key under a different wrapping key
+ * (used when an Organization Key is rotated: the project key itself is
+ * unchanged, only the key that protects it changes).
+ */
+export async function wrapProjectKey(
+  wrappingKey: Uint8Array,
+  projectId: string,
+  projectKey: Uint8Array,
+): Promise<WrappedKey> {
+  return wrapKey(wrappingKey, projectKey, `project:${projectId}`);
+}
+
 export interface EncryptedFilePayload {
   iv: string; // base64
   ciphertext: string; // base64

@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import * as vaultCrypto from "@/lib/crypto";
-import type { VaultKeyMaterial } from "@/lib/crypto";
+import type { UserKeyPairMaterial, VaultKeyMaterial } from "@/lib/crypto";
 import { apiRequest, ApiError } from "./api-client";
 
 export interface PublicUser {
@@ -17,6 +17,7 @@ interface AuthApiResult {
   accessTokenExpiresInSeconds: number;
   user: PublicUser;
   vaultKeyMaterial: VaultKeyMaterial;
+  keyPairMaterial: UserKeyPairMaterial | null;
 }
 
 type BootStatus = "loading" | "authenticated" | "unauthenticated";
@@ -35,12 +36,19 @@ interface AuthState {
   accessToken: string | null;
   user: PublicUser | null;
   vaultKeyMaterial: VaultKeyMaterial | null;
+  keyPairMaterial: UserKeyPairMaterial | null;
   /**
    * The unwrapped vault master key. Held ONLY in memory for the lifetime of
    * this tab — never written to localStorage/sessionStorage/cookies. A page
    * reload always returns to a locked vault, by design.
    */
   masterKey: Uint8Array | null;
+  /**
+   * The unwrapped RSA private key (PKCS#8 bytes), recovered on vault unlock.
+   * Same in-memory-only lifetime as `masterKey`. Used to open Organization
+   * Keys addressed to this user.
+   */
+  privateKey: Uint8Array | null;
 
   bootstrap: () => Promise<void>;
   tryRefresh: () => Promise<boolean>;
@@ -56,7 +64,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   accessToken: null,
   user: null,
   vaultKeyMaterial: null,
+  keyPairMaterial: null,
   masterKey: null,
+  privateKey: null,
 
   setSession(result) {
     set({
@@ -64,11 +74,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       accessToken: result.accessToken,
       user: result.user,
       vaultKeyMaterial: result.vaultKeyMaterial,
+      keyPairMaterial: result.keyPairMaterial ?? null,
     });
   },
 
   clearSession() {
-    set({ status: "unauthenticated", accessToken: null, user: null, vaultKeyMaterial: null, masterKey: null });
+    set({
+      status: "unauthenticated",
+      accessToken: null,
+      user: null,
+      vaultKeyMaterial: null,
+      keyPairMaterial: null,
+      masterKey: null,
+      privateKey: null,
+    });
   },
 
   async tryRefresh() {
@@ -101,11 +120,44 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const material = get().vaultKeyMaterial;
     if (!material) throw new Error("No vault key material loaded yet");
     const masterKey = await vaultCrypto.unlockVault(passphrase, material);
-    set({ masterKey });
+
+    // Recover (or, for pre-keypair accounts, provision) the asymmetric
+    // keypair used for organization key sharing. A wrong passphrase throws
+    // above before we get here, so this only runs on a successful unlock.
+    let keyPairMaterial = get().keyPairMaterial;
+    let privateKey: Uint8Array;
+    if (keyPairMaterial) {
+      privateKey = await vaultCrypto.unwrapUserPrivateKey(masterKey, keyPairMaterial);
+    } else {
+      const provisioned = await vaultCrypto.provisionUserKeyPair(masterKey);
+      try {
+        const res = await apiRequest<{ keyPairMaterial: UserKeyPairMaterial | null }>(
+          "/auth/vault/keypair",
+          { method: "POST", body: provisioned.material },
+        );
+        keyPairMaterial = res.keyPairMaterial ?? provisioned.material;
+      } catch (err) {
+        // 409 => another tab/device already provisioned one. Fetch it and
+        // unwrap that instead of our just-generated pair.
+        if (err instanceof ApiError && err.status === 409) {
+          const res = await apiRequest<{ keyPairMaterial: UserKeyPairMaterial | null }>(
+            "/auth/vault/keypair",
+          );
+          keyPairMaterial = res.keyPairMaterial;
+        } else {
+          throw err;
+        }
+      }
+      privateKey = keyPairMaterial
+        ? await vaultCrypto.unwrapUserPrivateKey(masterKey, keyPairMaterial)
+        : provisioned.privateKey;
+    }
+
+    set({ masterKey, privateKey, keyPairMaterial });
   },
 
   lockVault() {
-    set({ masterKey: null });
+    set({ masterKey: null, privateKey: null });
   },
 
   async logout() {

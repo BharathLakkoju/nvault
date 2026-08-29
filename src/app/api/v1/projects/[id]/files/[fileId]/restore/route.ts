@@ -1,25 +1,27 @@
 import { RestoreVersionRequestSchema } from "@/lib/schemas";
 import { audit } from "@/server/audit";
 import { requireAuth } from "@/server/auth/require-auth";
-import { handler, json, readJson } from "@/server/http";
+import { authorizeProject } from "@/server/authz/project-access";
+import { clientIp, handler, json, readJson } from "@/server/http";
 import { getFileOwned, restoreVersion } from "@/server/files/service";
-import { getOwnedProject } from "@/server/projects/service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export const POST = handler(async (req, { params }) => {
   const auth = await requireAuth(req);
-  await getOwnedProject(auth.userId, params.id);
+  const { project } = await authorizeProject(auth.userId, params.id, "write");
   const file = await getFileOwned(params.id, params.fileId);
   const dto = await readJson(req, RestoreVersionRequestSchema);
   const version = await restoreVersion(params.id, file.id, dto.versionId, auth.sessionId);
   await audit({
     userId: auth.userId,
+    organizationId: project.organizationId,
     action: "file.version_restored",
     targetType: "file",
     targetId: file.id,
     metadata: { filename: file.filename, restoredAsVersion: version.versionNumber },
+    ipAddress: clientIp(req),
   });
   return json(
     {

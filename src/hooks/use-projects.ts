@@ -3,8 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api-client";
 import { useAuthStore } from "@/lib/auth-store";
-import { createWrappedProjectKey, newId } from "@/lib/vault-client";
-import type { ProjectDto } from "@/lib/types";
+import { createWrappedProjectKey, newId, openOrgKey } from "@/lib/vault-client";
+import type { OrganizationDetailDto, ProjectDto } from "@/lib/types";
 
 export function useProjects() {
   return useQuery({
@@ -24,14 +24,35 @@ export function useProject(id: string) {
 export function useCreateProject() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ name, gitRemoteUrl }: { name: string; gitRemoteUrl?: string }) => {
-      const masterKey = useAuthStore.getState().masterKey;
+    mutationFn: async ({
+      name,
+      gitRemoteUrl,
+      organizationId,
+    }: {
+      name: string;
+      gitRemoteUrl?: string;
+      organizationId?: string | null;
+    }) => {
+      const { masterKey, privateKey } = useAuthStore.getState();
       if (!masterKey) throw new Error("Vault is locked");
       const id = newId();
-      const { wrappedProjectKey } = await createWrappedProjectKey(masterKey, id);
+
+      // Personal projects wrap the project key under the master key; org
+      // projects wrap it under the Organization Key.
+      let wrappingKey = masterKey;
+      if (organizationId) {
+        if (!privateKey) throw new Error("Vault is locked");
+        const detail = await apiRequest<OrganizationDetailDto>(`/organizations/${organizationId}`);
+        if (!detail.self.wrappedOrgKey) {
+          throw new Error("You don't have access to this organization's key yet.");
+        }
+        wrappingKey = await openOrgKey(privateKey, detail.self.wrappedOrgKey);
+      }
+
+      const { wrappedProjectKey } = await createWrappedProjectKey(wrappingKey, id);
       const result = await apiRequest<{ project: ProjectDto }>("/projects", {
         method: "POST",
-        body: { id, name, gitRemoteUrl, wrappedProjectKey },
+        body: { id, name, gitRemoteUrl, wrappedProjectKey, organizationId: organizationId ?? undefined },
       });
       return result.project;
     },
