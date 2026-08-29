@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Container, Section, SectionHeading, Eyebrow, CtaLink } from "@/components/marketing/ui";
 import { RedirectIfAuthenticated } from "@/components/marketing/redirect-if-authenticated";
-import { AuroraBackground } from "@/components/marketing/aurora-background";
+import { AuroraBackground } from "@/components/aurora-background";
 import { SoftwareApplicationJsonLd } from "@/components/marketing/json-ld";
 import { features, howItWorks, faqs } from "@/lib/marketing-content";
 import { pageMetadata } from "@/lib/seo";

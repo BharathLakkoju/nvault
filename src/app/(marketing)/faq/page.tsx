@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Container, Section, SectionHeading, CtaLink } from "@/components/marketing/ui";
-import { AuroraBackground } from "@/components/marketing/aurora-background";
+import { AuroraBackground } from "@/components/aurora-background";
 import { BreadcrumbJsonLd, FaqJsonLd } from "@/components/marketing/json-ld";
 import { faqs } from "@/lib/marketing-content";
 import { pageMetadata } from "@/lib/seo";
