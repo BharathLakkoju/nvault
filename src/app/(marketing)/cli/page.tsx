@@ -43,7 +43,8 @@ export default function CliPage() {
             description="The nvault CLI is designed for WSL, SSH sessions, remote servers, cloud VMs and CI — anywhere a browser is inconvenient or unavailable."
           />
           <div className="mx-auto mt-6 max-w-2xl rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-center text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
-            The CLI is in <strong>preview</strong>. Commands and installation below reflect the planned interface; the{" "}
+            The CLI is in <strong>preview</strong>. Some commands below (device-code login, <code>nvault run</code>) are
+            still landing; the{" "}
             <Link href="/features" className="font-medium underline">
               web app
             </Link>{" "}
@@ -77,12 +78,16 @@ export default function CliPage() {
         <Container>
           <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Installation</h2>
           <p className="mt-3 max-w-2xl text-slate-600 dark:text-slate-300">
-            The CLI is a single self-contained binary. Pick whichever channel fits your platform and toolchain.
+            The CLI ships on npm as{" "}
+            <code className="rounded bg-slate-200 px-1.5 py-0.5 text-[0.85em] dark:bg-slate-800">@lbharath/nvault</code>{" "}
+            — a single self-contained bundle with no transitive runtime dependencies. The installed command is{" "}
+            <code className="rounded bg-slate-200 px-1.5 py-0.5 text-[0.85em] dark:bg-slate-800">nvault</code>. Requires
+            Node.js 20 or newer.
           </p>
 
           <div className="mt-8 grid gap-6 lg:grid-cols-2">
             <div>
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">npm / pnpm / yarn</h3>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Install globally</h3>
               <div className="mt-2">
                 <CommandBlock>
                   {"npm install -g @lbharath/nvault\n# or: pnpm add -g @lbharath/nvault\n# or: yarn global add @lbharath/nvault"}
@@ -91,27 +96,13 @@ export default function CliPage() {
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Homebrew (macOS / Linux)</h3>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Run without installing</h3>
               <div className="mt-2">
-                <CommandBlock>{"brew install nvault/tap/nvault"}</CommandBlock>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Shell script (macOS / Linux / WSL)</h3>
-              <div className="mt-2">
-                <CommandBlock>{"curl -fsSL https://get.nvault.dev | sh"}</CommandBlock>
+                <CommandBlock>{"npx @lbharath/nvault --help"}</CommandBlock>
               </div>
               <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                Inspect the script first if you prefer: <code>curl -fsSL https://get.nvault.dev</code>.
+                Handy on CI and throwaway machines where a global install is not worth it.
               </p>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Windows (Scoop)</h3>
-              <div className="mt-2">
-                <CommandBlock>{"scoop bucket add nvault https://github.com/nvault/scoop\nscoop install nvault"}</CommandBlock>
-              </div>
             </div>
           </div>
 
@@ -119,6 +110,11 @@ export default function CliPage() {
           <div className="mt-2 max-w-md">
             <CommandBlock>{"nvault --version\nnvault --help"}</CommandBlock>
           </div>
+
+          <p className="mt-10 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
+            Homebrew, Scoop, and a <code>curl | sh</code> installer are planned for a later release. Until then, use npm or{" "}
+            <code>npx</code> above.
+          </p>
         </Container>
       </Section>
 
