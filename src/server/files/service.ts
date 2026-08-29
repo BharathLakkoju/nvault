@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Prisma, type FileVersion, type ProjectFile } from "@prisma/client";
+import { Prisma, type FileVersion, type ProjectFile } from "@/generated/prisma/client";
 import { assertSafeFilename, InvalidFilenameError } from "@/lib/schemas";
 import type { UploadFileVersionRequest } from "@/lib/schemas";
 import { db } from "../db";

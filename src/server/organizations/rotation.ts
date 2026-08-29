@@ -1,4 +1,4 @@
-import type { OrganizationMembership } from "@prisma/client";
+import type { OrganizationMembership } from "@/generated/prisma/client";
 import type { RotateKeyRequest } from "@/lib/schemas";
 import { db } from "../db";
 import { ApiError } from "../http";

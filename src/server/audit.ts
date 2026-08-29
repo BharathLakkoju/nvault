@@ -69,7 +69,6 @@ export async function audit(entry: AuditEntry): Promise<void> {
     });
   } catch (err) {
     // Audit logging must never take down the primary request path.
-    // eslint-disable-next-line no-console
     console.error(`[audit] failed to write action=${entry.action}`, err);
   }
 }

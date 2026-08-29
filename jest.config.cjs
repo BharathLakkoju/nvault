@@ -3,8 +3,11 @@ const tsJest = [
   "ts-jest",
   {
     tsconfig: {
-      module: "commonjs",
-      moduleResolution: "node",
+      // ts-jest compiles specs to CommonJS for the Node test runner.
+      // `nodenext` replaces the classic `node` (aka `node10`) resolution,
+      // which TypeScript 6 rejects outright.
+      module: "nodenext",
+      moduleResolution: "nodenext",
       esModuleInterop: true,
       jsx: "react-jsx",
       types: ["node", "jest"],

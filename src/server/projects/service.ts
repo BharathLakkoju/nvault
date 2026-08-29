@@ -1,4 +1,4 @@
-import { Prisma, type Project } from "@prisma/client";
+import { Prisma, type Project } from "@/generated/prisma/client";
 import type { CreateProjectRequest } from "@/lib/schemas";
 import { db } from "../db";
 import { authorizeOrg } from "../authz/org-access";

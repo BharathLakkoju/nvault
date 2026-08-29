@@ -30,9 +30,15 @@ const securityHeaders = [
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  // argon2 (native) and Prisma must not be bundled by webpack for server code.
+  // argon2 (native) and the Prisma runtime + pg driver must not be bundled
+  // for server code.
+  serverExternalPackages: [
+    "@node-rs/argon2",
+    "@prisma/client",
+    "@prisma/adapter-pg",
+    "pg",
+  ],
   experimental: {
-    serverComponentsExternalPackages: ["@node-rs/argon2", "@prisma/client"],
     // Rewrites the `@phosphor-icons/react` barrel import to per-icon deep
     // imports so an unused icon never lands in a route's bundle.
     optimizePackageImports: ["@phosphor-icons/react"],

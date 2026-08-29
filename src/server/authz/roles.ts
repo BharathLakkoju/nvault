@@ -1,4 +1,4 @@
-import type { OrgRole } from "@prisma/client";
+import type { OrgRole } from "@/generated/prisma/client";
 
 /**
  * Organization role hierarchy. Higher rank strictly implies every capability

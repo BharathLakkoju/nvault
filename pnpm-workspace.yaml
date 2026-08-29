@@ -6,16 +6,9 @@
 packages:
   - "."
   - "cli"
-onlyBuiltDependencies:
-  - "@node-rs/argon2"
-  - "@prisma/client"
-  - "@prisma/engines"
-  - esbuild
-  - prisma
-  - sharp
-  - unrs-resolver
 allowBuilds:
   "@node-rs/argon2": true
+  "@parcel/watcher": true
   "@prisma/client": true
   "@prisma/engines": true
   esbuild: true

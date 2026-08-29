@@ -1,5 +1,5 @@
 import { Polar } from "@polar-sh/sdk";
-import type { SubscriptionTier } from "@prisma/client";
+import type { SubscriptionTier } from "@/generated/prisma/client";
 import { Webhook, WebhookVerificationError } from "standardwebhooks";
 import { appOrigin, billingConfigured, env } from "../env";
 import { ApiError } from "../http";
@@ -79,7 +79,6 @@ export async function createOrgCheckout(input: OrgCheckoutInput): Promise<string
     return checkout.url;
   } catch (err) {
     if (err instanceof ApiError) throw err;
-    // eslint-disable-next-line no-console
     console.error("[billing] checkout creation failed:", err);
     throw new ApiError(502, "Could not start checkout. Please try again.");
   }
@@ -100,7 +99,6 @@ export async function updateSubscriptionProduct(
       subscriptionUpdate: { productId: teamTierProductId(tier) },
     });
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error("[billing] subscription product update failed:", err);
     throw new ApiError(502, "Could not change the plan. Please try again.");
   }
@@ -128,7 +126,6 @@ export async function createProCheckout(input: ProCheckoutInput): Promise<string
     return checkout.url;
   } catch (err) {
     if (err instanceof ApiError) throw err;
-    // eslint-disable-next-line no-console
     console.error("[billing] pro checkout creation failed:", err);
     throw new ApiError(502, "Could not start checkout. Please try again.");
   }
@@ -146,7 +143,6 @@ export async function createBillingPortalUrl(ownerUserId: string): Promise<strin
     });
     return session.customerPortalUrl;
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error("[billing] portal session failed:", err);
     throw new ApiError(502, "Could not open the billing portal. Please try again.");
   }
