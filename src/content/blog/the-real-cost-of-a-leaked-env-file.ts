@@ -6,7 +6,7 @@ export const post: BlogPost = {
   description:
     "A leaked environment file is rarely one incident. It is a credential rotation, an audit, a customer email, and a week you do not get back. Why secrets sprawl is expensive.",
   date: "2026-06-11",
-  author: "The EnvVault team",
+  author: "The nvault team",
   tags: ["security", "background"],
   blocks: [
     {
@@ -56,14 +56,14 @@ export const post: BlogPost = {
       t: "ul",
       c: [
         "One canonical, encrypted copy of each project's environment — not five copies in five tools.",
-        "Retrieval that is a command, not a copy-paste: `envvault pull`.",
+        "Retrieval that is a command, not a copy-paste: `nvault pull`.",
         "Storage where a breach of the provider yields ciphertext, not secrets — see [Our threat model](/blog/our-threat-model).",
         "History, so you can see when a value changed and revert a bad edit instead of reconstructing it from memory.",
       ],
     },
     {
       t: "note",
-      c: "EnvVault does not stop you from also committing a secret to Git — nothing can. But when the vault is the obvious place to get config, the `.env` stops being a thing you move around by hand, and most of the leak paths above simply close.",
+      c: "nvault does not stop you from also committing a secret to Git — nothing can. But when the vault is the obvious place to get config, the `.env` stops being a thing you move around by hand, and most of the leak paths above simply close.",
     },
     {
       t: "p",

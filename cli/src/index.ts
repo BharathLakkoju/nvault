@@ -20,7 +20,7 @@ import { runCommand } from "./commands/run";
 const program = new Command();
 
 program
-  .name("envvault")
+  .name("nvault")
   .description("Your development environment, available anywhere.")
   .version("0.1.0");
 
@@ -28,7 +28,7 @@ program
   .command("login")
   .description("Authenticate this machine with a Personal Access Token")
   .option("-t, --token <token>", "Access token from Settings → CLI Tokens (evk_…)")
-  .option("--api-url <url>", "Your EnvVault server URL (e.g. https://vault.example.com)")
+  .option("--api-url <url>", "Your nvault server URL (e.g. https://vault.example.com)")
   .action(loginCommand);
 program.command("logout").description("Remove this machine's stored credentials").action(logoutCommand);
 program.command("whoami").description("Show the currently logged-in account").action(whoamiCommand);
@@ -48,7 +48,7 @@ project
 
 program
   .command("init")
-  .description("Detect this repository's EnvVault project and restore its environment files")
+  .description("Detect this repository's nvault project and restore its environment files")
   .action(initCommand);
 
 program

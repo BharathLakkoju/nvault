@@ -1,4 +1,4 @@
-# EnvVault
+# nvault
 
 **Your development environment, available anywhere.**
 
@@ -29,7 +29,7 @@ The API and the browser share the same `lib/schemas` validation and
 `lib/crypto` primitives, so request validation and encryption behaviour are
 identical by construction.
 
-> The terminal CLI (`envvault`) and `envvault run` process injection are not
+> The terminal CLI (`nvault`) and `nvault run` process injection are not
 > part of this deployment. The API surface is designed so a future CLI could
 > be added without server changes.
 

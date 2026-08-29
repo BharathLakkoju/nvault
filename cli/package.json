@@ -1,10 +1,10 @@
 {
-  "name": "envvault-cli",
+  "name": "@lbharath/nvault",
   "version": "0.1.0",
-  "description": "Terminal CLI for EnvVault — a secure, zero-knowledge developer environment/configuration vault. Your development environment, available anywhere.",
+  "description": "Terminal CLI for nvault — a secure, zero-knowledge developer environment/configuration vault. Your development environment, available anywhere.",
   "type": "commonjs",
   "license": "MIT",
-  "author": "EnvVault",
+  "author": "nvault",
   "homepage": "https://github.com/BharathLakkoju/nvault/tree/master/cli#readme",
   "repository": {
     "type": "git",
@@ -30,7 +30,7 @@
     "provenance": true
   },
   "bin": {
-    "envvault": "./bin/envvault.js"
+    "nvault": "./bin/nvault.js"
   },
   "files": [
     "dist",

@@ -6,7 +6,7 @@ import { siteConfig } from "@/lib/site";
 
 export const metadata: Metadata = pageMetadata({
   title: "Terms of Service",
-  description: "The terms under which you may use EnvVault during early access.",
+  description: "The terms under which you may use nvault during early access.",
   path: "/terms",
 });
 
@@ -25,7 +25,7 @@ export default function TermsPage() {
             <div className="mt-8">
               <Prose>
                 <p>
-                  By creating an account or using EnvVault (the &quot;Service&quot;) you agree to these terms. If you do
+                  By creating an account or using nvault (the &quot;Service&quot;) you agree to these terms. If you do
                   not agree, do not use the Service.
                 </p>
 
@@ -68,7 +68,7 @@ export default function TermsPage() {
 
                 <h2>Limitation of liability</h2>
                 <p>
-                  To the maximum extent permitted by law, EnvVault is not liable for indirect, incidental or
+                  To the maximum extent permitted by law, nvault is not liable for indirect, incidental or
                   consequential damages, or for loss of data or profits, arising from use of the Service.
                 </p>
 

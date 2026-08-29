@@ -1,4 +1,5 @@
 import { readCredentials } from "./config-dir";
+import { envConfig } from "./env";
 
 export class ApiError extends Error {
   constructor(
@@ -13,7 +14,7 @@ export class ApiError extends Error {
 
 export class NotLoggedInError extends Error {
   constructor() {
-    super("Not logged in. Run `envvault login --token <token>` first.");
+    super("Not logged in. Run `nvault login --token <token>` first.");
     this.name = "NotLoggedInError";
   }
 }
@@ -34,12 +35,14 @@ interface Resolved {
 /** Env vars win over the stored file (the CI / ephemeral-shell path). */
 function resolveAuth(): Resolved {
   const creds = readCredentials();
-  const token = process.env.ENVVAULT_TOKEN ?? creds?.token;
-  const rawBase = process.env.ENVVAULT_API_URL ?? creds?.apiBaseUrl;
+  const envToken = envConfig.token();
+  const envApiUrl = envConfig.apiUrl();
+  const token = envToken ?? creds?.token;
+  const rawBase = envApiUrl ?? creds?.apiBaseUrl;
   if (!token || !rawBase) throw new NotLoggedInError();
   return {
     token,
-    baseUrl: process.env.ENVVAULT_API_URL ? normalizeApiBaseUrl(rawBase) : rawBase,
+    baseUrl: envApiUrl ? normalizeApiBaseUrl(rawBase) : rawBase,
   };
 }
 

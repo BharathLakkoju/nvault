@@ -8,7 +8,7 @@ describe("detectGitRemote", () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "envvault-git-test-"));
+    dir = mkdtempSync(join(tmpdir(), "nvault-git-test-"));
     execFileSync("git", ["init", "-q"], { cwd: dir });
   });
 
@@ -26,7 +26,7 @@ describe("detectGitRemote", () => {
   });
 
   it("returns null outside of a git repository entirely", () => {
-    const outside = mkdtempSync(join(tmpdir(), "envvault-not-git-"));
+    const outside = mkdtempSync(join(tmpdir(), "nvault-not-git-"));
     try {
       expect(detectGitRemote(outside)).toBeNull();
     } finally {
@@ -37,7 +37,7 @@ describe("detectGitRemote", () => {
 
 describe("isInsideGitRepo", () => {
   it("detects a .git directory", () => {
-    const dir = mkdtempSync(join(tmpdir(), "envvault-git-test-"));
+    const dir = mkdtempSync(join(tmpdir(), "nvault-git-test-"));
     try {
       execFileSync("git", ["init", "-q"], { cwd: dir });
       expect(isInsideGitRepo(dir)).toBe(true);
@@ -47,7 +47,7 @@ describe("isInsideGitRepo", () => {
   });
 
   it("returns false when there is no .git directory", () => {
-    const dir = mkdtempSync(join(tmpdir(), "envvault-not-git-"));
+    const dir = mkdtempSync(join(tmpdir(), "nvault-not-git-"));
     try {
       expect(isInsideGitRepo(dir)).toBe(false);
     } finally {

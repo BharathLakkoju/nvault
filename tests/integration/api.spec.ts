@@ -37,7 +37,7 @@ async function call(fn: Handler, opts: CallOpts) {
   return { status: res.status, body: text ? JSON.parse(text) : undefined };
 }
 
-describeIf("EnvVault API (integration)", () => {
+describeIf("nvault API (integration)", () => {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const routes = {
     register: require("@/app/api/v1/auth/register/route").POST as Handler,

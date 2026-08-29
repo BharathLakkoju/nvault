@@ -34,7 +34,7 @@ export async function pushCommand(
 
   if (targets.length === 0) {
     throw new Error(
-      "No environment files found in the current directory. Pass a filename explicitly, e.g. `envvault push myproject .env`.",
+      "No environment files found in the current directory. Pass a filename explicitly, e.g. `nvault push myproject .env`.",
     );
   }
   for (const f of targets) {

@@ -1,5 +1,5 @@
 /**
- * Minimal dotenv-syntax parser for `envvault run`. Only used for process
+ * Minimal dotenv-syntax parser for `nvault run`. Only used for process
  * environment injection — uploaded/downloaded file bytes are never parsed
  * or reconstructed anywhere else in the product; they're stored and
  * restored exactly as-is.

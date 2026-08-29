@@ -1,27 +1,27 @@
 import type { BlogPost } from "@/lib/blog";
 
 export const post: BlogPost = {
-  slug: "roadmap-envvault-run",
-  title: "The road to envvault run: secrets without a file on disk",
+  slug: "roadmap-nvault-run",
+  title: "The road to nvault run: secrets without a file on disk",
   description:
-    "The safest .env file is the one that never exists. envvault run will fetch, decrypt, and inject configuration straight into a process. Here is where it fits.",
+    "The safest .env file is the one that never exists. nvault run will fetch, decrypt, and inject configuration straight into a process. Here is where it fits.",
   date: "2026-08-27",
-  author: "The EnvVault team",
+  author: "The nvault team",
   tags: ["cli", "roadmap"],
   blocks: [
     {
       t: "p",
-      c: "Everything EnvVault does today assumes your project ultimately wants a `.env` file on disk. We store it encrypted, version it, and restore it safely — but at the end there is still a plaintext file sitting in your working directory.",
+      c: "Everything nvault does today assumes your project ultimately wants a `.env` file on disk. We store it encrypted, version it, and restore it safely — but at the end there is still a plaintext file sitting in your working directory.",
     },
     {
       t: "p",
-      c: "For a lot of workflows that file is unnecessary. Your process needs the values in its environment; it does not need them written down. That is what `envvault run` is for.",
+      c: "For a lot of workflows that file is unnecessary. Your process needs the values in its environment; it does not need them written down. That is what `nvault run` is for.",
     },
     { t: "h2", c: "The idea" },
     {
       t: "code",
       lang: "bash",
-      c: "envvault run -- npm run dev\nenvvault run -- pytest\nenvvault run --project portfolio-analytics -- ./deploy.sh",
+      c: "nvault run -- npm run dev\nnvault run -- pytest\nnvault run --project portfolio-analytics -- ./deploy.sh",
     },
     {
       t: "ol",
@@ -49,7 +49,7 @@ export const post: BlogPost = {
     {
       t: "ul",
       c: [
-        "Child environments are readable by that process and its descendants — `envvault run` is not a sandbox, and we will document exactly what it does and does not isolate.",
+        "Child environments are readable by that process and its descendants — `nvault run` is not a sandbox, and we will document exactly what it does and does not isolate.",
         "On some platforms a process's environment is visible to other processes of the same user; the docs will be explicit about that.",
         "It must fail closed: if decryption or fetch fails, the command does not run with partial or empty config.",
         "It must not leak values into its own logs, error messages, or crash output.",
@@ -58,7 +58,7 @@ export const post: BlogPost = {
     { t: "h2", c: "Where it sits on the roadmap" },
     {
       t: "note",
-      c: "Order of operations: stabilise the core vault (done for the web app, in progress for the [CLI](/cli)), then device-flow login and push/pull, then `envvault run`. Team sharing, RBAC, and secret rotation come after that. We are keeping the MVP focused on purpose — see [Why we built EnvVault](/blog/why-we-built-envvault).",
+      c: "Order of operations: stabilise the core vault (done for the web app, in progress for the [CLI](/cli)), then device-flow login and push/pull, then `nvault run`. Team sharing, RBAC, and secret rotation come after that. We are keeping the MVP focused on purpose — see [Why we built nvault](/blog/why-we-built-nvault).",
     },
     {
       t: "quote",

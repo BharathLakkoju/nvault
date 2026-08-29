@@ -2,7 +2,7 @@
 //
 // Publishing to npm ships only this bundle: the shared vault crypto
 // (imported as "@core/crypto" from the web app's src/lib/crypto) and
-// commander are inlined here, so `npm i -g envvault-cli` pulls no transitive
+// commander are inlined here, so `npm i -g @lbharath/nvault` pulls no transitive
 // runtime dependencies and the same crypto code runs in the CLI and the
 // browser.
 const { build } = require("esbuild");

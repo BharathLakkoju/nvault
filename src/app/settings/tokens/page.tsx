@@ -72,7 +72,7 @@ function TokensContent() {
           </DialogTrigger>
           <DialogContent
             title="Create a CLI access token"
-            description="Use it with `envvault login --token <token>`. Treat it like a password — it grants full access to your vault's encrypted data over the API."
+            description="Use it with `nvault login --token <token>`. Treat it like a password — it grants full access to your vault's encrypted data over the API."
           >
             <form
               onSubmit={(e) => {
@@ -149,7 +149,7 @@ function TokensContent() {
         {isLoading && <p className="p-5 text-sm text-slate-500">Loading…</p>}
         {!isLoading && active.length === 0 && (
           <p className="p-5 text-sm text-slate-500 dark:text-slate-400">
-            No active tokens. Create one to authenticate the <code>envvault</code> CLI.
+            No active tokens. Create one to authenticate the <code>nvault</code> CLI.
           </p>
         )}
         <ul className="divide-y divide-slate-200 dark:divide-slate-800">

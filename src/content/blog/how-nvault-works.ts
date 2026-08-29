@@ -1,17 +1,17 @@
 import type { BlogPost } from "@/lib/blog";
 
 export const post: BlogPost = {
-  slug: "how-envvault-works",
-  title: "How EnvVault works, end to end",
+  slug: "how-nvault-works",
+  title: "How nvault works, end to end",
   description:
     "Follow a single .env file from your editor to storage and back: what the browser does, what the API sees, and why the server can hold your secrets without being able to read them.",
   date: "2026-06-18",
-  author: "The EnvVault team",
+  author: "The nvault team",
   tags: ["architecture", "security"],
   blocks: [
     {
       t: "p",
-      c: "EnvVault has two surfaces — a [web app](/features) and a [CLI](/cli) — backed by one API and one data model. This post traces what happens to a file when you push it, and what happens when you pull it back.",
+      c: "nvault has two surfaces — a [web app](/features) and a [CLI](/cli) — backed by one API and one data model. This post traces what happens to a file when you push it, and what happens when you pull it back.",
     },
     { t: "h2", c: "1. Unlock" },
     {

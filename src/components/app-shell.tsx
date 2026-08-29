@@ -48,7 +48,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             href="/dashboard"
             className="focus-ring rounded text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100"
           >
-            EnvVault
+            nvault
           </Link>
 
           {/* Desktop navigation */}

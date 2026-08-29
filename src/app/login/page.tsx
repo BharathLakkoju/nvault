@@ -42,7 +42,7 @@ export default function LoginPage() {
         <ThemeToggle />
       </div>
       <Card className="w-full max-w-sm p-6">
-        <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Log in to EnvVault</h1>
+        <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Log in to nvault</h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Your development environment, available anywhere.</p>
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           <div>

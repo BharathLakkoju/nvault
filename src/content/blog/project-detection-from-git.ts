@@ -4,9 +4,9 @@ export const post: BlogPost = {
   slug: "project-detection-from-git",
   title: "Finding the right project from your Git remote",
   description:
-    "envvault init should know which environment to restore without being told. It does that by reading your Git remote — deterministically, and never silently.",
+    "nvault init should know which environment to restore without being told. It does that by reading your Git remote — deterministically, and never silently.",
   date: "2026-08-13",
-  author: "The EnvVault team",
+  author: "The nvault team",
   tags: ["cli", "developer-experience"],
   blocks: [
     {
@@ -16,12 +16,12 @@ export const post: BlogPost = {
     { t: "h2", c: "How detection works" },
     {
       t: "p",
-      c: "`envvault init` reads the Git remote of the current directory, normalises it, and asks the API whether a project is associated with that remote.",
+      c: "`nvault init` reads the Git remote of the current directory, normalises it, and asks the API whether a project is associated with that remote.",
     },
     {
       t: "code",
       lang: "text",
-      c: "$ cd portfolio-analytics\n$ envvault init\n\nGit repository:   github.com/acme/portfolio-analytics\nMatching project: portfolio-analytics\n\nRestore 3 files into this directory?\n  .env  .env.local  .env.production",
+      c: "$ cd portfolio-analytics\n$ nvault init\n\nGit repository:   github.com/acme/portfolio-analytics\nMatching project: portfolio-analytics\n\nRestore 3 files into this directory?\n  .env  .env.local  .env.production",
     },
     {
       t: "p",
@@ -42,7 +42,7 @@ export const post: BlogPost = {
     { t: "h2", c: "Git is a convenience, not a requirement" },
     {
       t: "p",
-      c: "Plenty of real situations have no usable remote: a repo that has not been pushed, a monorepo with several deployable apps, a directory that is not a Git repo at all. In all of those you can select the project explicitly — `envvault pull <project>` — and the CLI gets out of the way. Detection is there to save you typing when it can, not to be the only path.",
+      c: "Plenty of real situations have no usable remote: a repo that has not been pushed, a monorepo with several deployable apps, a directory that is not a Git repo at all. In all of those you can select the project explicitly — `nvault pull <project>` — and the CLI gets out of the way. Detection is there to save you typing when it can, not to be the only path.",
     },
     { t: "h2", c: "Stable identifiers underneath" },
     {
@@ -55,7 +55,7 @@ export const post: BlogPost = {
     },
     {
       t: "p",
-      c: "The goal is that `envvault init` becomes the fastest way to bring a project's environment back on a machine that has never seen it.",
+      c: "The goal is that `nvault init` becomes the fastest way to bring a project's environment back on a machine that has never seen it.",
     },
   ],
 };

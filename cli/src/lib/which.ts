@@ -9,7 +9,7 @@ import { delimiter, isAbsolute, join } from "node:path";
  * distribution of this CLI: `pkg` patches `child_process.spawn` to
  * intercept any command that is literally the string "node" (or equals
  * the running executable's own path) and reroute it to itself — which
- * breaks `envvault run -- node script.js` by trying to run the packaged
+ * breaks `nvault run -- node script.js` by trying to run the packaged
  * CLI's own entry point instead of the user's script. Spawning an
  * *absolute* path bypasses that string-equality check entirely, since it
  * no longer matches "node". Resolving up front also just makes `run`

@@ -6,7 +6,7 @@ export const post: BlogPost = {
   description:
     "Config changes are the invisible cause of half of \"it works on my machine.\" Treating every .env change as a version turns a debugging session into a diff.",
   date: "2026-07-16",
-  author: "The EnvVault team",
+  author: "The nvault team",
   tags: ["product", "developer-experience"],
   blocks: [
     {
@@ -25,7 +25,7 @@ export const post: BlogPost = {
     { t: "h2", c: "Every push is a version" },
     {
       t: "p",
-      c: "In EnvVault, each time you push a file it becomes a new, immutable version with its own metadata — when it was created, how large it is, which version is current. Nothing is overwritten in place. That gives you:",
+      c: "In nvault, each time you push a file it becomes a new, immutable version with its own metadata — when it was created, how large it is, which version is current. Nothing is overwritten in place. That gives you:",
     },
     {
       t: "ul",
@@ -38,7 +38,7 @@ export const post: BlogPost = {
     { t: "h2", c: "Why not just diff the values?" },
     {
       t: "p",
-      c: "Because the values are secrets, and EnvVault is [zero-knowledge](/blog/zero-knowledge-encryption-explained) — the server cannot compute a diff it cannot read. Version comparison happens on the client, where the data is decrypted, and only for you. The server's job is to store each encrypted version faithfully and never lose one.",
+      c: "Because the values are secrets, and nvault is [zero-knowledge](/blog/zero-knowledge-encryption-explained) — the server cannot compute a diff it cannot read. Version comparison happens on the client, where the data is decrypted, and only for you. The server's job is to store each encrypted version faithfully and never lose one.",
     },
     {
       t: "note",

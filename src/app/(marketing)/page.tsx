@@ -25,7 +25,7 @@ function Terminal() {
       </div>
       <pre className="overflow-x-auto px-4 py-4 text-[13px] leading-relaxed text-slate-300">
         <code>
-          <span className="text-slate-500">$</span> envvault init{"\n"}
+          <span className="text-slate-500">$</span> nvault init{"\n"}
           {"\n"}
           Git repository:   github.com/bharath/portfolio-analytics{"\n"}
           Matching project: <span className="text-emerald-400">portfolio-analytics</span>{"\n"}
@@ -33,7 +33,7 @@ function Terminal() {
           Restore 3 files into this directory?{"\n"}
           {"  .env  .env.local  .env.production"}{"\n"}
           {"\n"}
-          <span className="text-slate-500">$</span> envvault pull{"\n"}
+          <span className="text-slate-500">$</span> nvault pull{"\n"}
           <span className="text-emerald-400">✓</span> Vault unlocked{"\n"}
           <span className="text-emerald-400">✓</span> 3 files decrypted locally{"\n"}
           <span className="text-emerald-400">✓</span> Environment restored{"\n"}
@@ -60,7 +60,7 @@ export default function HomePage() {
                 Your development environment, available anywhere.
               </h1>
               <p className="mt-5 text-lg text-slate-600 dark:text-slate-300">
-                EnvVault stores your <code className="rounded bg-slate-100 px-1.5 py-0.5 text-[0.9em] dark:bg-slate-800">.env</code>{" "}
+                nvault stores your <code className="rounded bg-slate-100 px-1.5 py-0.5 text-[0.9em] dark:bg-slate-800">.env</code>{" "}
                 and project configuration files encrypted end-to-end. Encrypt in the browser, keep a full version
                 history, and restore any project&apos;s environment on a new machine in one command.
               </p>

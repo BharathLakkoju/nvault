@@ -1,8 +1,8 @@
 {
-  "name": "envvault-app",
+  "name": "nvault-app",
   "version": "1.0.0",
   "private": true,
-  "description": "EnvVault — a secure, zero-knowledge developer environment/configuration vault. Single Next.js app, deployable to Vercel. (The published npm CLI is the `envvault-cli` package in cli/.)",
+  "description": "nvault — a secure, zero-knowledge developer environment/configuration vault. Single Next.js app, deployable to Vercel. (The published npm CLI is the `nvault` package in cli/.)",
   "license": "UNLICENSED",
   "engines": {
     "node": ">=20"
@@ -53,16 +53,5 @@
     "tailwindcss": "^3.4.14",
     "ts-jest": "^29.2.5",
     "typescript": "^5.6.3"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@node-rs/argon2",
-      "@prisma/client",
-      "@prisma/engines",
-      "esbuild",
-      "prisma",
-      "sharp",
-      "unrs-resolver"
-    ]
   }
 }

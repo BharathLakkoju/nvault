@@ -26,7 +26,7 @@ const HOLD_MS = 2400;
  * and `prefers-reduced-motion`); the typing animation only starts on the
  * client when reduced motion is not requested.
  */
-export function AnimatedTerminal({ steps, title = "envvault — bash", className }: Props) {
+export function AnimatedTerminal({ steps, title = "nvault — bash", className }: Props) {
   const [animate, setAnimate] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [typed, setTyped] = useState(0);

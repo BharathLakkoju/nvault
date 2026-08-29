@@ -32,7 +32,7 @@ export const features: ReadonlyArray<Feature> = [
   {
     title: "Exact-fidelity storage",
     description:
-      "Comments, quoting, multiline values, ordering, whitespace and encoding are preserved byte-for-byte. EnvVault never parses and rewrites your files.",
+      "Comments, quoting, multiline values, ordering, whitespace and encoding are preserved byte-for-byte. nvault never parses and rewrites your files.",
     icon: "M8 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6H8ZM14 3v6h6",
   },
   {
@@ -68,7 +68,7 @@ export const howItWorks: ReadonlyArray<Step> = [
   {
     title: "Restore anywhere",
     description:
-      "On any machine, unlock the vault and pull. EnvVault matches the project from your Git remote and writes the files back.",
+      "On any machine, unlock the vault and pull. nvault matches the project from your Git remote and writes the files back.",
   },
 ];
 
@@ -79,7 +79,7 @@ export interface FaqItem {
 
 export const faqs: ReadonlyArray<FaqItem> = [
   {
-    question: "Can EnvVault staff read my environment variables?",
+    question: "Can nvault staff read my environment variables?",
     answer:
       "No. All encryption and decryption happens in your browser. The server stores only ciphertext and keys that are themselves wrapped by a key derived from your vault passphrase, which is never sent to us.",
   },
@@ -91,7 +91,7 @@ export const faqs: ReadonlyArray<FaqItem> = [
   {
     question: "Does it change my .env files in any way?",
     answer:
-      "No. Files are stored and restored byte-for-byte. Comments, quoting, ordering, multiline values and whitespace are all preserved. EnvVault treats config files as opaque data, not dotenv syntax to be re-serialised.",
+      "No. Files are stored and restored byte-for-byte. Comments, quoting, ordering, multiline values and whitespace are all preserved. nvault treats config files as opaque data, not dotenv syntax to be re-serialised.",
   },
   {
     question: "How does versioning work?",
@@ -106,7 +106,7 @@ export const faqs: ReadonlyArray<FaqItem> = [
   {
     question: "Is there a command-line interface?",
     answer:
-      "The web app is available today. A first-class CLI for headless, SSH and WSL workflows — including device-code login and 'envvault run' to inject secrets without writing a .env file — is on the roadmap and the API is already designed for it.",
+      "The web app is available today. A first-class CLI for headless, SSH and WSL workflows — including device-code login and 'nvault run' to inject secrets without writing a .env file — is on the roadmap and the API is already designed for it.",
   },
   {
     question: "How is the server-side storage protected?",
@@ -116,6 +116,6 @@ export const faqs: ReadonlyArray<FaqItem> = [
   {
     question: "What does it cost?",
     answer:
-      "EnvVault is free while in early access. See the pricing page for what is included and how paid plans are expected to be structured.",
+      "nvault is free while in early access. See the pricing page for what is included and how paid plans are expected to be structured.",
   },
 ];

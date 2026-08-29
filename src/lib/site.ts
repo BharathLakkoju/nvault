@@ -21,16 +21,16 @@ function normalizeUrl(value: string | undefined, fallback: string): string {
   }
 }
 
-export const SITE_URL = normalizeUrl(process.env.NEXT_PUBLIC_SITE_URL, "https://envvault.dev");
+export const SITE_URL = normalizeUrl(process.env.NEXT_PUBLIC_SITE_URL, "https://nvault.dev");
 
 export const siteConfig = {
-  name: "EnvVault",
+  name: "nvault",
   /** Used in <title> templates and structured data. */
-  shortName: "EnvVault",
+  shortName: "nvault",
   url: SITE_URL,
   tagline: "Your development environment, available anywhere.",
   description:
-    "EnvVault is a zero-knowledge vault for your .env and project configuration files. " +
+    "nvault is a zero-knowledge vault for your .env and project configuration files. " +
     "Encrypt in the browser, store ciphertext only, and restore your environment on any machine.",
   /** Kept short — search engines truncate around 155–160 characters. */
   metaDescription:
@@ -47,11 +47,11 @@ export const siteConfig = {
     ".env backup",
     "secret storage",
   ],
-  creator: "EnvVault",
+  creator: "nvault",
   locale: "en_US",
   /** Public support / contact address surfaced in structured data and the footer. */
-  contactEmail: "hello@envvault.dev",
-  ogImageAlt: "EnvVault — your development environment, available anywhere.",
+  contactEmail: "hello@nvault.dev",
+  ogImageAlt: "nvault — your development environment, available anywhere.",
 } as const;
 
 /** Primary navigation shown in the marketing header. */

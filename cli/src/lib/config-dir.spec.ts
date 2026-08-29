@@ -7,7 +7,7 @@ describe("config-dir credentials", () => {
   let mod: typeof import("./config-dir");
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "envvault-cfg-"));
+    dir = mkdtempSync(join(tmpdir(), "nvault-cfg-"));
     process.env.XDG_CONFIG_HOME = dir;
     process.env.APPDATA = dir;
     jest.resetModules();
@@ -41,6 +41,31 @@ describe("config-dir credentials", () => {
     mod.writeCredentials({ apiBaseUrl: "https://x/api/v1", token: "evk_x", userEmail: "" });
     const mode = statSync(join(mod.getConfigDir(), "credentials.json")).mode & 0o777;
     expect(mode).toBe(0o600);
+  });
+
+  it("reads credentials from the pre-rename `envvault` directory when the new one is empty", () => {
+    const legacyDir = join(dir, "envvault");
+    mkdirSync(legacyDir, { recursive: true });
+    writeFileSync(
+      join(legacyDir, "credentials.json"),
+      JSON.stringify({ apiBaseUrl: "https://legacy.example.com/api/v1", token: "evk_legacy", userEmail: "old@example.com" }),
+    );
+    expect(mod.readCredentials()).toEqual({
+      apiBaseUrl: "https://legacy.example.com/api/v1",
+      token: "evk_legacy",
+      userEmail: "old@example.com",
+    });
+  });
+
+  it("prefers the new `nvault` directory over the legacy one", () => {
+    const legacyDir = join(dir, "envvault");
+    mkdirSync(legacyDir, { recursive: true });
+    writeFileSync(
+      join(legacyDir, "credentials.json"),
+      JSON.stringify({ apiBaseUrl: "https://legacy/api/v1", token: "evk_legacy", userEmail: "" }),
+    );
+    mod.writeCredentials({ apiBaseUrl: "https://current/api/v1", token: "evk_current", userEmail: "" });
+    expect(mod.readCredentials()?.token).toBe("evk_current");
   });
 
   it("returns null for a legacy/incomplete credentials file", () => {

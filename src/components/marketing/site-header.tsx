@@ -24,7 +24,7 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/85 backdrop-blur dark:border-slate-800 dark:bg-slate-950/85">
       <nav className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6" aria-label="Main">
-        <Link href="/" className="focus-ring rounded" aria-label="EnvVault home">
+        <Link href="/" className="focus-ring rounded" aria-label="nvault home">
           <Logo />
         </Link>
 

@@ -7,7 +7,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata: Metadata = pageMetadata({
   title: "Pricing",
   description:
-    "EnvVault is free during early access. See what's included and how paid plans are expected to be structured.",
+    "nvault is free during early access. See what's included and how paid plans are expected to be structured.",
   path: "/pricing",
 });
 
@@ -23,7 +23,7 @@ const tiers: ReadonlyArray<{
   {
     name: "Early access",
     price: "Free",
-    description: "Everything in the vault while EnvVault is in early access.",
+    description: "Everything in the vault while nvault is in early access.",
     features: [
       "Unlimited projects and files",
       "Full version history",
@@ -64,7 +64,7 @@ const tiers: ReadonlyArray<{
 
 const pricingFaqs = [
   {
-    question: "Is EnvVault really free right now?",
+    question: "Is nvault really free right now?",
     answer:
       "Yes. During early access every feature of the vault is free with no card required. Paid plans will be introduced with advance notice and a free tier will remain.",
   },

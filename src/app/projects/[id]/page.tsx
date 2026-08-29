@@ -114,7 +114,7 @@ function UploadCard({ projectId, projectKey }: { projectId: string; projectKey: 
     <Card>
       <CardHeader
         title="Upload a file"
-        description="Encrypted in your browser before it ever leaves this device — EnvVault never sees plaintext contents."
+        description="Encrypted in your browser before it ever leaves this device — nvault never sees plaintext contents."
       />
       <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-end">
         <div className="flex-1">

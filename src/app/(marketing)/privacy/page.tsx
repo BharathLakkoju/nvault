@@ -7,7 +7,7 @@ import { siteConfig } from "@/lib/site";
 export const metadata: Metadata = pageMetadata({
   title: "Privacy Policy",
   description:
-    "How EnvVault handles your data. Because the vault is zero-knowledge, we cannot access your file contents or your vault passphrase.",
+    "How nvault handles your data. Because the vault is zero-knowledge, we cannot access your file contents or your vault passphrase.",
   path: "/privacy",
 });
 
@@ -26,7 +26,7 @@ export default function PrivacyPage() {
             <div className="mt-8">
               <Prose>
                 <p>
-                  This policy explains what data EnvVault (&quot;we&quot;) collects and how it is used. It is written to
+                  This policy explains what data nvault (&quot;we&quot;) collects and how it is used. It is written to
                   match how the product actually works: a zero-knowledge vault in which encryption happens in your
                   browser.
                 </p>

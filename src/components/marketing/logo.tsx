@@ -20,7 +20,7 @@ export function Logo({ className }: { className?: string }) {
   return (
     <span className={cn("inline-flex items-center gap-2 font-semibold tracking-tight", className)}>
       <LogoMark />
-      <span className="text-slate-900 dark:text-slate-100">EnvVault</span>
+      <span className="text-slate-900 dark:text-slate-100">nvault</span>
     </span>
   );
 }

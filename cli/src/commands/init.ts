@@ -11,7 +11,7 @@ export async function initCommand(): Promise<void> {
   const remote = detectGitRemote(cwd);
 
   if (!remote) {
-    console.log("No git remote detected in this directory. Run `envvault pull <project>` and specify a project by name instead.");
+    console.log("No git remote detected in this directory. Run `nvault pull <project>` and specify a project by name instead.");
     return;
   }
 
@@ -22,11 +22,11 @@ export async function initCommand(): Promise<void> {
   );
 
   if (!project) {
-    console.log("No matching EnvVault project found for this repository.");
+    console.log("No matching nvault project found for this repository.");
     return;
   }
 
-  console.log(`Matching EnvVault project:\n${project.name}\n`);
+  console.log(`Matching nvault project:\n${project.name}\n`);
 
   const restore = await promptConfirm("Restore its environment files here?", true);
   if (!restore) return;
