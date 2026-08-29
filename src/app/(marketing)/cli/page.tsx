@@ -85,7 +85,7 @@ export default function CliPage() {
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">npm / pnpm / yarn</h3>
               <div className="mt-2">
                 <CommandBlock>
-                  {"npm install -g nvault\n# or: pnpm add -g nvault\n# or: yarn global add nvault"}
+                  {"npm install -g @lbharath/nvault\n# or: pnpm add -g @lbharath/nvault\n# or: yarn global add @lbharath/nvault"}
                 </CommandBlock>
               </div>
             </div>

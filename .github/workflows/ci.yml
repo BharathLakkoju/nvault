@@ -60,8 +60,8 @@ jobs:
       - run: pnpm build
 
       # Standalone CLI package (cli/) — independent typecheck, tests, bundle.
-      - run: pnpm --filter nvault typecheck
+      - run: pnpm --filter ./cli typecheck
 
-      - run: pnpm --filter nvault test
+      - run: pnpm --filter ./cli test
 
-      - run: pnpm --filter nvault build
+      - run: pnpm --filter ./cli build

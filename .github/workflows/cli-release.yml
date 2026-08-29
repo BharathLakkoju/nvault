@@ -1,12 +1,12 @@
 name: Publish CLI
 
-# Publishes the `nvault` npm package from cli/ when a tag matching
+# Publishes the `@lbharath/nvault` npm package from cli/ when a tag matching
 # `cli-v*` is pushed (e.g. `cli-v0.1.0`). The tag version must match
 # cli/package.json's "version".
 #
 # Auth is via npm Trusted Publishing (OIDC) — no token. Configure a trusted
-# publisher for the `nvault` package on npmjs.com (Settings → Trusted
-# Publisher) pointing at this repo + workflow file. The first ever publish
+# publisher for the `@lbharath/nvault` package on npmjs.com (Settings →
+# Trusted Publisher) pointing at this repo + workflow file. The first ever publish
 # must be done once manually (npm won't let you configure a trusted
 # publisher for a package that doesn't exist yet); every release after that
 # runs here tokenless. Provenance is attested from the workflow's OIDC
@@ -46,12 +46,12 @@ jobs:
             exit 1
           fi
 
-      - run: pnpm --filter nvault typecheck
-      - run: pnpm --filter nvault test
-      - run: pnpm --filter nvault build
+      - run: pnpm --filter ./cli typecheck
+      - run: pnpm --filter ./cli test
+      - run: pnpm --filter ./cli build
 
       # Tokenless: pnpm performs the npm OIDC token exchange automatically
       # because id-token:write is granted and a trusted publisher is
       # configured for `nvault` on npmjs.com.
       - name: Publish to npm
-        run: pnpm --filter nvault publish --no-git-checks --access public --provenance
+        run: pnpm --filter ./cli publish --no-git-checks --access public --provenance

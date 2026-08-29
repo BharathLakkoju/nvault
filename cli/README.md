@@ -12,12 +12,13 @@ SSH sessions, remote servers, CI — without a browser.
 ## Install
 
 ```bash
-npm install -g nvault
+npm install -g @lbharath/nvault
 # or run without installing:
-npx nvault --help
+npx @lbharath/nvault --help
 ```
 
-Requires Node.js ≥ 20.
+The package is published as `@lbharath/nvault`; the installed command is
+`nvault`. Requires Node.js ≥ 20.
 
 ## Authenticate
 
