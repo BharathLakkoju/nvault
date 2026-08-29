@@ -12,6 +12,18 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * A 402 from the API — a plan limit was hit or an organization's
+ * subscription is inactive. Carries the server's human-readable reason so
+ * callers can show an upgrade / renew CTA instead of a generic error.
+ */
+export class PaywallError extends ApiError {
+  constructor(message: string) {
+    super(402, message);
+    this.name = "PaywallError";
+  }
+}
+
 interface RequestOptions {
   method?: "GET" | "POST" | "PATCH" | "DELETE";
   body?: unknown;
@@ -37,7 +49,9 @@ async function rawRequest<T>(path: string, options: RequestOptions): Promise<T> 
   const data = isJson ? await res.json().catch(() => undefined) : undefined;
 
   if (!res.ok) {
-    throw new ApiError(res.status, data?.message ?? res.statusText, data?.issues);
+    const message = data?.message ?? res.statusText;
+    if (res.status === 402) throw new PaywallError(message);
+    throw new ApiError(res.status, message, data?.issues);
   }
   return data as T;
 }

@@ -858,3 +858,28 @@ And I think the **CLI + web combination is the right architectural decision**. T
 
 Most importantly, I'd make **`envvault init` + `envvault run`** the eventual signature features rather than stopping at upload/download.
 
+---
+
+# 19. Plans & billing
+
+* **Free** — personal vault, capped at `FREE_LIMITS.maxPersonalProjects`
+  projects. Full CLI + web, full version history, full zero-knowledge
+  encryption.
+* **Pro** ($10/mo, per user) — same as Free but **unlimited personal
+  projects**. A per-user Polar subscription.
+* **Team** — unlocks organizations (shared, zero-knowledge team projects).
+  **One flat subscription per organization**, no per-seat charge, in three
+  size tiers: Starter $29 (≤10 members), Growth $79 (≤25), Scale $199 (≤100).
+  Owners move between tiers in-app; Polar prorates.
+
+Both paid plans go through [Polar](https://polar.sh) as Merchant of Record,
+so global sales tax / VAT and card handling are Polar's responsibility, not
+ours. No card data ever reaches nvault.
+
+Flow: creating an org makes it `PENDING_PAYMENT` and redirects to a
+Polar-hosted checkout; the `subscription.active` webhook activates it. A
+lapsed subscription makes the org **read-only** (`SUSPENDED`) — data is
+never deleted for non-payment. Abandoned unpaid orgs are purged after 7
+days. The paywall is enforced server-side in the authorization layer and is
+disabled automatically when Polar isn't configured (local dev / self-host).
+

@@ -34,6 +34,17 @@ process.env.STORAGE_ENCRYPTION_KEY ||= Buffer.alloc(32, 7).toString("base64");
 process.env.JWT_SECRET ||= "integration-test-jwt-secret-integration-test-0";
 process.env.DIRECT_DATABASE_URL ||= process.env.DATABASE_URL ?? "";
 
+// Billing: make billingConfigured() true so the paywall path is exercised.
+// The Polar HTTP client is mocked in the spec; only the webhook signer
+// (which uses POLAR_WEBHOOK_SECRET) runs for real.
+process.env.POLAR_ACCESS_TOKEN ||= "polar_test_access_token";
+process.env.POLAR_WEBHOOK_SECRET ||= "integration-test-webhook-secret";
+process.env.POLAR_PRO_PRODUCT_ID ||= "prod_pro_it";
+process.env.POLAR_TEAM_STARTER_PRODUCT_ID ||= "prod_team_starter_it";
+process.env.POLAR_TEAM_GROWTH_PRODUCT_ID ||= "prod_team_growth_it";
+process.env.POLAR_TEAM_SCALE_PRODUCT_ID ||= "prod_team_scale_it";
+process.env.CRON_SECRET ||= "integration-test-cron-secret-0";
+
 if (!process.env.DATABASE_URL) {
   // eslint-disable-next-line no-console
   console.warn("\n[integration] DATABASE_URL not set — integration tests will be skipped.\n");

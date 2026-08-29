@@ -89,6 +89,16 @@ export function OrgSwitcher({ className }: { className?: string }) {
                   pending
                 </span>
               )}
+              {org.orgStatus === "PENDING_PAYMENT" && (
+                <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                  unpaid
+                </span>
+              )}
+              {org.orgStatus === "SUSPENDED" && (
+                <span className="shrink-0 rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-950 dark:text-red-300">
+                  inactive
+                </span>
+              )}
             </DropdownMenu.Item>
           ))}
 

@@ -1,9 +1,16 @@
-import { Prisma, type OrgRole, type Organization } from "@prisma/client";
+import {
+  Prisma,
+  type OrgRole,
+  type OrgStatus,
+  type Organization,
+  type SubscriptionTier,
+} from "@prisma/client";
 import { db } from "../db";
 import { ApiError } from "../http";
 
 /** Guardrails against resource exhaustion / abuse. */
 export const MAX_ORGS_OWNED_PER_USER = 10;
+/** Hard ceiling; the effective per-org member cap is the subscription tier's. */
 export const MAX_MEMBERS_PER_ORG = 100;
 export const MAX_PENDING_INVITES_PER_ORG = 100;
 
@@ -12,6 +19,8 @@ export interface CreateOrganizationInput {
   slug: string;
   /** Org Key, RSA-wrapped to the creator's own public key. Opaque ciphertext. */
   wrappedOrgKeyCiphertext: string;
+  /** Team size tier chosen at creation. */
+  tier: SubscriptionTier;
 }
 
 /**
@@ -71,6 +80,18 @@ export async function createOrganization(
         invitedById: userId,
       },
     });
+    // The org starts life PENDING_PAYMENT (schema default). Its subscription
+    // shell is created here; the Polar webhook fills in the ids and flips
+    // both to ACTIVE once checkout completes.
+    await db.subscription.create({
+      data: {
+        organizationId: org.id,
+        ownerUserId: userId,
+        plan: "TEAM",
+        tier: input.tier,
+        status: "PENDING",
+      },
+    });
   } catch (err) {
     await db.organization.delete({ where: { id: org.id } }).catch(() => {});
     throw err;
@@ -86,7 +107,10 @@ export function listOrganizationsForUser(userId: string) {
     orderBy: { organization: { name: "asc" } },
     include: {
       organization: {
-        include: { _count: { select: { memberships: true, projects: true } } },
+        include: {
+          _count: { select: { memberships: true, projects: true } },
+          subscription: { select: { status: true } },
+        },
       },
     },
   });
@@ -156,6 +180,7 @@ export function organizationToDto(org: {
   name: string;
   slug: string;
   currentKeyEpoch: number;
+  status: OrgStatus;
   createdAt: Date;
   updatedAt: Date;
 }) {
@@ -164,6 +189,7 @@ export function organizationToDto(org: {
     name: org.name,
     slug: org.slug,
     currentKeyEpoch: org.currentKeyEpoch,
+    orgStatus: org.status,
     createdAt: org.createdAt,
     updatedAt: org.updatedAt,
   };

@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { useCreateProject, useDeleteProject, useProjects } from "@/hooks/use-projects";
 import { useOrganizations } from "@/hooks/use-organizations";
+import { usePlanInfo } from "@/hooks/use-plan-info";
 import { useOrgContext } from "@/lib/org-context-store";
 import { toastError, useToastStore } from "@/lib/toast-store";
 
@@ -29,6 +30,7 @@ export default function DashboardPage() {
 function DashboardContent() {
   const { data: projects, isLoading } = useProjects();
   const { data: orgs } = useOrganizations();
+  const { data: plan } = usePlanInfo();
   const currentOrgId = useOrgContext((s) => s.currentOrgId);
   const [open, setOpen] = useState(false);
 
@@ -37,6 +39,11 @@ function DashboardContent() {
   const scoped = (projects ?? []).filter((p) =>
     currentOrgId ? p.organizationId === currentOrgId : p.scope === "personal",
   );
+
+  // Free-tier personal-project cap (only relevant outside an org).
+  const personalCount = (projects ?? []).filter((p) => p.scope === "personal").length;
+  const personalCap = plan?.freeMaxPersonalProjects ?? Infinity;
+  const atPersonalCap = !currentOrg && personalCount >= personalCap;
 
   return (
     <div>
@@ -54,7 +61,9 @@ function DashboardContent() {
         {canCreateHere && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button className="w-full sm:w-auto">+ New Project</Button>
+              <Button className="w-full sm:w-auto" disabled={atPersonalCap}>
+                + New Project
+              </Button>
             </DialogTrigger>
             <DialogContent
               title={currentOrg ? `New project in ${currentOrg.name}` : "Create project"}
@@ -68,6 +77,27 @@ function DashboardContent() {
           </Dialog>
         )}
       </div>
+
+      {atPersonalCap && (
+        <Card className="mb-4 flex flex-col gap-3 border-amber-300 p-4 dark:border-amber-800 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            You&apos;ve reached the Free plan limit of {personalCap} personal projects.
+            {plan?.billingEnabled
+              ? " Upgrade to Pro for unlimited, or "
+              : " Delete a project to free up a slot, or "}
+            create an{" "}
+            <Link href="/settings/organizations" className="text-accent-600 hover:underline">
+              organization
+            </Link>{" "}
+            for your team.
+          </p>
+          {plan?.billingEnabled && (
+            <Link href="/settings/billing" className="shrink-0">
+              <Button variant="secondary">Upgrade to Pro</Button>
+            </Link>
+          )}
+        </Card>
+      )}
 
       {isLoading && <p className="text-sm text-slate-500">Loading projects…</p>}
 

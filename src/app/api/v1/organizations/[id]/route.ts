@@ -53,7 +53,8 @@ export const PATCH = handler(async (req, { params }) => {
 
 export const DELETE = handler(async (req, { params }) => {
   const auth = await requireAuth(req);
-  await authorizeOrg(auth.userId, params.id, "OWNER");
+  // "read" gate: an owner can always delete their org, even PENDING/SUSPENDED.
+  await authorizeOrg(auth.userId, params.id, "OWNER", "read");
   // Audit before the delete: the audit row's organizationId FK cannot
   // reference a row that no longer exists.
   await audit({

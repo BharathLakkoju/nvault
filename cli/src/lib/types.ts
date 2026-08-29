@@ -25,6 +25,9 @@ export interface OrganizationSummaryDto {
   slug: string;
   role?: OrgRole;
   status?: "INVITED" | "ACTIVE";
+  /** Billing lifecycle of the org. */
+  orgStatus?: "PENDING_PAYMENT" | "ACTIVE" | "SUSPENDED";
+  billingStatus?: "PENDING" | "ACTIVE" | "PAST_DUE" | "CANCELED" | "NONE";
   memberCount?: number;
   projectCount?: number;
 }

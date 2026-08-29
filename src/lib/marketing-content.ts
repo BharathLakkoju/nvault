@@ -116,6 +116,6 @@ export const faqs: ReadonlyArray<FaqItem> = [
   {
     question: "What does it cost?",
     answer:
-      "nvault is free while in early access. See the pricing page for what is included and how paid plans are expected to be structured.",
+      "A personal vault is free — up to five projects with unlimited files and full version history. Pro ($10/month) makes personal projects unlimited. Team unlocks shared, zero-knowledge organizations, priced by size from $29/month per org. Billed through Polar. See the pricing page for details.",
   },
 ];

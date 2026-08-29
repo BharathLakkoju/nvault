@@ -12,10 +12,14 @@ export async function orgsCommand(): Promise<void> {
   console.log("Organizations\n");
   for (const org of organizations) {
     const role = org.role ? org.role.toLowerCase() : "member";
-    const pending = org.status === "INVITED" ? "  (awaiting key access)" : "";
+    const notes: string[] = [];
+    if (org.status === "INVITED") notes.push("awaiting key access");
+    if (org.orgStatus === "PENDING_PAYMENT") notes.push("payment pending");
+    if (org.orgStatus === "SUSPENDED") notes.push("subscription inactive");
+    const suffix = notes.length ? `  (${notes.join(", ")})` : "";
     console.log(
-      `  ${org.name}  ·  ${role}  ·  ${org.projectCount ?? 0} project${org.projectCount === 1 ? "" : "s"}${pending}`,
+      `  ${org.name}  ·  ${role}  ·  ${org.projectCount ?? 0} project${org.projectCount === 1 ? "" : "s"}${suffix}`,
     );
   }
-  console.log("\nManage members and invitations from the web app.");
+  console.log("\nCreate organizations and manage billing & members from the web app.");
 }

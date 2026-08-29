@@ -11,6 +11,7 @@ import { cn } from "@/lib/cn";
 const NAV_LINKS = [
   { href: "/dashboard", label: "Projects" },
   { href: "/settings/organizations", label: "Organizations" },
+  { href: "/settings/billing", label: "Billing" },
   { href: "/settings/sessions", label: "Sessions" },
   { href: "/settings/tokens", label: "CLI Tokens" },
   { href: "/settings/security", label: "Activity" },

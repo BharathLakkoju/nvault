@@ -7,12 +7,14 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata: Metadata = pageMetadata({
   title: "Pricing",
   description:
-    "nvault is free during early access. See what's included and how paid plans are expected to be structured.",
+    "nvault is free for personal use. Organizations are a paid Team plan — one subscription per organization, billed through Polar.",
   path: "/pricing",
 });
 
 const tiers: ReadonlyArray<{
   name: string;
+  /** Small lead-in before the price, e.g. "from". */
+  pricePrefix?: string;
   price: string;
   cadence?: string;
   description: string;
@@ -21,55 +23,69 @@ const tiers: ReadonlyArray<{
   featured?: boolean;
 }> = [
   {
-    name: "Early access",
-    price: "Free",
-    description: "Everything in the vault while nvault is in early access.",
+    name: "Free",
+    price: "$0",
+    description: "Your personal development environment, available anywhere.",
     features: [
-      "Unlimited projects and files",
+      "Up to 5 personal projects",
+      "Unlimited environment files per project",
       "Full version history",
       "Zero-knowledge client-side encryption",
-      "Device & session management",
-      "Audit activity log",
+      "Web app + terminal CLI (push, pull, init, run)",
+      "Device & session management, audit log",
     ],
     cta: { label: "Get started", href: "/register" },
-    featured: true,
   },
   {
     name: "Pro",
-    price: "TBD",
+    price: "$10",
     cadence: "per user / month",
-    description: "For individuals and small teams once general availability lands.",
+    description: "For individuals with more than a handful of projects.",
     features: [
-      "Everything in Early access",
-      "Longer version retention",
-      "Priority support",
-      "CLI device management at scale",
+      "Everything in Free",
+      "Unlimited personal projects",
+      "Same zero-knowledge encryption and full history",
+      "Cancel anytime — no card data touches nvault",
     ],
-    cta: { label: "Talk to us", href: "/contact" },
+    cta: { label: "Start with Pro", href: "/register" },
+    featured: true,
   },
   {
     name: "Team",
-    price: "TBD",
-    cadence: "per user / month",
-    description: "Shared projects and access controls — planned, not yet available.",
+    pricePrefix: "from",
+    price: "$29",
+    cadence: "per organization / month",
+    description: "Shared, zero-knowledge projects for a whole team.",
     features: [
       "Everything in Pro",
-      "Shared projects with per-member access",
-      "Role-based permissions",
-      "SSO (planned)",
+      "Starter — $29/mo, up to 10 members",
+      "Growth — $79/mo, up to 25 members",
+      "Scale — $199/mo, up to 100 members",
+      "Owner / admin / member roles, activity log",
+      "One flat price per org — no per-seat charges",
     ],
-    cta: { label: "Register interest", href: "/contact" },
+    cta: { label: "Start an organization", href: "/register" },
   },
 ];
 
 const pricingFaqs = [
   {
-    question: "Is nvault really free right now?",
+    question: "Is nvault free for personal use?",
     answer:
-      "Yes. During early access every feature of the vault is free with no card required. Paid plans will be introduced with advance notice and a free tier will remain.",
+      "Yes. A personal vault — up to five projects with unlimited files and full version history — is free, with no card required. Pro ($10/month) lifts the project cap to unlimited; everything is end-to-end encrypted in your browser on every tier.",
   },
   {
-    question: "Will my data be affected when paid plans launch?",
+    question: "How does billing work?",
+    answer:
+      "Pro is a per-user subscription. Team is one flat subscription per organization in one of three size tiers (Starter $29 / Growth $79 / Scale $199), and you can move between them any time — Polar prorates the difference. Both are billed through Polar (our Merchant of Record) on Polar-hosted pages; nvault never sees or stores your card details. Cancel any time.",
+  },
+  {
+    question: "What happens to an organization if its subscription lapses?",
+    answer:
+      "It becomes read-only — you and your team can still pull existing environment files, but not push new ones or add projects — until the subscription is renewed. Your data is never deleted for non-payment.",
+  },
+  {
+    question: "Will my data be affected by plan changes?",
     answer:
       "No. Stored files and their encrypted versions remain backwards compatible. We never silently change the encryption format in a way that makes previously stored files unrecoverable.",
   },
@@ -86,8 +102,8 @@ export default function PricingPage() {
         <Container>
           <SectionHeading
             eyebrow="Pricing"
-            title="Free while we are in early access"
-            description="Paid plans below are indicative and will be finalised before general availability. A free tier will always exist."
+            title="Free to start. Simple when you grow."
+            description="A personal vault is free. Pro lifts the project cap for one person; Team unlocks shared organizations at one flat price each. Billed through Polar."
           />
 
           <div className="mt-16 grid gap-8 lg:grid-cols-3">
@@ -103,14 +119,25 @@ export default function PricingPage() {
               >
                 {tier.featured && (
                   <span className="mb-3 inline-flex w-fit rounded-full bg-accent-50 px-2.5 py-0.5 text-xs font-semibold text-accent-700 dark:bg-accent-500/10 dark:text-accent-300">
-                    Available now
+                    Most popular
                   </span>
                 )}
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{tier.name}</h3>
                 <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{tier.description}</p>
-                <div className="mt-4 flex items-baseline gap-1.5">
-                  <span className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{tier.price}</span>
-                  {tier.cadence && <span className="text-sm text-slate-500 dark:text-slate-400">{tier.cadence}</span>}
+                <div className="mt-4 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                  {tier.pricePrefix && (
+                    <span className="text-sm text-slate-500 dark:text-slate-400">
+                      {tier.pricePrefix}
+                    </span>
+                  )}
+                  <span className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                    {tier.price}
+                  </span>
+                  {tier.cadence && (
+                    <span className="text-sm text-slate-500 dark:text-slate-400">
+                      {tier.cadence}
+                    </span>
+                  )}
                 </div>
                 <ul className="mt-6 flex-1 space-y-3 text-sm">
                   {tier.features.map((feature) => (

@@ -3,7 +3,8 @@ import { db } from "../db";
 import { ApiError } from "../http";
 import { generateInviteToken, hashToken } from "../auth/tokens";
 import { canActOnRole } from "../authz/roles";
-import { MAX_MEMBERS_PER_ORG, MAX_PENDING_INVITES_PER_ORG } from "./service";
+import { assertCanAddOrgMember } from "../billing/entitlements";
+import { MAX_PENDING_INVITES_PER_ORG } from "./service";
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -39,14 +40,21 @@ export async function createInvite(
     throw new ApiError(409, "That person is already a member of this organization.");
   }
 
-  const memberCount = await db.organizationMembership.count({ where: { organizationId: orgId } });
-  if (memberCount >= MAX_MEMBERS_PER_ORG) {
-    throw new ApiError(409, `This organization has reached the ${MAX_MEMBERS_PER_ORG}-member limit.`);
-  }
+  const [memberCount, pendingCount, sub] = await Promise.all([
+    db.organizationMembership.count({ where: { organizationId: orgId } }),
+    db.organizationInvite.count({
+      where: { organizationId: orgId, acceptedAt: null, revokedAt: null },
+    }),
+    db.subscription.findUnique({
+      where: { organizationId: orgId },
+      select: { tier: true },
+    }),
+  ]);
 
-  const pendingCount = await db.organizationInvite.count({
-    where: { organizationId: orgId, acceptedAt: null, revokedAt: null },
-  });
+  // A seat is an active member or a pending invite — an invite can't push the
+  // org past its plan's member limit.
+  assertCanAddOrgMember(memberCount + pendingCount, sub?.tier ?? null);
+
   if (pendingCount >= MAX_PENDING_INVITES_PER_ORG) {
     throw new ApiError(409, "Too many pending invitations. Revoke some before sending more.");
   }
