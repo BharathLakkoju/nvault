@@ -7,6 +7,8 @@ export type AuditAction =
   | "auth.logout"
   | "session.revoked"
   | "session.revoked_all"
+  | "apitoken.created"
+  | "apitoken.revoked"
   | "project.created"
   | "project.renamed"
   | "project.deleted"
@@ -18,7 +20,7 @@ export type AuditAction =
 export interface AuditEntry {
   userId?: string | null;
   action: AuditAction;
-  targetType?: "session" | "project" | "file" | "user";
+  targetType?: "session" | "project" | "file" | "user" | "apitoken";
   targetId?: string;
   /**
    * Non-secret context only (e.g. a filename or project name for display in

@@ -53,6 +53,8 @@ describeIf("EnvVault API (integration)", () => {
     fileVersion: require("@/app/api/v1/projects/[id]/files/[fileId]/versions/[versionId]/route")
       .GET as Handler,
     restore: require("@/app/api/v1/projects/[id]/files/[fileId]/restore/route").POST as Handler,
+    tokens: require("@/app/api/v1/auth/tokens/route"),
+    revokeToken: require("@/app/api/v1/auth/tokens/[id]/route").DELETE as Handler,
   };
 
   const db = require("@/server/db").db as import("@prisma/client").PrismaClient;
@@ -267,6 +269,63 @@ describeIf("EnvVault API (integration)", () => {
       },
     });
     expect(traversal.status).toBe(400);
+  });
+
+  it("issues a CLI access token that authenticates the API and stops working once revoked", async () => {
+    const { token } = await registerUser("cli token vault passphrase");
+
+    const createRes = await call(routes.tokens.POST, {
+      method: "POST",
+      path: "/api/v1/auth/tokens",
+      token,
+      body: { name: "integration laptop" },
+    });
+    expect(createRes.status).toBe(201);
+    const pat = createRes.body.token as string;
+    expect(pat).toMatch(/^evk_/);
+    expect(createRes.body.apiToken.id).toBeTruthy();
+
+    // The raw token is only ever in the create response — never in list.
+    const listRes = await call(routes.tokens.GET, {
+      method: "GET",
+      path: "/api/v1/auth/tokens",
+      token,
+    });
+    expect(JSON.stringify(listRes.body)).not.toContain(pat);
+    expect(listRes.body.tokens[0].name).toBe("integration laptop");
+
+    // CLI-token sessions are hidden from the browser Sessions list.
+    const sessionsRes = await call(routes.sessions, {
+      method: "GET",
+      path: "/api/v1/auth/sessions",
+      token: pat,
+    });
+    expect(sessionsRes.body.sessions.some((s: { id: string }) => s.id === createRes.body.apiToken.id)).toBe(
+      false,
+    );
+
+    // The PAT authenticates a normal request.
+    const asPat = await call(routes.projects.GET, {
+      method: "GET",
+      path: "/api/v1/projects",
+      token: pat,
+    });
+    expect(asPat.status).toBe(200);
+
+    const revokeRes = await call(routes.revokeToken, {
+      method: "DELETE",
+      path: `/api/v1/auth/tokens/${createRes.body.apiToken.id}`,
+      params: { id: createRes.body.apiToken.id },
+      token,
+    });
+    expect(revokeRes.status).toBe(204);
+
+    const afterRevoke = await call(routes.projects.GET, {
+      method: "GET",
+      path: "/api/v1/projects",
+      token: pat,
+    });
+    expect(afterRevoke.status).toBe(401);
   });
 
   it("immediately invalidates a revoked session's access token", async () => {

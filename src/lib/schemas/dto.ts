@@ -29,6 +29,14 @@ export const LoginRequestSchema = z.object({
 });
 export type LoginRequest = z.infer<typeof LoginRequestSchema>;
 
+// CLI Personal Access Tokens. `name` is a user-facing label only ("work
+// laptop", "ci"); it is never secret. `expiresInDays` defaults server-side.
+export const CreateApiTokenRequestSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  expiresInDays: z.number().int().min(1).max(365).optional(),
+});
+export type CreateApiTokenRequest = z.infer<typeof CreateApiTokenRequestSchema>;
+
 // ---------------------------------------------------------------------------
 // Projects
 // ---------------------------------------------------------------------------

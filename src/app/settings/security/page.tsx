@@ -15,6 +15,8 @@ const ACTION_LABELS: Record<string, string> = {
   "auth.logout": "Logged out",
   "session.revoked": "Revoked a session",
   "session.revoked_all": "Revoked all other sessions",
+  "apitoken.created": "Created a CLI access token",
+  "apitoken.revoked": "Revoked a CLI access token",
   "project.created": "Created project",
   "project.renamed": "Renamed project",
   "project.deleted": "Deleted project",

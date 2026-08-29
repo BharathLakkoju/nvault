@@ -109,15 +109,17 @@ export async function revokeSession(userId: string, sessionId: string): Promise<
 }
 
 export async function revokeAllExcept(userId: string, keepSessionId: string): Promise<void> {
+  // Browser sessions only — CLI Personal Access Tokens are managed from the
+  // dedicated CLI-tokens screen, not swept by "log out everywhere else".
   await db.session.updateMany({
-    where: { userId, id: { not: keepSessionId }, revokedAt: null },
+    where: { userId, id: { not: keepSessionId }, revokedAt: null, apiTokenHash: null },
     data: { revokedAt: new Date() },
   });
 }
 
 export async function listSessions(userId: string): Promise<SessionSummary[]> {
   return db.session.findMany({
-    where: { userId },
+    where: { userId, apiTokenHash: null },
     orderBy: { lastUsedAt: "desc" },
     select: {
       id: true,

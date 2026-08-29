@@ -36,34 +36,3 @@ export interface DownloadedFileDto {
   plaintextSize: number;
   plaintextSha256: string;
 }
-
-export interface SessionDto {
-  id: string;
-  userAgent: string | null;
-  ipAddress: string | null;
-  createdAt: string;
-  lastUsedAt: string;
-  expiresAt: string;
-  revokedAt: string | null;
-  current: boolean;
-}
-
-export interface ApiTokenDto {
-  id: string;
-  name: string;
-  tokenPrefix: string;
-  createdAt: string;
-  lastUsedAt: string;
-  expiresAt: string;
-  revokedAt: string | null;
-}
-
-export interface AuditLogDto {
-  id: string;
-  action: string;
-  targetType: string | null;
-  targetId: string | null;
-  metadata: Record<string, unknown> | null;
-  ipAddress: string | null;
-  createdAt: string;
-}
