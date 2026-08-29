@@ -63,6 +63,12 @@ describeIf("nvault API (integration)", () => {
   const db = require("@/server/db").db as import("@prisma/client").PrismaClient;
   const createdUserIds: string[] = [];
 
+  // Each test registers several accounts; the shared-IP register/login rate
+  // limit (10 / 60s) would otherwise trip partway through the suite.
+  beforeEach(async () => {
+    await db.rateLimitHit.deleteMany().catch(() => {});
+  });
+
   afterAll(async () => {
     if (createdUserIds.length) {
       await db.user.deleteMany({ where: { id: { in: createdUserIds } } });
