@@ -28,7 +28,15 @@ export type AuditAction =
   | "org.member_removed"
   | "org.member_role_changed"
   | "org.key_rotated"
-  | "org.ownership_transferred";
+  | "org.ownership_transferred"
+  | "billing.checkout_started"
+  | "billing.tier_changed"
+  | "billing.subscription_activated"
+  | "billing.subscription_past_due"
+  | "billing.subscription_canceled"
+  | "billing.pending_org_purged"
+  | "org.create_blocked_paywall"
+  | "project.create_blocked_limit";
 
 export interface AuditEntry {
   userId?: string | null;

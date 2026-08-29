@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { RequireAuth } from "@/components/require-auth";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import {
   useDeleteOrganization,
   useOrganization,
   useRenameOrganization,
+  useStartOrgCheckout,
 } from "@/hooks/use-organizations";
 import { useOrgContext } from "@/lib/org-context-store";
 import { formatRelativeTime } from "@/lib/format";
@@ -37,9 +38,27 @@ export default function OrganizationPage() {
 }
 
 function OrganizationContent({ id }: { id: string }) {
-  const { data, isLoading, error } = useOrganization(id);
+  const { data, isLoading, error, refetch } = useOrganization(id);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const setCurrentOrg = useOrgContext((s) => s.setCurrentOrg);
+
+  const justPaid = searchParams.get("welcome") === "1";
+  const orgStatus = data?.organization.orgStatus;
+
+  // After returning from Polar checkout the webhook may not have landed yet —
+  // poll until the org flips to ACTIVE.
+  useEffect(() => {
+    if (!justPaid || orgStatus === "ACTIVE") return;
+    const timer = setInterval(() => void refetch(), 3000);
+    return () => clearInterval(timer);
+  }, [justPaid, orgStatus, refetch]);
+
+  useEffect(() => {
+    if (justPaid && orgStatus === "ACTIVE") {
+      useToastStore.getState().push("success", "Organization activated — you're all set.");
+    }
+  }, [justPaid, orgStatus]);
 
   if (isLoading) return <p className="text-sm text-muted">Loading…</p>;
   if (error || !data) {
@@ -87,9 +106,18 @@ function OrganizationContent({ id }: { id: string }) {
               <Button variant="secondary">Activity</Button>
             </Link>
           )}
+          {isOwner && (
+            <Link href={`/organizations/${id}/billing`}>
+              <Button variant="secondary">Billing</Button>
+            </Link>
+          )}
           {isAdmin && <RenameOrgDialog id={id} name={org.name} slug={org.slug} />}
         </div>
       </div>
+
+      {org.orgStatus !== "ACTIVE" && (
+        <OrgBillingBanner id={id} status={org.orgStatus} isOwner={isOwner} />
+      )}
 
       {self.status === "INVITED" && (
         <Card className="border-amber-500/40">
@@ -126,7 +154,7 @@ function OrganizationContent({ id }: { id: string }) {
               </div>
               <div className="flex items-center gap-2">
                 {m.status === "INVITED" && (
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                  <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">
                     no key yet
                   </span>
                 )}
@@ -156,6 +184,61 @@ function OrganizationContent({ id }: { id: string }) {
         </Card>
       )}
     </div>
+  );
+}
+
+function OrgBillingBanner({
+  id,
+  status,
+  isOwner,
+}: {
+  id: string;
+  status: "PENDING_PAYMENT" | "SUSPENDED";
+  isOwner: boolean;
+}) {
+  const checkout = useStartOrgCheckout(id);
+
+  async function goToCheckout() {
+    try {
+      const { url } = await checkout.mutateAsync(undefined);
+      window.location.href = url;
+    } catch (err) {
+      toastError(err, "Could not open checkout");
+    }
+  }
+
+  const pending = status === "PENDING_PAYMENT";
+  const headline = pending
+    ? "This organization isn't active yet"
+    : "This organization's subscription is inactive";
+  const body = pending
+    ? "Complete payment to activate the organization. Until then, its projects and members are locked."
+    : "Payment for this organization has lapsed. Projects are read-only until the subscription is renewed.";
+
+  return (
+    <Card
+      className={
+        pending
+          ? "border-amber-500/40"
+          : "border-red-500/40"
+      }
+    >
+      <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="text-sm font-semibold text-ink">{headline}</div>
+          <p className="mt-1 text-sm text-ink/70">{body}</p>
+        </div>
+        {isOwner ? (
+          <Button onClick={goToCheckout} loading={checkout.isPending} className="shrink-0">
+            {pending ? "Complete payment" : "Renew subscription"}
+          </Button>
+        ) : (
+          <p className="shrink-0 text-xs text-muted">
+            Ask the organization owner to {pending ? "complete payment" : "renew the subscription"}.
+          </p>
+        )}
+      </div>
+    </Card>
   );
 }
 

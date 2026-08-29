@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FolderSimple, LockKey, ShieldCheck, Plus, DownloadSimple } from "@phosphor-icons/react";
+import { FolderSimple, LockKey, ShieldCheck, Plus } from "@phosphor-icons/react";
 import { RequireAuth } from "@/components/require-auth";
 import { RequireVaultUnlocked } from "@/components/require-vault-unlocked";
 import { AppShell } from "@/components/app-shell";
@@ -14,6 +14,8 @@ import { Tag } from "@/components/ui/tag";
 import { Dialog, DialogContent, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { useCreateProject, useDeleteProject, useProjects } from "@/hooks/use-projects";
 import { useOrganizations } from "@/hooks/use-organizations";
+import { usePlanInfo } from "@/hooks/use-plan-info";
+import { useProSubscription } from "@/hooks/use-billing";
 import { useOrgContext } from "@/lib/org-context-store";
 import { formatRelativeTime } from "@/lib/format";
 import { toastError, useToastStore } from "@/lib/toast-store";
@@ -33,7 +35,11 @@ export default function DashboardPage() {
 function DashboardContent() {
   const { data: projects, isLoading } = useProjects();
   const { data: orgs } = useOrganizations();
+  const { data: plan } = usePlanInfo();
+  const { data: billing } = useProSubscription();
   const currentOrgId = useOrgContext((s) => s.currentOrgId);
+
+  const isProPlan = billing?.pro.status === "ACTIVE" || billing?.pro.status === "PAST_DUE";
   const [open, setOpen] = useState(false);
 
   const currentOrg = orgs?.find((o) => o.id === currentOrgId) ?? null;
@@ -42,6 +48,11 @@ function DashboardContent() {
     currentOrgId ? p.organizationId === currentOrgId : p.scope === "personal",
   );
   const fileCount = scoped.reduce((n, p) => n + (p.fileCount ?? 0), 0);
+
+  // Free-tier personal-project cap (only relevant outside an org).
+  const personalCount = (projects ?? []).filter((p) => p.scope === "personal").length;
+  const personalCap = plan?.freeMaxPersonalProjects ?? Infinity;
+  const atPersonalCap = !currentOrg && personalCount >= personalCap;
 
   return (
     <div>
@@ -59,7 +70,7 @@ function DashboardContent() {
         {canCreateHere && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto" disabled={atPersonalCap}>
                 <Plus size={15} />
                 New Project
               </Button>
@@ -85,8 +96,32 @@ function DashboardContent() {
       <div className="mb-8 grid grid-cols-2 gap-3.5 sm:grid-cols-3">
         <StatCard kicker="Projects" value={scoped.length} />
         <StatCard kicker="Encrypted files" value={fileCount} />
-        <StatCard kicker="Plan" value={<span className="text-lg">Free — beta</span>} />
+        <StatCard
+          kicker="Plan"
+          value={<span className="text-lg">{isProPlan ? "Pro" : "Free — beta"}</span>}
+        />
       </div>
+
+      {atPersonalCap && (
+        <Card className="mb-4 flex flex-col gap-3 border-amber-500/40 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-ink/70">
+            You&apos;ve reached the Free plan limit of {personalCap} personal projects.
+            {plan?.billingEnabled
+              ? " Upgrade to Pro for unlimited, or "
+              : " Delete a project to free up a slot, or "}
+            create an{" "}
+            <Link href="/settings/organizations" className="text-accent-600 hover:underline dark:text-accent-300">
+              organization
+            </Link>{" "}
+            for your team.
+          </p>
+          {plan?.billingEnabled && (
+            <Link href="/settings/billing" className="shrink-0">
+              <Button variant="secondary">Upgrade to Pro</Button>
+            </Link>
+          )}
+        </Card>
+      )}
 
       {isLoading && <p className="text-sm text-muted">Loading projects…</p>}
 

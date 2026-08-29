@@ -60,6 +60,7 @@ nvault logout
 nvault whoami
 
 nvault projects                    # list your projects
+nvault orgs                        # list organizations you belong to
 nvault project create <name>
 nvault project delete <name> [-y]
 
@@ -79,6 +80,18 @@ nvault run [project] -- <command>  # inject secrets into a child process, no fil
 
 `push` and `pull` auto-detect the project from the current directory's git
 remote (`origin`). Pass a project name explicitly when there's no match.
+
+### Plans
+
+The free tier allows a handful of personal projects; `nvault project create`
+returns a clear error once you hit the cap. Upgrade to **Pro** (unlimited
+personal projects) or create an **organization** (shared team projects,
+priced by size) from the web app — both are billed there, not in the CLI.
+
+`nvault orgs` flags any organization whose subscription is `payment pending`
+or `inactive`; a `push` to a project in an inactive org fails with a message
+to renew, while `pull` still works (reads stay available on a lapsed
+subscription).
 
 ## Safety
 

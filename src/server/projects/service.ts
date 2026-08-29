@@ -2,6 +2,8 @@ import { Prisma, type Project } from "@prisma/client";
 import type { CreateProjectRequest } from "@/lib/schemas";
 import { db } from "../db";
 import { authorizeOrg } from "../authz/org-access";
+import { assertCanCreateOrgProject, assertCanCreatePersonalProject } from "../billing/entitlements";
+import { userHasActivePro } from "../billing/service";
 import { ApiError } from "../http";
 import { normalizeGitRemote } from "./normalize-git-remote";
 
@@ -16,6 +18,8 @@ export async function createProject(ownerId: string, dto: CreateProjectRequest):
   let keyEpoch = 0;
 
   if (dto.organizationId) {
+    // authorizeOrg enforces the billing gate — a PENDING_PAYMENT or SUSPENDED
+    // org throws 402 here before any project is created.
     const membership = await authorizeOrg(ownerId, dto.organizationId, "ADMIN");
     organizationId = dto.organizationId;
     const org = await db.organization.findUniqueOrThrow({
@@ -24,6 +28,15 @@ export async function createProject(ownerId: string, dto: CreateProjectRequest):
     });
     keyEpoch = org.currentKeyEpoch;
     void membership;
+
+    const orgProjectCount = await db.project.count({ where: { organizationId } });
+    assertCanCreateOrgProject(orgProjectCount);
+  } else {
+    const [personalCount, hasPro] = await Promise.all([
+      db.project.count({ where: { ownerId, organizationId: null } }),
+      userHasActivePro(ownerId),
+    ]);
+    assertCanCreatePersonalProject(personalCount, hasPro);
   }
 
   const existing = organizationId
@@ -66,6 +79,7 @@ export function listProjectsForUser(userId: string) {
         { ownerId: userId, organizationId: null },
         {
           organization: {
+            status: { in: ["ACTIVE", "SUSPENDED"] },
             memberships: { some: { userId, status: "ACTIVE" } },
           },
         },
@@ -87,7 +101,12 @@ export async function findProjectByGitRemote(userId: string, gitRemoteUrl: strin
       gitRemoteUrl: normalized,
       OR: [
         { ownerId: userId, organizationId: null },
-        { organization: { memberships: { some: { userId, status: "ACTIVE" } } } },
+        {
+          organization: {
+            status: { in: ["ACTIVE", "SUSPENDED"] },
+            memberships: { some: { userId, status: "ACTIVE" } },
+          },
+        },
       ],
     },
     include: { organization: { select: { id: true, name: true, slug: true } } },

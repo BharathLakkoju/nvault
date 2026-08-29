@@ -20,18 +20,50 @@ export interface ProjectDto {
 
 export type OrgRole = "OWNER" | "ADMIN" | "MEMBER";
 export type OrgMembershipStatus = "INVITED" | "ACTIVE";
+/** Billing lifecycle of the organization itself. */
+export type OrgBillingStatus = "PENDING_PAYMENT" | "ACTIVE" | "SUSPENDED";
+export type SubscriptionStatus = "PENDING" | "ACTIVE" | "PAST_DUE" | "CANCELED";
+export type TeamTier = "STARTER" | "GROWTH" | "SCALE";
+
+export interface TeamTierInfo {
+  tier: TeamTier;
+  priceLabel: string;
+  maxMembers: number;
+}
 
 export interface OrganizationDto {
   id: string;
   name: string;
   slug: string;
   currentKeyEpoch: number;
+  /** Billing lifecycle of the org (PENDING_PAYMENT / ACTIVE / SUSPENDED). */
+  orgStatus: OrgBillingStatus;
   createdAt: string;
   updatedAt: string;
   role?: OrgRole;
+  /** The caller's membership status (INVITED / ACTIVE). */
   status?: OrgMembershipStatus;
+  /** The subscription's status, or "NONE" for grandfathered orgs. */
+  billingStatus?: SubscriptionStatus | "NONE";
   memberCount?: number;
   projectCount?: number;
+}
+
+export interface SubscriptionDto {
+  status: SubscriptionStatus | "NONE";
+  /** Team size tier; null for personal (Pro) subscriptions. */
+  tier: TeamTier | null;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  /** Whether the current user may open the Polar billing portal. */
+  manageable: boolean;
+}
+
+export interface OrgBillingDto {
+  orgStatus: OrgBillingStatus;
+  memberCount: number;
+  tiers: TeamTierInfo[];
+  subscription: SubscriptionDto;
 }
 
 export interface OrgMemberDto {

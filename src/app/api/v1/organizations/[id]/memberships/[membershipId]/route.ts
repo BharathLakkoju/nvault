@@ -28,8 +28,9 @@ export const PATCH = handler(async (req, { params }) => {
 export const DELETE = handler(async (req, { params }) => {
   const auth = await requireAuth(req);
   // Any active member may remove themselves ("leave"); removing others needs
-  // ADMIN+ (enforced in removeMember via canActOnRole).
-  const actor = await authorizeOrg(auth.userId, params.id, "MEMBER");
+  // ADMIN+ (enforced in removeMember via canActOnRole). Allowed even when the
+  // org is SUSPENDED so people can always leave / clean up ("read" gate).
+  const actor = await authorizeOrg(auth.userId, params.id, "MEMBER", "read");
   if (actor.id !== params.membershipId && actor.role === "MEMBER") {
     throw new ApiError(403, "You can only remove yourself from this organization.");
   }

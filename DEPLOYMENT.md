@@ -27,9 +27,44 @@ On a plain local Postgres, both are the same string.
 | `DIRECT_DATABASE_URL` | direct connection string (step 1) |
 | `JWT_SECRET` | `node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"` — min 32 chars |
 | `STORAGE_ENCRYPTION_KEY` | `openssl rand -base64 32` — exactly 32 bytes, base64. **Set once and never change it** — rotating it makes every stored file blob unreadable. |
+| `NEXT_PUBLIC_APP_URL` | the app's own origin (e.g. `https://vault.example.com`), used to build Polar redirect URLs |
 
 Optional overrides: `JWT_ACCESS_TOKEN_TTL_SECONDS` (default 900),
 `REFRESH_TOKEN_TTL_SECONDS` (default 2592000).
+
+### Billing (Polar) — required in production
+
+Paid plans billed through [Polar](https://polar.sh) as Merchant of Record
+(Polar handles global sales tax / VAT and card data; nvault never sees a
+card number):
+
+- **Pro** — per-user subscription; lifts the personal-project cap to
+  unlimited. Free stays at `FREE_LIMITS.maxPersonalProjects`
+  ([src/server/billing/entitlements.ts](src/server/billing/entitlements.ts)).
+- **Team** — per-organization subscription in one of three flat size tiers:
+  Starter ($29, ≤10 members), Growth ($79, ≤25), Scale ($199, ≤100). Owners
+  switch tiers in-app via `polar.subscriptions.update` (Polar prorates).
+
+`env.ts` **fails the production build** unless all of these are set:
+
+| Variable | How to get it |
+|---|---|
+| `POLAR_ACCESS_TOKEN` | Polar → Settings → Organization Access Token. Scopes: `checkouts:write`, `customer_sessions:write`, `subscriptions:read`, `subscriptions:write`, `products:read`. |
+| `POLAR_PRO_PRODUCT_ID` | "nvault Pro" product, monthly recurring price; copy its id. |
+| `POLAR_TEAM_STARTER_PRODUCT_ID` | "nvault Team Starter" product ($29/mo); copy its id. |
+| `POLAR_TEAM_GROWTH_PRODUCT_ID` | "nvault Team Growth" product ($79/mo); copy its id. |
+| `POLAR_TEAM_SCALE_PRODUCT_ID` | "nvault Team Scale" product ($199/mo); copy its id. |
+| `POLAR_WEBHOOK_SECRET` | Polar → Webhooks → add endpoint `https://<your-app>/api/v1/webhooks/polar` subscribed to all `subscription.*` events; copy the signing secret. |
+| `CRON_SECRET` | `openssl rand -hex 24` — Bearer secret for the daily purge cron (`vercel.json`). |
+
+Optional: `POLAR_SERVER` (`sandbox` | `production`, default `sandbox`) and
+the display-only price labels `PRO_PLAN_PRICE_LABEL`,
+`TEAM_STARTER_PRICE_LABEL`, `TEAM_GROWTH_PRICE_LABEL`,
+`TEAM_SCALE_PRICE_LABEL`.
+
+Leaving the `POLAR_*` values unset in **local dev** disables the paywall
+entirely — new orgs activate immediately on the largest tier and the
+personal cap still applies but can't be upgraded past.
 
 ## 3. Run the migrations
 
@@ -53,6 +88,12 @@ The API is served by the same deployment under `/api/v1/*` as serverless
 functions (`maxDuration: 30s`). No second project, no CORS, no object
 storage.
 
+`vercel.json` also registers a **daily cron** (`03:00 UTC`) that hits
+`/api/v1/internal/purge-pending-orgs` to delete organizations abandoned in
+`PENDING_PAYMENT` for more than 7 days and prune never-completed pending Pro
+checkouts. Vercel authenticates the cron by sending
+`Authorization: Bearer $CRON_SECRET`.
+
 ### Platform constraint
 
 Vercel's Node runtime enforces a hard **~4.5 MB request body limit that
@@ -75,7 +116,11 @@ database.
 
 ```bash
 docker compose up -d postgres
-cp .env.example .env            # fill in the 4 values
+cp .env.example .env            # fill in DB + JWT + storage key; leave POLAR_* blank
 pnpm prisma migrate deploy
 pnpm dev                        # http://localhost:3000
 ```
+
+To exercise the real paywall locally, fill in the `POLAR_*` values against a
+Polar **sandbox** org and forward webhooks to your machine (Polar dashboard
+"Send test event", or a tunnel to `/api/v1/webhooks/polar`).

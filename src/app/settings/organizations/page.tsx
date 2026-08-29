@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Label, FieldError } from "@/components/ui/input";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { useCreateOrganization, useOrganizations } from "@/hooks/use-organizations";
+import { usePlanInfo } from "@/hooks/use-plan-info";
 import { useOrgContext } from "@/lib/org-context-store";
 import { toastError, useToastStore } from "@/lib/toast-store";
 
@@ -77,6 +78,12 @@ function OrganizationsContent() {
                   {org.memberCount ?? 0} member{org.memberCount === 1 ? "" : "s"} ·{" "}
                   {org.projectCount ?? 0} project{org.projectCount === 1 ? "" : "s"}
                   {org.status === "INVITED" && " · awaiting key access"}
+                  {org.orgStatus === "PENDING_PAYMENT" && (
+                    <span className="text-amber-600 dark:text-amber-500"> · payment pending</span>
+                  )}
+                  {org.orgStatus === "SUSPENDED" && (
+                    <span className="text-red-600 dark:text-red-500"> · subscription inactive</span>
+                  )}
                 </p>
               </div>
               <Link href={`/organizations/${org.id}`}>
@@ -103,8 +110,10 @@ function CreateOrgForm({ onDone }: { onDone: () => void }) {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
+  const [tier, setTier] = useState<"STARTER" | "GROWTH" | "SCALE">("STARTER");
   const [error, setError] = useState<string | null>(null);
   const create = useCreateOrganization();
+  const { data: plan } = usePlanInfo();
   const setCurrentOrg = useOrgContext((s) => s.setCurrentOrg);
 
   const effectiveSlug = slugTouched ? slug : slugify(name);
@@ -113,9 +122,19 @@ function CreateOrgForm({ onDone }: { onDone: () => void }) {
     e.preventDefault();
     setError(null);
     try {
-      const org = await create.mutateAsync({ name: name.trim(), slug: effectiveSlug });
-      useToastStore.getState().push("success", `Organization "${org.name}" created`);
-      setCurrentOrg(org.id);
+      const { organization, checkout } = await create.mutateAsync({
+        name: name.trim(),
+        slug: effectiveSlug,
+        tier,
+      });
+      if (checkout?.url) {
+        // Off to Polar-hosted checkout; the org stays PENDING_PAYMENT until
+        // the subscription.active webhook lands.
+        window.location.href = checkout.url;
+        return;
+      }
+      useToastStore.getState().push("success", `Organization "${organization.name}" created`);
+      setCurrentOrg(organization.id);
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create organization");
@@ -152,6 +171,41 @@ function CreateOrgForm({ onDone }: { onDone: () => void }) {
         />
         <FieldError>{error}</FieldError>
       </div>
+      {plan?.billingEnabled && (
+        <div>
+          <Label>Plan</Label>
+          <div className="mt-1 space-y-1.5">
+            {(plan.teamTiers ?? []).map((t) => (
+              <label
+                key={t.tier}
+                className={
+                  "flex cursor-pointer items-center justify-between rounded-md border px-3 py-2 text-sm " +
+                  (tier === t.tier
+                    ? "border-accent-500 bg-accent-500/10"
+                    : "border-line")
+                }
+              >
+                <span className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="tier"
+                    checked={tier === t.tier}
+                    onChange={() => setTier(t.tier)}
+                  />
+                  <span className="font-medium capitalize">{t.tier.toLowerCase()}</span>
+                  <span className="text-muted">
+                    up to {t.maxMembers} members
+                  </span>
+                </span>
+                <span className="text-ink/70">{t.priceLabel}</span>
+              </label>
+            ))}
+          </div>
+          <p className="mt-1.5 text-xs text-muted">
+            Billed through Polar. You can change plans later; a secure checkout page opens next.
+          </p>
+        </div>
+      )}
       <div className="flex justify-end gap-2">
         <DialogClose asChild>
           <Button type="button" variant="secondary">
@@ -159,7 +213,7 @@ function CreateOrgForm({ onDone }: { onDone: () => void }) {
           </Button>
         </DialogClose>
         <Button type="submit" loading={create.isPending}>
-          Create
+          {plan?.billingEnabled ? "Continue to payment" : "Create"}
         </Button>
       </div>
     </form>

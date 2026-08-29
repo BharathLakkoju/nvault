@@ -2,6 +2,20 @@ import { randomUUID } from "node:crypto";
 import { NextRequest } from "next/server";
 import * as vaultCrypto from "@/lib/crypto";
 
+// The Polar HTTP client is never reachable from tests; stub the two calls
+// that would hit the network. Webhook signing/verification stays real.
+jest.mock("@/server/billing/polar", () => {
+  const actual = jest.requireActual("@/server/billing/polar");
+  return {
+    __esModule: true,
+    ...actual,
+    createOrgCheckout: jest.fn(async () => "https://polar.test/checkout/team"),
+    createProCheckout: jest.fn(async () => "https://polar.test/checkout/pro"),
+    createBillingPortalUrl: jest.fn(async () => "https://polar.test/portal/session"),
+    updateSubscriptionProduct: jest.fn(async () => undefined),
+  };
+});
+
 /**
  * End-to-end coverage of the web -> API -> Postgres path, exercising the real
  * Route Handlers with encryption performed exactly as the browser does it.
@@ -67,7 +81,132 @@ describeIf("nvault API (integration)", () => {
     transferOwnership: require("@/app/api/v1/organizations/[id]/transfer-ownership/route")
       .POST as Handler,
     rotateKey: require("@/app/api/v1/organizations/[id]/rotate-key/route").POST as Handler,
+    polarWebhook: require("@/app/api/v1/webhooks/polar/route").POST as Handler,
+    orgBilling: require("@/app/api/v1/organizations/[id]/billing/route").GET as Handler,
+    orgCheckout: require("@/app/api/v1/organizations/[id]/billing/checkout/route").POST as Handler,
+    changeTier: require("@/app/api/v1/organizations/[id]/billing/change-tier/route").POST as Handler,
+    orgPortal: require("@/app/api/v1/organizations/[id]/billing/portal/route").GET as Handler,
+    purgeCron: require("@/app/api/v1/internal/purge-pending-orgs/route").GET as Handler,
+    plan: require("@/app/api/v1/billing/plan/route").GET as Handler,
+    proCheckout: require("@/app/api/v1/billing/pro/checkout/route").POST as Handler,
+    personalPortal: require("@/app/api/v1/billing/portal/route").GET as Handler,
+    personalSub: require("@/app/api/v1/billing/subscription/route").GET as Handler,
   };
+
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { signWebhookForTest } = require("@/server/billing/polar") as {
+    signWebhookForTest: (
+      body: string,
+      opts: { id: string; timestamp: Date },
+    ) => Record<string, string>;
+  };
+
+  const TIER_PRODUCT: Record<string, string> = {
+    STARTER: process.env.POLAR_TEAM_STARTER_PRODUCT_ID as string,
+    GROWTH: process.env.POLAR_TEAM_GROWTH_PRODUCT_ID as string,
+    SCALE: process.env.POLAR_TEAM_SCALE_PRODUCT_ID as string,
+  };
+
+  /** Posts a signed Polar `subscription.*` webhook to the real handler. */
+  async function fireSubscriptionWebhook(
+    orgId: string,
+    opts: {
+      type?: string;
+      status?: string;
+      eventId?: string;
+      cancelAtPeriodEnd?: boolean;
+      currentPeriodEnd?: string;
+      subscriptionId?: string;
+      tier?: "STARTER" | "GROWTH" | "SCALE";
+    } = {},
+  ) {
+    const eventId = opts.eventId ?? `evt_${randomUUID()}`;
+    const tier = opts.tier ?? "SCALE";
+    const body = JSON.stringify({
+      type: opts.type ?? "subscription.active",
+      data: {
+        id: opts.subscriptionId ?? `sub_${orgId}`,
+        status: opts.status ?? "active",
+        customer_id: `cus_${orgId}`,
+        product_id: TIER_PRODUCT[tier],
+        cancel_at_period_end: opts.cancelAtPeriodEnd ?? false,
+        current_period_end:
+          opts.currentPeriodEnd ?? new Date(Date.now() + 30 * 864e5).toISOString(),
+        metadata: { organizationId: orgId, tier },
+      },
+    });
+    const headers = {
+      "content-type": "application/json",
+      ...signWebhookForTest(body, { id: eventId, timestamp: new Date() }),
+    };
+    const req = new NextRequest("http://localhost/api/v1/webhooks/polar", {
+      method: "POST",
+      headers,
+      body,
+    });
+    const res = await routes.polarWebhook(req, { params: {} });
+    const text = await res.text();
+    return { status: res.status, body: text ? JSON.parse(text) : undefined, eventId };
+  }
+
+  /** Marks a freshly-created org ACTIVE by simulating the activation webhook. */
+  async function activateOrg(orgId: string) {
+    const res = await fireSubscriptionWebhook(orgId, { status: "active" });
+    expect(res.status).toBe(202);
+    expect(res.body.outcome).toBe("applied");
+  }
+
+  /** Posts a signed Polar PRO `subscription.*` webhook (metadata carries userId). */
+  async function fireProWebhook(
+    userId: string,
+    opts: { type?: string; status?: string; eventId?: string; subscriptionId?: string } = {},
+  ) {
+    const eventId = opts.eventId ?? `evt_${randomUUID()}`;
+    const body = JSON.stringify({
+      type: opts.type ?? "subscription.active",
+      data: {
+        id: opts.subscriptionId ?? `sub_pro_${userId}`,
+        status: opts.status ?? "active",
+        customer_id: `cus_${userId}`,
+        product_id: "prod_pro_integration_test",
+        cancel_at_period_end: false,
+        current_period_end: new Date(Date.now() + 30 * 864e5).toISOString(),
+        metadata: { plan: "PRO", userId },
+      },
+    });
+    const headers = {
+      "content-type": "application/json",
+      ...signWebhookForTest(body, { id: eventId, timestamp: new Date() }),
+    };
+    const req = new NextRequest("http://localhost/api/v1/webhooks/polar", {
+      method: "POST",
+      headers,
+      body,
+    });
+    const res = await routes.polarWebhook(req, { params: {} });
+    const text = await res.text();
+    return { status: res.status, body: text ? JSON.parse(text) : undefined, eventId };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const FREE_LIMITS_MAX = (require("@/server/billing/entitlements").FREE_LIMITS as {
+    maxPersonalProjects: number;
+  }).maxPersonalProjects;
+
+  /** Creates a personal project with a throwaway wrapped key; returns {status,body}. */
+  async function makePersonalProject(token: string, name: string) {
+    const id = randomUUID();
+    const { wrappedProjectKey } = await vaultCrypto.createProjectKey(
+      vaultCrypto.generateDataKey(),
+      id,
+    );
+    return call(routes.projects.POST, {
+      method: "POST",
+      path: "/api/v1/projects",
+      token,
+      body: { id, name, wrappedProjectKey },
+    });
+  }
 
   const db = require("@/server/db").db as import("@prisma/client").PrismaClient;
   const createdUserIds: string[] = [];
@@ -102,7 +241,13 @@ describeIf("nvault API (integration)", () => {
     });
     expect(res.status).toBe(201);
     createdUserIds.push(res.body.user.id);
-    return { email, password, masterKey: provisioned.masterKey, token: res.body.accessToken as string };
+    return {
+      id: res.body.user.id as string,
+      email,
+      password,
+      masterKey: provisioned.masterKey,
+      token: res.body.accessToken as string,
+    };
   }
 
   /** Registers a user and provisions their RSA keypair (required to use orgs). */
@@ -433,6 +578,9 @@ describeIf("nvault API (integration)", () => {
     const orgId = createRes.body.organization.id as string;
     expect(createRes.body.organization.currentKeyEpoch).toBe(0);
 
+    // The org is unusable until the Team subscription is paid.
+    await activateOrg(orgId);
+
     // No response from the org endpoints contains the raw Org Key bytes.
     const detailRes = await call(routes.org.GET, {
       method: "GET",
@@ -551,7 +699,11 @@ describeIf("nvault API (integration)", () => {
       body: { name: "Team", slug: `team-${randomUUID().slice(0, 8)}`, wrappedOrgKey: wrapped },
     });
     expect(res.status).toBe(201);
-    return { orgId: res.body.organization.id as string, orgKey };
+    expect(res.body.organization.orgStatus).toBe("PENDING_PAYMENT");
+    expect(res.body.checkout.url).toContain("polar.test");
+    const orgId = res.body.organization.id as string;
+    await activateOrg(orgId);
+    return { orgId, orgKey };
   }
 
   it("runs the full invite → accept → grant-key → shared-decrypt flow", async () => {
@@ -936,6 +1088,355 @@ describeIf("nvault API (integration)", () => {
     await expect(
       vaultCrypto.openProjectKey(orgKey, projectId, proj.wrappedProjectKey),
     ).rejects.toThrow();
+  });
+
+  // -------------------------------------------------------------------------
+  // Billing / paywall
+  // -------------------------------------------------------------------------
+
+  async function createRawOrg(owner: Awaited<ReturnType<typeof registerUserWithKeypair>>) {
+    const orgKey = vaultCrypto.generateDataKey();
+    const wrapped = await vaultCrypto.wrapToPublicKey(owner.publicKey, orgKey);
+    const res = await call(routes.orgs.POST, {
+      method: "POST",
+      path: "/api/v1/organizations",
+      token: owner.token,
+      body: { name: "Team", slug: `team-${randomUUID().slice(0, 8)}`, wrappedOrgKey: wrapped },
+    });
+    expect(res.status).toBe(201);
+    return { orgId: res.body.organization.id as string, orgKey, body: res.body };
+  }
+
+  it("a new org is PENDING_PAYMENT: gets a checkout URL, and its writes are 402 until paid", async () => {
+    const alice = await registerUserWithKeypair("billing pending passphrase");
+    const { orgId, orgKey, body } = await createRawOrg(alice);
+    expect(body.organization.orgStatus).toBe("PENDING_PAYMENT");
+    expect(body.checkout.url).toContain("polar.test");
+
+    // Creating a project in the pending org is refused with 402.
+    const projectId = randomUUID();
+    const { wrappedProjectKey } = await vaultCrypto.createProjectKey(orgKey, projectId);
+    const projRes = await call(routes.projects.POST, {
+      method: "POST",
+      path: "/api/v1/projects",
+      token: alice.token,
+      body: { id: projectId, name: "p1", wrappedProjectKey, organizationId: orgId },
+    });
+    expect(projRes.status).toBe(402);
+
+    // Inviting is refused too.
+    const bob = await registerUserWithKeypair("bob pending");
+    const inviteRes = await call(routes.orgInvites.POST, {
+      method: "POST",
+      path: `/api/v1/organizations/${orgId}/invites`,
+      params: { id: orgId },
+      token: alice.token,
+      body: { email: bob.email, role: "MEMBER" },
+    });
+    expect(inviteRes.status).toBe(402);
+
+    // The pending org's (nonexistent) projects never surface in the list.
+    const listRes = await call(routes.projects.GET, {
+      method: "GET",
+      path: "/api/v1/projects",
+      token: alice.token,
+    });
+    expect(
+      listRes.body.projects.some((p: { organizationId: string | null }) => p.organizationId === orgId),
+    ).toBe(false);
+
+    // Billing status is readable even while pending (owner needs the CTA).
+    const billingRes = await call(routes.orgBilling, {
+      method: "GET",
+      path: `/api/v1/organizations/${orgId}/billing`,
+      params: { id: orgId },
+      token: alice.token,
+    });
+    expect(billingRes.status).toBe(200);
+    expect(billingRes.body.orgStatus).toBe("PENDING_PAYMENT");
+  });
+
+  it("subscription.active activates the org; past_due suspends it (reads ok, writes 402)", async () => {
+    const alice = await registerUserWithKeypair("billing lifecycle passphrase");
+    const { orgId, orgKey } = await createRawOrg(alice);
+
+    await activateOrg(orgId);
+
+    // Now project creation works.
+    const projectId = randomUUID();
+    const { wrappedProjectKey } = await vaultCrypto.createProjectKey(orgKey, projectId);
+    const projRes = await call(routes.projects.POST, {
+      method: "POST",
+      path: "/api/v1/projects",
+      token: alice.token,
+      body: { id: projectId, name: "active-proj", wrappedProjectKey, organizationId: orgId },
+    });
+    expect(projRes.status).toBe(201);
+
+    // Payment lapses.
+    const pastDue = await fireSubscriptionWebhook(orgId, {
+      type: "subscription.past_due",
+      status: "past_due",
+    });
+    expect(pastDue.status).toBe(202);
+
+    // Reads still work…
+    const readRes = await call(routes.files.GET, {
+      method: "GET",
+      path: `/api/v1/projects/${projectId}/files`,
+      params: { id: projectId },
+      token: alice.token,
+    });
+    expect(readRes.status).toBe(200);
+
+    // …writes do not.
+    const newProjectId = randomUUID();
+    const second = await vaultCrypto.createProjectKey(orgKey, newProjectId);
+    const blockedRes = await call(routes.projects.POST, {
+      method: "POST",
+      path: "/api/v1/projects",
+      token: alice.token,
+      body: {
+        id: newProjectId,
+        name: "blocked-proj",
+        wrappedProjectKey: second.wrappedProjectKey,
+        organizationId: orgId,
+      },
+    });
+    expect(blockedRes.status).toBe(402);
+
+    // Recovery: a fresh active event restores write access.
+    await activateOrg(orgId);
+    const recoveredRes = await call(routes.projects.POST, {
+      method: "POST",
+      path: "/api/v1/projects",
+      token: alice.token,
+      body: {
+        id: newProjectId,
+        name: "recovered-proj",
+        wrappedProjectKey: second.wrappedProjectKey,
+        organizationId: orgId,
+      },
+    });
+    expect(recoveredRes.status).toBe(201);
+  });
+
+  it("replays a webhook idempotently and rejects a bad signature", async () => {
+    const alice = await registerUserWithKeypair("billing webhook passphrase");
+    const { orgId } = await createRawOrg(alice);
+
+    const eventId = `evt_replay_${randomUUID()}`;
+    const first = await fireSubscriptionWebhook(orgId, { eventId });
+    expect(first.body.outcome).toBe("applied");
+    const replay = await fireSubscriptionWebhook(orgId, { eventId });
+    expect(replay.body.outcome).toBe("duplicate");
+
+    // Tampered body → signature mismatch → 400, no state change.
+    const body = JSON.stringify({
+      type: "subscription.revoked",
+      data: { id: `sub_${orgId}`, status: "canceled", metadata: { organizationId: orgId } },
+    });
+    const goodHeaders = signWebhookForTest(body, { id: "evt_bad", timestamp: new Date() });
+    const tampered = new NextRequest("http://localhost/api/v1/webhooks/polar", {
+      method: "POST",
+      headers: { "content-type": "application/json", ...goodHeaders },
+      body: body.replace("canceled", "active"),
+    });
+    const res = await routes.polarWebhook(tampered, { params: {} });
+    expect(res.status).toBe(400);
+
+    const org = await db.organization.findUnique({ where: { id: orgId } });
+    expect(org?.status).toBe("ACTIVE"); // unchanged by the rejected event
+  });
+
+  it("caps personal projects on the free plan", async () => {
+    const user = await registerUser("free tier cap passphrase");
+
+    const planRes = await call(routes.plan, {
+      method: "GET",
+      path: "/api/v1/billing/plan",
+      token: user.token,
+    });
+    const cap = planRes.body.freeMaxPersonalProjects as number;
+
+    for (let i = 0; i < cap; i++) {
+      const id = randomUUID();
+      const { wrappedProjectKey } = await vaultCrypto.createProjectKey(
+        vaultCrypto.generateDataKey(),
+        id,
+      );
+      // Wrap under the master key path isn't exercised here; the server only
+      // stores the ciphertext, so any well-formed wrapped key is accepted.
+      const res = await call(routes.projects.POST, {
+        method: "POST",
+        path: "/api/v1/projects",
+        token: user.token,
+        body: { id, name: `free-${i}`, wrappedProjectKey },
+      });
+      expect(res.status).toBe(201);
+    }
+
+    const overflowId = randomUUID();
+    const { wrappedProjectKey } = await vaultCrypto.createProjectKey(
+      vaultCrypto.generateDataKey(),
+      overflowId,
+    );
+    const overflow = await call(routes.projects.POST, {
+      method: "POST",
+      path: "/api/v1/projects",
+      token: user.token,
+      body: { id: overflowId, name: "free-overflow", wrappedProjectKey },
+    });
+    expect(overflow.status).toBe(402);
+  });
+
+  it("Pro subscription lifts the personal-project cap; canceling reinstates it", async () => {
+    const user = await registerUser("pro tier passphrase");
+
+    // Fill the free tier.
+    const cap = FREE_LIMITS_MAX;
+    for (let i = 0; i < cap; i++) {
+      const id = randomUUID();
+      const { wrappedProjectKey } = await vaultCrypto.createProjectKey(
+        vaultCrypto.generateDataKey(),
+        id,
+      );
+      const res = await call(routes.projects.POST, {
+        method: "POST",
+        path: "/api/v1/projects",
+        token: user.token,
+        body: { id, name: `p${i}`, wrappedProjectKey },
+      });
+      expect(res.status).toBe(201);
+    }
+
+    // Start Pro checkout -> URL + a PENDING subscription row (no entitlement yet).
+    const checkoutRes = await call(routes.proCheckout, {
+      method: "POST",
+      path: "/api/v1/billing/pro/checkout",
+      token: user.token,
+    });
+    expect(checkoutRes.status).toBe(200);
+    expect(checkoutRes.body.url).toContain("polar.test");
+
+    const stillCapped = await makePersonalProject(user.token, "over-1");
+    expect(stillCapped.status).toBe(402);
+
+    // Activation webhook -> unlimited.
+    const activate = await fireProWebhook(user.id, { status: "active" });
+    expect(activate.status).toBe(202);
+    expect(activate.body.outcome).toBe("applied");
+
+    for (const name of ["over-1", "over-2", "over-3"]) {
+      const r = await makePersonalProject(user.token, name);
+      expect(r.status).toBe(201);
+    }
+
+    const subRes = await call(routes.personalSub, {
+      method: "GET",
+      path: "/api/v1/billing/subscription",
+      token: user.token,
+    });
+    expect(subRes.body.pro.status).toBe("ACTIVE");
+
+    // Cancel -> cap reinstated, but existing projects are untouched.
+    const revoke = await fireProWebhook(user.id, {
+      type: "subscription.revoked",
+      status: "canceled",
+    });
+    expect(revoke.status).toBe(202);
+
+    const cappedAgain = await makePersonalProject(user.token, "over-4");
+    expect(cappedAgain.status).toBe(402);
+
+    const list = await call(routes.projects.GET, {
+      method: "GET",
+      path: "/api/v1/projects",
+      token: user.token,
+    });
+    expect(list.body.projects.length).toBe(cap + 3); // nothing deleted
+  });
+
+  it("Team tier caps members; upgrading raises the cap, downgrading is guarded", async () => {
+    const owner = await registerUserWithKeypair("tier owner passphrase");
+    const { orgId } = await createRawOrg(owner);
+    await fireSubscriptionWebhook(orgId, { tier: "STARTER" });
+
+    // Owner is member #1; fill to the STARTER cap (10) with pending invites.
+    await db.organizationInvite.createMany({
+      data: Array.from({ length: 9 }, () => ({
+        organizationId: orgId,
+        email: `filler_${randomUUID()}@example.com`,
+        role: "MEMBER" as const,
+        tokenHash: `hash_${randomUUID()}`,
+        tokenPrefix: "oiv_xxxx",
+        expiresAt: new Date(Date.now() + 7 * 864e5),
+      })),
+    });
+
+    const bob = await registerUserWithKeypair("bob tier passphrase");
+    const invitePath = `/api/v1/organizations/${orgId}/invites`;
+    const inviteBob = () =>
+      call(routes.orgInvites.POST, {
+        method: "POST",
+        path: invitePath,
+        params: { id: orgId },
+        token: owner.token,
+        body: { email: bob.email, role: "MEMBER" },
+      });
+
+    // 1 owner + 9 pending = 10 = STARTER cap → 402.
+    expect((await inviteBob()).status).toBe(402);
+
+    // Upgrade to GROWTH. change-tier calls polar (mocked); our tier only
+    // moves on the webhook — simulate the `subscription.updated`.
+    const change = await call(routes.changeTier, {
+      method: "POST",
+      path: `/api/v1/organizations/${orgId}/billing/change-tier`,
+      params: { id: orgId },
+      token: owner.token,
+      body: { tier: "GROWTH" },
+    });
+    expect(change.status).toBe(200);
+    await fireSubscriptionWebhook(orgId, { type: "subscription.updated", tier: "GROWTH" });
+
+    // Now under the GROWTH cap (25) → invite allowed.
+    expect((await inviteBob()).status).toBe(201);
+
+    // Downgrade to STARTER refused — the org now has 11 seats.
+    const downgrade = await call(routes.changeTier, {
+      method: "POST",
+      path: `/api/v1/organizations/${orgId}/billing/change-tier`,
+      params: { id: orgId },
+      token: owner.token,
+      body: { tier: "STARTER" },
+    });
+    expect(downgrade.status).toBe(409);
+
+    // Billing DTO reflects the current tier.
+    const billing = await call(routes.orgBilling, {
+      method: "GET",
+      path: `/api/v1/organizations/${orgId}/billing`,
+      params: { id: orgId },
+      token: owner.token,
+    });
+    expect(billing.body.subscription.tier).toBe("GROWTH");
+  });
+
+  it("purge-pending-orgs requires the CRON_SECRET", async () => {
+    const unauth = new NextRequest("http://localhost/api/v1/internal/purge-pending-orgs", {
+      method: "GET",
+      headers: { authorization: "Bearer wrong" },
+    });
+    const res = await routes.purgeCron(unauth, { params: {} });
+    expect(res.status).toBe(401);
+
+    const authed = new NextRequest("http://localhost/api/v1/internal/purge-pending-orgs", {
+      method: "GET",
+      headers: { authorization: `Bearer ${process.env.CRON_SECRET}` },
+    });
+    const ok = await routes.purgeCron(authed, { params: {} });
+    expect(ok.status).toBe(200);
   });
 
   it("immediately invalidates a revoked session's access token", async () => {
