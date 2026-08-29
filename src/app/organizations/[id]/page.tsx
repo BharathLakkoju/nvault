@@ -69,7 +69,7 @@ function OrganizationContent({ id }: { id: string }) {
             {self.status === "INVITED" && " · awaiting key access from an admin"}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="secondary"
             onClick={() => {
@@ -79,17 +79,39 @@ function OrganizationContent({ id }: { id: string }) {
           >
             View projects
           </Button>
+          <Link href={`/organizations/${id}/members`}>
+            <Button variant="secondary">Members</Button>
+          </Link>
+          {isAdmin && (
+            <Link href={`/organizations/${id}/activity`}>
+              <Button variant="secondary">Activity</Button>
+            </Link>
+          )}
           {isAdmin && <RenameOrgDialog id={id} name={org.name} slug={org.slug} />}
         </div>
       </div>
 
+      {self.status === "INVITED" && (
+        <Card className="border-amber-300 dark:border-amber-800">
+          <div className="p-5 text-sm text-slate-600 dark:text-slate-300">
+            You&apos;ve joined this organization, but an admin still needs to grant you access to its
+            encryption key before you can open its projects.
+          </div>
+        </Card>
+      )}
+
       <Card>
         <CardHeader
-          title="Members"
+          title={`${members.length} member${members.length === 1 ? "" : "s"}`}
           description="Everyone with access to this organization's projects."
+          action={
+            <Link href={`/organizations/${id}/members`}>
+              <Button variant="secondary">Manage members</Button>
+            </Link>
+          }
         />
         <ul className="divide-y divide-slate-200 dark:divide-slate-800">
-          {members.map((m) => (
+          {members.slice(0, 6).map((m) => (
             <li
               key={m.id}
               className="flex flex-col gap-1 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
@@ -115,11 +137,6 @@ function OrganizationContent({ id }: { id: string }) {
             </li>
           ))}
         </ul>
-        {isAdmin && (
-          <div className="border-t border-slate-200 px-5 py-3 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
-            Inviting teammates and granting key access is coming next.
-          </div>
-        )}
       </Card>
 
       {isOwner && (

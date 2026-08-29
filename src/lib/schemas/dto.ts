@@ -109,6 +109,37 @@ export const UpdateOrganizationRequestSchema = z
   });
 export type UpdateOrganizationRequest = z.infer<typeof UpdateOrganizationRequestSchema>;
 
+export const OrgRoleSchema = z.enum(["OWNER", "ADMIN", "MEMBER"]);
+
+export const CreateInviteRequestSchema = z.object({
+  email: EmailSchema,
+  role: OrgRoleSchema,
+});
+export type CreateInviteRequest = z.infer<typeof CreateInviteRequestSchema>;
+
+export const AcceptInviteRequestSchema = z.object({
+  token: z.string().min(1).max(200),
+});
+export type AcceptInviteRequest = z.infer<typeof AcceptInviteRequestSchema>;
+
+export const GrantKeyRequestSchema = z.object({
+  /** The Org Key, RSA-wrapped to the target member's public key. */
+  wrappedOrgKey: WrappedOrgKeySchema,
+  /** Must equal the org's current key epoch (stale grants are rejected). */
+  keyEpoch: z.number().int().min(0),
+});
+export type GrantKeyRequest = z.infer<typeof GrantKeyRequestSchema>;
+
+export const UpdateMembershipRequestSchema = z.object({
+  role: OrgRoleSchema,
+});
+export type UpdateMembershipRequest = z.infer<typeof UpdateMembershipRequestSchema>;
+
+export const TransferOwnershipRequestSchema = z.object({
+  toMembershipId: z.string().cuid(),
+});
+export type TransferOwnershipRequest = z.infer<typeof TransferOwnershipRequestSchema>;
+
 export const RenameProjectRequestSchema = z.object({
   name: ProjectNameSchema,
 });

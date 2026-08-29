@@ -58,6 +58,14 @@ describeIf("nvault API (integration)", () => {
     keypair: require("@/app/api/v1/auth/vault/keypair/route"),
     orgs: require("@/app/api/v1/organizations/route"),
     org: require("@/app/api/v1/organizations/[id]/route"),
+    orgInvites: require("@/app/api/v1/organizations/[id]/invites/route"),
+    revokeInvite: require("@/app/api/v1/organizations/[id]/invites/[inviteId]/route").DELETE as Handler,
+    acceptInvite: require("@/app/api/v1/invites/accept/route").POST as Handler,
+    grantKey: require("@/app/api/v1/organizations/[id]/memberships/[membershipId]/grant-key/route")
+      .POST as Handler,
+    membership: require("@/app/api/v1/organizations/[id]/memberships/[membershipId]/route"),
+    transferOwnership: require("@/app/api/v1/organizations/[id]/transfer-ownership/route")
+      .POST as Handler,
   };
 
   const db = require("@/server/db").db as import("@prisma/client").PrismaClient;
@@ -530,6 +538,249 @@ describeIf("nvault API (integration)", () => {
       body: { id: projectId, name: "nope", wrappedProjectKey, organizationId: orgId },
     });
     expect(res.status).toBe(404);
+  });
+
+  async function createOrg(owner: Awaited<ReturnType<typeof registerUserWithKeypair>>) {
+    const orgKey = vaultCrypto.generateDataKey();
+    const wrapped = await vaultCrypto.wrapToPublicKey(owner.publicKey, orgKey);
+    const res = await call(routes.orgs.POST, {
+      method: "POST",
+      path: "/api/v1/organizations",
+      token: owner.token,
+      body: { name: "Team", slug: `team-${randomUUID().slice(0, 8)}`, wrappedOrgKey: wrapped },
+    });
+    expect(res.status).toBe(201);
+    return { orgId: res.body.organization.id as string, orgKey };
+  }
+
+  it("runs the full invite → accept → grant-key → shared-decrypt flow", async () => {
+    const alice = await registerUserWithKeypair("alice invite flow");
+    const bob = await registerUserWithKeypair("bob invite flow");
+    const { orgId, orgKey } = await createOrg(alice);
+
+    // Alice invites Bob as MEMBER.
+    const inviteRes = await call(routes.orgInvites.POST, {
+      method: "POST",
+      path: `/api/v1/organizations/${orgId}/invites`,
+      params: { id: orgId },
+      token: alice.token,
+      body: { email: bob.email, role: "MEMBER" },
+    });
+    expect(inviteRes.status).toBe(201);
+    const inviteToken = inviteRes.body.token as string;
+    expect(inviteToken).toMatch(/^oiv_/);
+
+    // A different account cannot redeem the link.
+    const mallory = await registerUserWithKeypair("mallory invite");
+    const wrongAccount = await call(routes.acceptInvite, {
+      method: "POST",
+      path: "/api/v1/invites/accept",
+      token: mallory.token,
+      body: { token: inviteToken },
+    });
+    expect(wrongAccount.status).toBe(403);
+
+    // Bob accepts — becomes an INVITED member with no key yet.
+    const acceptRes = await call(routes.acceptInvite, {
+      method: "POST",
+      path: "/api/v1/invites/accept",
+      token: bob.token,
+      body: { token: inviteToken },
+    });
+    expect(acceptRes.status).toBe(200);
+
+    // The token is single-use.
+    const reuse = await call(routes.acceptInvite, {
+      method: "POST",
+      path: "/api/v1/invites/accept",
+      token: bob.token,
+      body: { token: inviteToken },
+    });
+    expect(reuse.status).toBe(404);
+
+    // Alice creates an org project + uploads a secret.
+    const projectId = randomUUID();
+    const { wrappedProjectKey, projectKey } = await vaultCrypto.createProjectKey(orgKey, projectId);
+    await call(routes.projects.POST, {
+      method: "POST",
+      path: "/api/v1/projects",
+      token: alice.token,
+      body: { id: projectId, name: `proj-${Date.now()}`, wrappedProjectKey, organizationId: orgId },
+    });
+    const secret = "TEAM_TOKEN=shhh\n";
+    const contentId = randomUUID();
+    const payload = await vaultCrypto.encryptFileContent(
+      projectKey,
+      contentId,
+      vaultCrypto.utf8ToBytes(secret),
+    );
+    await call(routes.files.POST, {
+      method: "POST",
+      path: `/api/v1/projects/${projectId}/files`,
+      params: { id: projectId },
+      token: alice.token,
+      body: {
+        filename: ".env",
+        payload,
+        contentId,
+        plaintextSize: secret.length,
+        plaintextSha256: await vaultCrypto.sha256Hex(vaultCrypto.utf8ToBytes(secret)),
+      },
+    });
+
+    // Bob has no key yet → the org project is invisible to him.
+    let bobProjects = await call(routes.projects.GET, {
+      method: "GET",
+      path: "/api/v1/projects",
+      token: bob.token,
+    });
+    expect(bobProjects.body.projects.some((p: { id: string }) => p.id === projectId)).toBe(false);
+
+    // Alice grants Bob the Org Key (wrapped to Bob's public key).
+    const detail = await call(routes.org.GET, {
+      method: "GET",
+      path: `/api/v1/organizations/${orgId}`,
+      params: { id: orgId },
+      token: alice.token,
+    });
+    const bobMembership = detail.body.members.find(
+      (m: { email: string }) => m.email === bob.email,
+    );
+    const wrappedForBob = await vaultCrypto.wrapToPublicKey(bobMembership.publicKey, orgKey);
+    const grantRes = await call(routes.grantKey, {
+      method: "POST",
+      path: `/api/v1/organizations/${orgId}/memberships/${bobMembership.id}/grant-key`,
+      params: { id: orgId, membershipId: bobMembership.id },
+      token: alice.token,
+      body: { wrappedOrgKey: wrappedForBob, keyEpoch: 0 },
+    });
+    expect(grantRes.status).toBe(200);
+
+    // Now Bob sees the project and can decrypt the file end-to-end with only
+    // his own keypair + the granted Org Key blob.
+    const bobDetail = await call(routes.org.GET, {
+      method: "GET",
+      path: `/api/v1/organizations/${orgId}`,
+      params: { id: orgId },
+      token: bob.token,
+    });
+    const bobOrgKey = await vaultCrypto.unwrapFromPrivateKey(
+      bob.privateKey,
+      bobDetail.body.self.wrappedOrgKey,
+    );
+    expect(vaultCrypto.bytesToBase64(bobOrgKey)).toBe(vaultCrypto.bytesToBase64(orgKey));
+
+    bobProjects = await call(routes.projects.GET, {
+      method: "GET",
+      path: "/api/v1/projects",
+      token: bob.token,
+    });
+    const bobProject = bobProjects.body.projects.find((p: { id: string }) => p.id === projectId);
+    expect(bobProject).toBeTruthy();
+
+    const bobFiles = await call(routes.files.GET, {
+      method: "GET",
+      path: `/api/v1/projects/${projectId}/files`,
+      params: { id: projectId },
+      token: bob.token,
+    });
+    const fileId = bobFiles.body.files[0].id as string;
+    const versionId = bobFiles.body.files[0].currentVersion.id as string;
+    const download = await call(routes.fileVersion, {
+      method: "GET",
+      path: `/api/v1/projects/${projectId}/files/${fileId}/versions/${versionId}`,
+      params: { id: projectId, fileId, versionId },
+      token: bob.token,
+    });
+    const bobProjectKey = await vaultCrypto.openProjectKey(
+      bobOrgKey,
+      projectId,
+      bobProject.wrappedProjectKey,
+    );
+    const decrypted = await vaultCrypto.decryptFileContent(
+      bobProjectKey,
+      download.body.payload.contentId,
+      download.body.payload,
+    );
+    expect(vaultCrypto.bytesToUtf8(decrypted)).toBe(secret);
+
+    // No org endpoint response ever contains the raw Org Key.
+    expect(JSON.stringify(bobDetail.body)).not.toContain(vaultCrypto.bytesToBase64(orgKey));
+  });
+
+  it("enforces role rules: members can't invite, last owner is protected, removal cuts access", async () => {
+    const owner = await registerUserWithKeypair("owner rules");
+    const member = await registerUserWithKeypair("member rules");
+    const { orgId, orgKey } = await createOrg(owner);
+
+    // Add member (invite + accept + grant).
+    const inv = await call(routes.orgInvites.POST, {
+      method: "POST",
+      path: `/api/v1/organizations/${orgId}/invites`,
+      params: { id: orgId },
+      token: owner.token,
+      body: { email: member.email, role: "MEMBER" },
+    });
+    await call(routes.acceptInvite, {
+      method: "POST",
+      path: "/api/v1/invites/accept",
+      token: member.token,
+      body: { token: inv.body.token },
+    });
+    const detail = await call(routes.org.GET, {
+      method: "GET",
+      path: `/api/v1/organizations/${orgId}`,
+      params: { id: orgId },
+      token: owner.token,
+    });
+    const memberRow = detail.body.members.find((m: { email: string }) => m.email === member.email);
+    const wrappedForMember = await vaultCrypto.wrapToPublicKey(memberRow.publicKey, orgKey);
+    await call(routes.grantKey, {
+      method: "POST",
+      path: `/api/v1/organizations/${orgId}/memberships/${memberRow.id}/grant-key`,
+      params: { id: orgId, membershipId: memberRow.id },
+      token: owner.token,
+      body: { wrappedOrgKey: wrappedForMember, keyEpoch: 0 },
+    });
+
+    // A MEMBER cannot invite.
+    const memberInvite = await call(routes.orgInvites.POST, {
+      method: "POST",
+      path: `/api/v1/organizations/${orgId}/invites`,
+      params: { id: orgId },
+      token: member.token,
+      body: { email: "someone@example.com", role: "MEMBER" },
+    });
+    expect(memberInvite.status).toBe(403);
+
+    // The sole owner cannot be removed / cannot leave.
+    const ownerRow = detail.body.members.find((m: { role: string }) => m.role === "OWNER");
+    const removeOwner = await call(routes.membership.DELETE, {
+      method: "DELETE",
+      path: `/api/v1/organizations/${orgId}/memberships/${ownerRow.id}`,
+      params: { id: orgId, membershipId: ownerRow.id },
+      token: owner.token,
+    });
+    expect(removeOwner.status).toBe(409);
+
+    // Owner removes the member — response asks for a key rotation.
+    const removeMember = await call(routes.membership.DELETE, {
+      method: "DELETE",
+      path: `/api/v1/organizations/${orgId}/memberships/${memberRow.id}`,
+      params: { id: orgId, membershipId: memberRow.id },
+      token: owner.token,
+    });
+    expect(removeMember.status).toBe(200);
+    expect(removeMember.body.rotationRequired).toBe(true);
+
+    // The removed member immediately loses API access to the org.
+    const afterRemoval = await call(routes.org.GET, {
+      method: "GET",
+      path: `/api/v1/organizations/${orgId}`,
+      params: { id: orgId },
+      token: member.token,
+    });
+    expect(afterRemoval.status).toBe(404);
   });
 
   it("immediately invalidates a revoked session's access token", async () => {

@@ -56,6 +56,14 @@ export function isApiToken(token: string): boolean {
   return token.startsWith(API_TOKEN_PREFIX);
 }
 
+/** Prefix for organization invite tokens — greppable, self-identifying. */
+export const INVITE_TOKEN_PREFIX = "oiv_";
+
+/** Opaque org invite token — `oiv_` + 256 bits of entropy. Only its hash is stored. */
+export function generateInviteToken(): string {
+  return INVITE_TOKEN_PREFIX + randomBytes(32).toString("base64url");
+}
+
 export function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }

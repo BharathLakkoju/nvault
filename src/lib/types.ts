@@ -59,6 +59,26 @@ export interface OrganizationDetailDto {
   members: OrgMemberDto[];
 }
 
+export interface OrgInviteDto {
+  id: string;
+  email: string;
+  role: OrgRole;
+  tokenPrefix: string;
+  expiresAt: string;
+  createdAt: string;
+  invitedByEmail: string | null;
+}
+
+export interface OrgActivityEntryDto {
+  id: string;
+  action: string;
+  targetType: string | null;
+  targetId: string | null;
+  metadata: Record<string, unknown> | null;
+  actorEmail: string | null;
+  createdAt: string;
+}
+
 export interface FileVersionSummaryDto {
   id: string;
   versionNumber: number;
