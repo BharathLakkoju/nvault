@@ -3,7 +3,8 @@ import { join } from "node:path";
 import { apiRequest } from "../lib/api-client";
 import { resolveProject } from "../lib/resolve-project";
 import { unlockVaultForThisCommand } from "../lib/vault-session";
-import { openProjectKey, decryptFile } from "../lib/vault-client";
+import { resolveProjectKey } from "../lib/project-key";
+import { decryptFile } from "../lib/vault-client";
 import { promptConfirm } from "../lib/prompt";
 import { symbols } from "../lib/colors";
 import type { DownloadedFileDto, FileDto } from "../lib/types";
@@ -38,8 +39,8 @@ export async function pullCommand(
 ): Promise<void> {
   const cwd = process.cwd();
   const project = await resolveProject(projectName);
-  const { masterKey } = await unlockVaultForThisCommand();
-  const projectKey = await openProjectKey(masterKey, project.id, project.wrappedProjectKey);
+  const session = await unlockVaultForThisCommand();
+  const projectKey = await resolveProjectKey(project, session);
 
   console.log(`\n${project.name}\n`);
 

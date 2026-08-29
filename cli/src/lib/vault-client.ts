@@ -35,5 +35,21 @@ export async function decryptFile(
   return vaultCrypto.decryptFileContent(projectKey, payload.contentId, payload);
 }
 
+export async function provisionKeyPair(masterKey: Uint8Array) {
+  return vaultCrypto.provisionUserKeyPair(masterKey);
+}
+
+export async function unwrapPrivateKey(
+  masterKey: Uint8Array,
+  material: { wrappedPrivateKey: { iv: string; ciphertext: string } },
+) {
+  return vaultCrypto.unwrapUserPrivateKey(masterKey, material);
+}
+
+/** Unwraps an Organization Key blob addressed to us with our RSA private key. */
+export async function openOrgKey(privateKey: Uint8Array, wrappedOrgKeyCiphertext: string) {
+  return vaultCrypto.unwrapFromPrivateKey(privateKey, wrappedOrgKeyCiphertext);
+}
+
 export const { bytesToUtf8, utf8ToBytes, sha256Hex } = vaultCrypto;
 export const newId = randomUUID;
