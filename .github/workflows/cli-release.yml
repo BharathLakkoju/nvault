@@ -1,12 +1,21 @@
 name: Publish CLI
 
-# Publishes the `envvault` npm package from cli/ when a tag matching
+# Publishes the `envvault-cli` npm package from cli/ when a tag matching
 # `cli-v*` is pushed (e.g. `cli-v0.1.0`). The tag version must match
-# cli/package.json's "version".
+# cli/package.json's "version". (The package is `envvault-cli`; the binary
+# it installs is still `envvault`.)
 #
-# Requires a repository secret `NPM_TOKEN` — an npm automation token with
-# publish rights to the `envvault` package. Provenance is attested via the
-# workflow's OIDC identity (id-token: write).
+# Requires a repository secret `NPM_TOKEN` — an npm **automation** or
+# **granular** access token (npmjs.com → Access Tokens) that is allowed to
+# publish `envvault-cli`. The very first publish also needs the token to be
+# permitted to *create* new packages (granular tokens: give it access to
+# "All packages", or use a classic Automation token).
+#
+# npm trusted publishing (OIDC) is intentionally NOT used: it can only be
+# configured after a package already exists, so the initial release must go
+# out with a token. Provenance is still attested via the workflow's OIDC
+# identity (id-token: write) — that only needs `--provenance`, not a
+# trusted-publisher token exchange.
 
 on:
   push:
@@ -21,6 +30,17 @@ jobs:
       id-token: write # npm provenance
 
     steps:
+      - name: Check NPM_TOKEN is configured
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NPM_TOKEN" ]; then
+            echo "::error::Repository secret NPM_TOKEN is not set. Create an npm access token" \
+                 "with publish rights (and new-package creation for the first release) and add" \
+                 "it under Settings → Secrets and variables → Actions as NPM_TOKEN."
+            exit 1
+          fi
+
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
@@ -42,11 +62,16 @@ jobs:
             exit 1
           fi
 
-      - run: pnpm --filter envvault typecheck
-      - run: pnpm --filter envvault test
-      - run: pnpm --filter envvault build
+      - run: pnpm --filter envvault-cli typecheck
+      - run: pnpm --filter envvault-cli test
+      - run: pnpm --filter envvault-cli build
 
+      # Publish with npm (not `pnpm publish`): npm reliably authenticates via
+      # the .npmrc that setup-node wrote from NODE_AUTH_TOKEN and does not
+      # attempt the trusted-publishing OIDC token exchange that pnpm tries
+      # first. The build already ran above, so lifecycle scripts are skipped.
       - name: Publish to npm
-        run: pnpm --filter envvault publish --no-git-checks --access public --provenance
+        working-directory: cli
+        run: npm publish --provenance --access public --ignore-scripts
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

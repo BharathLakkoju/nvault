@@ -1,5 +1,5 @@
 # Two packages: the Next.js app at the repo root, and the standalone
-# `envvault` CLI in cli/ (published to npm). The CLI has no runtime
+# `envvault-cli` package in cli/ (published to npm). The CLI has no runtime
 # dependency on the app — it imports the shared vault crypto from
 # ../src/lib/crypto at build time and esbuild inlines it (see
 # cli/esbuild.config.js).
