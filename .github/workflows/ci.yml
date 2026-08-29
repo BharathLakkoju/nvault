@@ -38,7 +38,10 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          # 24.9+: Jest resolves Prisma 7's internal dynamic import() and the
+          # ESM-only `jose` package via native require(esm) (see the
+          # --experimental-vm-modules flag on the test:integration script).
+          node-version: 24
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
