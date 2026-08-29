@@ -110,6 +110,12 @@ body {
     linear-gradient(to bottom, rgb(226 232 240 / 0.06) 1px, transparent 1px);
 }
 
+/* Centre-masked grid — for backgrounds behind a centred card (auth pages). */
+.bg-grid-center {
+  -webkit-mask-image: radial-gradient(ellipse 55% 55% at 50% 50%, #000 30%, transparent 100%);
+  mask-image: radial-gradient(ellipse 55% 55% at 50% 50%, #000 30%, transparent 100%);
+}
+
 @keyframes aurora-a {
   0%,
   100% {

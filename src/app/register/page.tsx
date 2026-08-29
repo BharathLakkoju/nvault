@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Label, FieldError } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { AuroraBackground } from "@/components/aurora-background";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -72,11 +73,12 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-10">
+    <div className="relative isolate flex min-h-screen items-center justify-center px-4 py-10">
+      <AuroraBackground variant="auth" />
       <div className="fixed right-3 top-3">
         <ThemeToggle />
       </div>
-      <Card className="w-full max-w-md p-6">
+      <Card className="w-full max-w-md bg-white/80 p-6 backdrop-blur-sm dark:bg-slate-900/80">
         <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Create your nvault account</h1>
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           <div>

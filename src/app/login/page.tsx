@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Label, FieldError } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { AuroraBackground } from "@/components/aurora-background";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -37,11 +38,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
+    <div className="relative isolate flex min-h-screen items-center justify-center px-4">
+      <AuroraBackground variant="auth" />
       <div className="fixed right-3 top-3">
         <ThemeToggle />
       </div>
-      <Card className="w-full max-w-sm p-6">
+      <Card className="w-full max-w-sm bg-white/80 p-6 backdrop-blur-sm dark:bg-slate-900/80">
         <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Log in to nvault</h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Your development environment, available anywhere.</p>
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
