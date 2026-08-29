@@ -6,7 +6,7 @@ export const post: BlogPost = {
   description:
     "Server-side encryption is easier to build and easier to use. We still chose client-side. Here is the threat model that made the decision for us.",
   date: "2026-07-02",
-  author: "The EnvVault team",
+  author: "The nvault team",
   tags: ["security", "architecture"],
   blocks: [
     {

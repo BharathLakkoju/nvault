@@ -10,7 +10,7 @@ import { posts } from "@/content/blog";
 export const metadata: Metadata = pageMetadata({
   title: "Blog",
   description:
-    "Notes on secure environment configuration from the EnvVault team: why the product exists, how the encryption works, and how the CLI fits into real workflows.",
+    "Notes on secure environment configuration from the nvault team: why the product exists, how the encryption works, and how the CLI fits into real workflows.",
   path: "/blog",
 });
 
@@ -33,7 +33,7 @@ export default function BlogIndexPage() {
           <SectionHeading
             eyebrow="Blog"
             title="Notes on secure environment configuration"
-            description="Why EnvVault exists, how it is built, and how zero-knowledge encryption holds up under a real threat model."
+            description="Why nvault exists, how it is built, and how zero-knowledge encryption holds up under a real threat model."
           />
         </Container>
       </Section>

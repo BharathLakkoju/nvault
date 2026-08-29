@@ -9,23 +9,23 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata: Metadata = pageMetadata({
   title: "CLI",
   description:
-    "Install the EnvVault CLI and learn every command: device-code login, Git-aware project detection, push and pull, version history, CI usage, and envvault run.",
+    "Install the nvault CLI and learn every command: device-code login, Git-aware project detection, push and pull, version history, CI usage, and nvault run.",
   path: "/cli",
 });
 
 const commands: ReadonlyArray<{ cmd: string; desc: string }> = [
-  { cmd: "envvault login", desc: "Authenticate this device via a browser device-code flow — no password typed into the terminal." },
-  { cmd: "envvault logout", desc: "Remove this device's stored credentials and revoke its session." },
-  { cmd: "envvault whoami", desc: "Print the account this device is authenticated as." },
-  { cmd: "envvault projects", desc: "List the projects you have access to." },
-  { cmd: "envvault init", desc: "Detect the project from the Git remote and offer to restore its environment files." },
-  { cmd: "envvault push [project]", desc: "Encrypt and upload the config files in the current directory." },
-  { cmd: "envvault pull [project]", desc: "Download and decrypt files, with confirmation before overwriting anything local." },
-  { cmd: "envvault files <project>", desc: "List the files stored for a project and their current versions." },
-  { cmd: "envvault history <file>", desc: "Show the version history for a file." },
-  { cmd: "envvault restore <file> --version <v>", desc: "Restore a previous version as the current one." },
-  { cmd: "envvault delete <project> <file>", desc: "Delete a file from a project (the version history is retained)." },
-  { cmd: "envvault run -- <command>", desc: "Inject decrypted secrets into a child process without writing a .env file to disk." },
+  { cmd: "nvault login", desc: "Authenticate this device via a browser device-code flow — no password typed into the terminal." },
+  { cmd: "nvault logout", desc: "Remove this device's stored credentials and revoke its session." },
+  { cmd: "nvault whoami", desc: "Print the account this device is authenticated as." },
+  { cmd: "nvault projects", desc: "List the projects you have access to." },
+  { cmd: "nvault init", desc: "Detect the project from the Git remote and offer to restore its environment files." },
+  { cmd: "nvault push [project]", desc: "Encrypt and upload the config files in the current directory." },
+  { cmd: "nvault pull [project]", desc: "Download and decrypt files, with confirmation before overwriting anything local." },
+  { cmd: "nvault files <project>", desc: "List the files stored for a project and their current versions." },
+  { cmd: "nvault history <file>", desc: "Show the version history for a file." },
+  { cmd: "nvault restore <file> --version <v>", desc: "Restore a previous version as the current one." },
+  { cmd: "nvault delete <project> <file>", desc: "Delete a file from a project (the version history is retained)." },
+  { cmd: "nvault run -- <command>", desc: "Inject decrypted secrets into a child process without writing a .env file to disk." },
 ];
 
 export default function CliPage() {
@@ -40,7 +40,7 @@ export default function CliPage() {
           <SectionHeading
             eyebrow="CLI"
             title="Your environment, one command away"
-            description="The EnvVault CLI is designed for WSL, SSH sessions, remote servers, cloud VMs and CI — anywhere a browser is inconvenient or unavailable."
+            description="The nvault CLI is designed for WSL, SSH sessions, remote servers, cloud VMs and CI — anywhere a browser is inconvenient or unavailable."
           />
           <div className="mx-auto mt-6 max-w-2xl rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-center text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
             The CLI is in <strong>preview</strong>. Commands and installation below reflect the planned interface; the{" "}
@@ -55,17 +55,17 @@ export default function CliPage() {
               title="new machine — bash"
               steps={[
                 {
-                  command: "envvault login",
+                  command: "nvault login",
                   output: [
                     "",
-                    "Open:  https://app.envvault.dev/device",
+                    "Open:  https://app.nvault.dev/device",
                     "Code:  X7KD-29PL",
                     "",
                     "Waiting for authentication...",
                     "✓ Device authenticated",
                   ],
                 },
-                { command: "envvault whoami", output: ["dev@acme.com  ·  2 projects"] },
+                { command: "nvault whoami", output: ["dev@acme.com  ·  2 projects"] },
               ]}
             />
           </div>
@@ -85,7 +85,7 @@ export default function CliPage() {
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">npm / pnpm / yarn</h3>
               <div className="mt-2">
                 <CommandBlock>
-                  {"npm install -g @envvault/cli\n# or: pnpm add -g @envvault/cli\n# or: yarn global add @envvault/cli"}
+                  {"npm install -g nvault\n# or: pnpm add -g nvault\n# or: yarn global add nvault"}
                 </CommandBlock>
               </div>
             </div>
@@ -93,31 +93,31 @@ export default function CliPage() {
             <div>
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Homebrew (macOS / Linux)</h3>
               <div className="mt-2">
-                <CommandBlock>{"brew install envvault/tap/envvault"}</CommandBlock>
+                <CommandBlock>{"brew install nvault/tap/nvault"}</CommandBlock>
               </div>
             </div>
 
             <div>
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Shell script (macOS / Linux / WSL)</h3>
               <div className="mt-2">
-                <CommandBlock>{"curl -fsSL https://get.envvault.dev | sh"}</CommandBlock>
+                <CommandBlock>{"curl -fsSL https://get.nvault.dev | sh"}</CommandBlock>
               </div>
               <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                Inspect the script first if you prefer: <code>curl -fsSL https://get.envvault.dev</code>.
+                Inspect the script first if you prefer: <code>curl -fsSL https://get.nvault.dev</code>.
               </p>
             </div>
 
             <div>
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Windows (Scoop)</h3>
               <div className="mt-2">
-                <CommandBlock>{"scoop bucket add envvault https://github.com/envvault/scoop\nscoop install envvault"}</CommandBlock>
+                <CommandBlock>{"scoop bucket add nvault https://github.com/nvault/scoop\nscoop install nvault"}</CommandBlock>
               </div>
             </div>
           </div>
 
           <h3 className="mt-10 text-sm font-semibold text-slate-900 dark:text-slate-100">Verify the install</h3>
           <div className="mt-2 max-w-md">
-            <CommandBlock>{"envvault --version\nenvvault --help"}</CommandBlock>
+            <CommandBlock>{"nvault --version\nnvault --help"}</CommandBlock>
           </div>
         </Container>
       </Section>
@@ -146,7 +146,7 @@ export default function CliPage() {
                   { command: "git clone git@github.com:acme/portfolio-analytics.git", output: ["Cloning into 'portfolio-analytics'..."] },
                   { command: "cd portfolio-analytics" },
                   {
-                    command: "envvault init",
+                    command: "nvault init",
                     output: [
                       "Git repository:   github.com/acme/portfolio-analytics",
                       "Matching project: portfolio-analytics",
@@ -155,7 +155,7 @@ export default function CliPage() {
                     ],
                   },
                   {
-                    command: "envvault pull",
+                    command: "nvault pull",
                     output: ["✓ Vault unlocked", "✓ 3 files decrypted locally", "✓ Environment restored"],
                   },
                 ]}
@@ -174,14 +174,14 @@ export default function CliPage() {
                 steps={[
                   { command: "echo 'FEATURE_BILLING=1' >> .env.local" },
                   {
-                    command: "envvault push",
+                    command: "nvault push",
                     output: [
                       "2 files changed:  .env.local (v4)  .env (unchanged)",
                       "✓ Encrypted locally  ·  ✓ Uploaded",
                     ],
                   },
                   {
-                    command: "envvault history .env.local",
+                    command: "nvault history .env.local",
                     output: ["v4  2026-08-27  1.2 KB  (current)", "v3  2026-08-19  1.1 KB", "v2  2026-08-04  1.1 KB"],
                   },
                 ]}
@@ -192,9 +192,9 @@ export default function CliPage() {
               <div>
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">3. Run without a .env</h3>
                 <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                  <code>envvault run</code> decrypts in memory and injects the values into the child process. No file is
+                  <code>nvault run</code> decrypts in memory and injects the values into the child process. No file is
                   written to disk. See{" "}
-                  <Link href="/blog/roadmap-envvault-run" className="font-medium text-accent-600 hover:underline dark:text-accent-400">
+                  <Link href="/blog/roadmap-nvault-run" className="font-medium text-accent-600 hover:underline dark:text-accent-400">
                     the roadmap post
                   </Link>
                   .
@@ -204,7 +204,7 @@ export default function CliPage() {
                 title="portfolio-analytics — bash"
                 steps={[
                   {
-                    command: "envvault run -- npm run dev",
+                    command: "nvault run -- npm run dev",
                     output: [
                       "✓ Vault unlocked  ·  injected 12 variables",
                       "",
@@ -247,7 +247,7 @@ export default function CliPage() {
             <Prose>
               <h2>Credentials &amp; configuration</h2>
               <p>
-                After <code>envvault login</code>, the CLI stores a short-lived access token and a refresh token in
+                After <code>nvault login</code>, the CLI stores a short-lived access token and a refresh token in
                 OS-appropriate secure storage — Keychain on macOS, Credential Manager on Windows, the Secret Service API
                 on Linux where available. It never writes tokens to a plaintext dotfile, and never prints them unless you
                 ask. Your <Link href="/blog/zero-knowledge-encryption-explained">vault passphrase</Link> is a separate
@@ -264,15 +264,15 @@ export default function CliPage() {
               <h2>Using it in CI</h2>
               <p>
                 For CI, create a scoped, revocable machine token in the web app and expose it as{" "}
-                <code>ENVVAULT_TOKEN</code>. Provide the vault passphrase as a masked secret. The runner fetches config
+                <code>NVAULT_TOKEN</code>. Provide the vault passphrase as a masked secret. The runner fetches config
                 for exactly one step and nothing is persisted into the workspace.
               </p>
               <pre>
                 <code>{`# GitHub Actions
-- run: envvault run --project portfolio-analytics -- pnpm test
+- run: nvault run --project portfolio-analytics -- pnpm test
   env:
-    ENVVAULT_TOKEN: \${{ secrets.ENVVAULT_TOKEN }}
-    ENVVAULT_PASSPHRASE: \${{ secrets.ENVVAULT_PASSPHRASE }}`}</code>
+    NVAULT_TOKEN: \${{ secrets.NVAULT_TOKEN }}
+    NVAULT_PASSPHRASE: \${{ secrets.NVAULT_PASSPHRASE }}`}</code>
               </pre>
 
               <h2>Design principles</h2>

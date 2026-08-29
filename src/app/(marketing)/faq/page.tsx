@@ -8,7 +8,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata: Metadata = pageMetadata({
   title: "FAQ",
   description:
-    "Answers to common questions about EnvVault: zero-knowledge encryption, passphrase recovery, file fidelity, versioning, the CLI, and pricing.",
+    "Answers to common questions about nvault: zero-knowledge encryption, passphrase recovery, file fidelity, versioning, the CLI, and pricing.",
   path: "/faq",
 });
 

@@ -7,7 +7,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata: Metadata = pageMetadata({
   title: "About",
   description:
-    "Why EnvVault exists: environment configuration is sensitive, changes often, and needs to follow developers across machines — without a vendor ever seeing plaintext.",
+    "Why nvault exists: environment configuration is sensitive, changes often, and needs to follow developers across machines — without a vendor ever seeing plaintext.",
   path: "/about",
 });
 
@@ -27,7 +27,7 @@ export default function AboutPage() {
                 it should never have touched.
               </p>
               <p>
-                EnvVault treats environment configuration as what it is — sensitive data that changes often and needs
+                nvault treats environment configuration as what it is — sensitive data that changes often and needs
                 to move with you. It is a secure, developer-native vault: store your config files once, keep a full
                 version history, and restore any project&apos;s environment on a new machine in one command.
               </p>
@@ -39,7 +39,7 @@ export default function AboutPage() {
                   wrapped keys, never plaintext and never your passphrase.
                 </li>
                 <li>
-                  <strong>Fidelity.</strong> Files are preserved byte-for-byte. EnvVault does not parse and rewrite your
+                  <strong>Fidelity.</strong> Files are preserved byte-for-byte. nvault does not parse and rewrite your
                   configuration.
                 </li>
                 <li>
@@ -54,9 +54,9 @@ export default function AboutPage() {
 
               <h2>Status</h2>
               <p>
-                EnvVault is in early access. The web application — authentication, projects, upload and download,
+                nvault is in early access. The web application — authentication, projects, upload and download,
                 versioning and restore — is available today. The terminal CLI and process secret injection
-                (<code>envvault run</code>) are next on the roadmap.
+                (<code>nvault run</code>) are next on the roadmap.
               </p>
             </Prose>
 

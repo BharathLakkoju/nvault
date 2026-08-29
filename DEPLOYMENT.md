@@ -1,4 +1,4 @@
-# Deploying EnvVault
+# Deploying nvault
 
 One Next.js app, one Vercel project, one Postgres database. Nothing else.
 See [SECURITY.md](./SECURITY.md) for the threat model behind the choices

@@ -1,5 +1,6 @@
 import { apiRequestWith, normalizeApiBaseUrl, ApiError } from "../lib/api-client";
 import { writeCredentials } from "../lib/config-dir";
+import { envConfig } from "../lib/env";
 import { promptHidden, promptText } from "../lib/prompt";
 import { color, symbols } from "../lib/colors";
 
@@ -21,30 +22,31 @@ interface MeResponse {
 export async function loginCommand(options: LoginOptions): Promise<void> {
   const nonInteractive = !process.stdin.isTTY;
 
+  const envApiUrl = envConfig.apiUrl();
   let apiBaseUrl = options.apiUrl
     ? normalizeApiBaseUrl(options.apiUrl)
-    : process.env.ENVVAULT_API_URL
-      ? normalizeApiBaseUrl(process.env.ENVVAULT_API_URL)
+    : envApiUrl
+      ? normalizeApiBaseUrl(envApiUrl)
       : "";
   if (!apiBaseUrl) {
     if (nonInteractive) {
-      throw new Error("Pass --api-url <url> (or set ENVVAULT_API_URL) when logging in non-interactively.");
+      throw new Error("Pass --api-url <url> (or set NVAULT_API_URL) when logging in non-interactively.");
     }
-    const answer = await promptText("EnvVault URL (e.g. https://vault.example.com): ");
-    if (!answer.trim()) throw new Error("An EnvVault URL is required.");
+    const answer = await promptText("nvault URL (e.g. https://vault.example.com): ");
+    if (!answer.trim()) throw new Error("An nvault URL is required.");
     apiBaseUrl = normalizeApiBaseUrl(answer);
   }
 
-  let token = options.token ?? process.env.ENVVAULT_TOKEN ?? "";
+  let token = options.token ?? envConfig.token() ?? "";
   if (!token) {
     if (nonInteractive) {
-      throw new Error("Pass --token <token> (or set ENVVAULT_TOKEN) when logging in non-interactively.");
+      throw new Error("Pass --token <token> (or set NVAULT_TOKEN) when logging in non-interactively.");
     }
     console.log(`\nCreate a token at ${color.cyan(`${apiBaseUrl.replace(/\/api\/v\d+$/, "")}/settings/tokens`)}\n`);
     token = (await promptHidden("Paste your access token: ")).trim();
   }
   if (!token.startsWith("evk_")) {
-    throw new Error("That doesn't look like an EnvVault access token (expected an `evk_…` value).");
+    throw new Error("That doesn't look like an nvault access token (expected an `evk_…` value).");
   }
 
   let me: MeResponse;

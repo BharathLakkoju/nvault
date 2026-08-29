@@ -6,12 +6,12 @@ export const post: BlogPost = {
   description:
     "The browser already encrypts your files. So why does the server encrypt them again before writing to Postgres? Because a database dump should be worth nothing.",
   date: "2026-07-09",
-  author: "The EnvVault team",
+  author: "The nvault team",
   tags: ["security", "architecture"],
   blocks: [
     {
       t: "p",
-      c: "EnvVault's client-side encryption means the ciphertext that reaches the API is already unreadable without your passphrase. We could store that blob directly. We don't. Every blob is encrypted a second time on the server before it touches the database.",
+      c: "nvault's client-side encryption means the ciphertext that reaches the API is already unreadable without your passphrase. We could store that blob directly. We don't. Every blob is encrypted a second time on the server before it touches the database.",
     },
     { t: "h2", c: "The layer" },
     {

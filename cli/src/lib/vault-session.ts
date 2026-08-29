@@ -2,6 +2,7 @@ import * as vaultCrypto from "@core/crypto";
 import type { VaultKeyMaterial } from "@core/crypto";
 import { apiRequest } from "./api-client";
 import { promptHidden } from "./prompt";
+import { envConfig } from "./env";
 
 interface MeResponse {
   user: { id: string; email: string; name: string | null };
@@ -15,12 +16,12 @@ interface MeResponse {
  * deliberate zero-knowledge tradeoff: convenience never wins over never
  * persisting key material.
  *
- * `ENVVAULT_PASSPHRASE` is honoured for non-interactive/CI use. Prefer
+ * `NVAULT_PASSPHRASE` is honoured for non-interactive/CI use. Prefer
  * feeding it from a secret store, never a literal in a script or CI YAML.
  */
 export async function unlockVaultForThisCommand(): Promise<{ masterKey: Uint8Array; email: string }> {
   const me = await apiRequest<MeResponse>("/auth/me");
-  const passphrase = process.env.ENVVAULT_PASSPHRASE ?? (await promptHidden("Vault passphrase: "));
+  const passphrase = envConfig.passphrase() ?? (await promptHidden("Vault passphrase: "));
   if (!passphrase) throw new Error("A vault passphrase is required.");
   try {
     const masterKey = await vaultCrypto.unlockVault(passphrase, me.vaultKeyMaterial);

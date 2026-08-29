@@ -7,7 +7,7 @@ describe("isEnvIgnored / appendEnvIgnoreRules", () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "envvault-gitignore-test-"));
+    dir = mkdtempSync(join(tmpdir(), "nvault-gitignore-test-"));
   });
 
   afterEach(() => {

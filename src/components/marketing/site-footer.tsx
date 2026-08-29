@@ -10,7 +10,7 @@ export function SiteFooter() {
         <div>
           <Link href="/" className="focus-ring inline-flex items-center gap-2 rounded font-semibold tracking-tight">
             <LogoMark />
-            <span className="text-slate-900 dark:text-slate-100">EnvVault</span>
+            <span className="text-slate-900 dark:text-slate-100">nvault</span>
           </Link>
           <p className="mt-3 max-w-xs text-sm text-slate-500 dark:text-slate-400">{siteConfig.tagline}</p>
         </div>

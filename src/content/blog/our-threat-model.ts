@@ -2,18 +2,18 @@ import type { BlogPost } from "@/lib/blog";
 
 export const post: BlogPost = {
   slug: "our-threat-model",
-  title: "Our threat model: what EnvVault protects, and what it doesn't",
+  title: "Our threat model: what nvault protects, and what it doesn't",
   description:
     "A security product should be able to state plainly which attackers it stops and which it does not. Here is ours, without the marketing gloss.",
   date: "2026-08-20",
-  author: "The EnvVault team",
+  author: "The nvault team",
   tags: ["security"],
   blocks: [
     {
       t: "p",
-      c: "Every security claim is relative to an attacker. \"Secure\" on its own means nothing. This is the set of threats EnvVault is designed to address, and — just as important — the ones it is not.",
+      c: "Every security claim is relative to an attacker. \"Secure\" on its own means nothing. This is the set of threats nvault is designed to address, and — just as important — the ones it is not.",
     },
-    { t: "h2", c: "What EnvVault is designed to stop" },
+    { t: "h2", c: "What nvault is designed to stop" },
     {
       t: "ul",
       c: [
@@ -25,7 +25,7 @@ export const post: BlogPost = {
         "**ID-guessing between accounts.** Non-guessable identifiers and a server-side authorization check on every project, file, and version operation.",
       ],
     },
-    { t: "h2", c: "What EnvVault does not claim to stop" },
+    { t: "h2", c: "What nvault does not claim to stop" },
     {
       t: "ul",
       c: [

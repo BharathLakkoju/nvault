@@ -10,7 +10,7 @@ export interface RestoreOptions {
 export async function restoreCommand(filename: string, version: string, options: RestoreOptions): Promise<void> {
   const versionNumber = Number(version);
   if (!Number.isInteger(versionNumber) || versionNumber < 1) {
-    throw new Error("<version> must be a positive integer, e.g. `envvault restore .env 4`");
+    throw new Error("<version> must be a positive integer, e.g. `nvault restore .env 4`");
   }
 
   const project = await resolveProject(options.project);

@@ -4,9 +4,9 @@ export const post: BlogPost = {
   slug: "why-we-never-parse-your-env-file",
   title: "Why we never parse your .env file",
   description:
-    "Dotenv syntax is not a standard. Tools disagree about quotes, comments, multiline values and interpolation. So EnvVault stores bytes, not key-value pairs.",
+    "Dotenv syntax is not a standard. Tools disagree about quotes, comments, multiline values and interpolation. So nvault stores bytes, not key-value pairs.",
   date: "2026-07-23",
-  author: "The EnvVault team",
+  author: "The nvault team",
   tags: ["product", "developer-experience"],
   blocks: [
     {
@@ -31,12 +31,12 @@ export const post: BlogPost = {
     },
     {
       t: "p",
-      c: "If EnvVault parsed and re-serialised your file, it would have to pick one interpretation. The moment ours differs from the one your app actually uses, we have corrupted your config in a subtle, hard-to-spot way.",
+      c: "If nvault parsed and re-serialised your file, it would have to pick one interpretation. The moment ours differs from the one your app actually uses, we have corrupted your config in a subtle, hard-to-spot way.",
     },
     { t: "h2", c: "Bytes in, same bytes out" },
     {
       t: "p",
-      c: "EnvVault treats every configuration file as an opaque blob. What you upload is what you get back, exactly:",
+      c: "nvault treats every configuration file as an opaque blob. What you upload is what you get back, exactly:",
     },
     {
       t: "ul",
@@ -56,7 +56,7 @@ export const post: BlogPost = {
     { t: "h2", c: "It is also the safer choice" },
     {
       t: "p",
-      c: "A parser is code that runs on your secrets. A blob is not. Not parsing means there is no dotenv-parsing logic anywhere near your plaintext — one less place for a bug, an injection, or an unexpected transformation. It also means EnvVault works for files that are not dotenv at all: a service-account JSON, a TOML config, a PEM key you need alongside the project.",
+      c: "A parser is code that runs on your secrets. A blob is not. Not parsing means there is no dotenv-parsing logic anywhere near your plaintext — one less place for a bug, an injection, or an unexpected transformation. It also means nvault works for files that are not dotenv at all: a service-account JSON, a TOML config, a PEM key you need alongside the project.",
     },
     { t: "h2", c: "The trade-off" },
     {

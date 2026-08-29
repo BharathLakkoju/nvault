@@ -7,7 +7,7 @@ import { siteConfig } from "@/lib/site";
 
 export const metadata: Metadata = pageMetadata({
   title: "Contact",
-  description: "Get in touch with the EnvVault team about the product, security, or partnership enquiries.",
+  description: "Get in touch with the nvault team about the product, security, or partnership enquiries.",
   path: "/contact",
 });
 
@@ -20,8 +20,8 @@ const channels: ReadonlyArray<{ label: string; value: string; href: string; note
   },
   {
     label: "Security",
-    value: "security@envvault.dev",
-    href: "mailto:security@envvault.dev",
+    value: "security@nvault.dev",
+    href: "mailto:security@nvault.dev",
     note: "Vulnerability reports and responsible disclosure.",
   },
 ];

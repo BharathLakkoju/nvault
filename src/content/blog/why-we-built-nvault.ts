@@ -1,12 +1,12 @@
 import type { BlogPost } from "@/lib/blog";
 
 export const post: BlogPost = {
-  slug: "why-we-built-envvault",
-  title: "Why we built EnvVault",
+  slug: "why-we-built-nvault",
+  title: "Why we built nvault",
   description:
     "Every team has a private ritual for moving .env files between machines. It is always insecure, and it always breaks. Here is the problem we set out to fix.",
   date: "2026-06-04",
-  author: "The EnvVault team",
+  author: "The nvault team",
   tags: ["product", "background"],
   blocks: [
     {
@@ -24,7 +24,7 @@ export const post: BlogPost = {
     },
     {
       t: "p",
-      c: "So you have data that is both highly sensitive and constantly in motion, and the tools most teams reach for are a chat app and a text file. That gap is the entire reason EnvVault exists.",
+      c: "So you have data that is both highly sensitive and constantly in motion, and the tools most teams reach for are a chat app and a text file. That gap is the entire reason nvault exists.",
     },
     { t: "h2", c: "What we wanted instead" },
     {
@@ -43,7 +43,7 @@ export const post: BlogPost = {
     { t: "h2", c: "The non-negotiable: zero knowledge" },
     {
       t: "p",
-      c: "The first architectural decision was that encryption happens in your browser, before anything is uploaded. The server stores ciphertext and wrapped keys. It never sees a plaintext value and never sees the passphrase that would unlock one. We cover the mechanics in [How EnvVault works, end to end](/blog/how-envvault-works) and [Zero-knowledge encryption, explained for developers](/blog/zero-knowledge-encryption-explained).",
+      c: "The first architectural decision was that encryption happens in your browser, before anything is uploaded. The server stores ciphertext and wrapped keys. It never sees a plaintext value and never sees the passphrase that would unlock one. We cover the mechanics in [How nvault works, end to end](/blog/how-nvault-works) and [Zero-knowledge encryption, explained for developers](/blog/zero-knowledge-encryption-explained).",
     },
     {
       t: "note",
@@ -52,7 +52,7 @@ export const post: BlogPost = {
     { t: "h2", c: "Where we are" },
     {
       t: "p",
-      c: "The web application is live: authentication, projects, uploads and downloads, version history, and restore. The [CLI](/cli) is in preview, and the API is already shaped so it can grow without server changes. Further out is `envvault run`, which injects secrets straight into a process so a `.env` file never has to touch disk — more on that in [The road to envvault run](/blog/roadmap-envvault-run).",
+      c: "The web application is live: authentication, projects, uploads and downloads, version history, and restore. The [CLI](/cli) is in preview, and the API is already shaped so it can grow without server changes. Further out is `nvault run`, which injects secrets straight into a process so a `.env` file never has to touch disk — more on that in [The road to nvault run](/blog/roadmap-nvault-run).",
     },
     {
       t: "p",

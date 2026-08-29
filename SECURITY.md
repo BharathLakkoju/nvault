@@ -1,4 +1,4 @@
-# EnvVault security model
+# nvault security model
 
 This document records the threat model and the specific design decisions
 that implement it, so future changes can be checked against the original
@@ -6,7 +6,7 @@ intent instead of guessed at.
 
 ## Summary
 
-EnvVault is a **zero-knowledge** vault: the server (API route handlers +
+nvault is a **zero-knowledge** vault: the server (API route handlers +
 database) never has access to plaintext file contents, and never has access
 to the key material needed to decrypt them. All encryption and decryption
 happens client-side in the browser, using

@@ -51,7 +51,7 @@ export async function createApiToken(
   const session = await db.session.create({
     data: {
       userId,
-      userAgent: "EnvVault CLI",
+      userAgent: "nvault CLI",
       // PATs never use the refresh flow; this satisfies the NOT NULL + UNIQUE
       // constraint with a value nobody holds.
       refreshTokenHash: hashToken(generateOpaqueToken()),

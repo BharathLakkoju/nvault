@@ -16,7 +16,7 @@ export async function resolveProject(explicitName?: string): Promise<ProjectDto>
   if (explicitName) {
     const match = projects.find((p) => p.name.toLowerCase() === explicitName.toLowerCase());
     if (!match) {
-      throw new Error(`No project named "${explicitName}". Run \`envvault projects\` to see available projects.`);
+      throw new Error(`No project named "${explicitName}". Run \`nvault projects\` to see available projects.`);
     }
     return match;
   }

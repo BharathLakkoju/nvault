@@ -77,7 +77,7 @@ export default function RegisterPage() {
         <ThemeToggle />
       </div>
       <Card className="w-full max-w-md p-6">
-        <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Create your EnvVault account</h1>
+        <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Create your nvault account</h1>
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           <div>
             <Label htmlFor="email">Email</Label>
@@ -123,7 +123,7 @@ export default function RegisterPage() {
             />
             <p className="mt-2 text-xs text-amber-800 dark:text-amber-300">
               This is <strong>separate from your account password</strong> and encrypts your files end-to-end.
-              EnvVault never has access to it — if you lose it, your encrypted files{" "}
+              nvault never has access to it — if you lose it, your encrypted files{" "}
               <strong>cannot be recovered</strong>.
             </p>
           </div>

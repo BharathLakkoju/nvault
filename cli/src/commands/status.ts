@@ -11,7 +11,7 @@ export async function statusCommand(): Promise<void> {
   const remote = detectGitRemote(cwd);
 
   if (!remote) {
-    console.log("Not in a git repository with a detectable remote. Use `envvault files <project>` instead.");
+    console.log("Not in a git repository with a detectable remote. Use `nvault files <project>` instead.");
     return;
   }
 
@@ -19,7 +19,7 @@ export async function statusCommand(): Promise<void> {
     `/projects/by-git-remote?url=${encodeURIComponent(remote)}`,
   );
   if (!project) {
-    console.log(`No EnvVault project matches this repository (${remote}).`);
+    console.log(`No nvault project matches this repository (${remote}).`);
     return;
   }
 
@@ -34,7 +34,7 @@ export async function statusCommand(): Promise<void> {
   for (const file of files) {
     const localPath = join(cwd, file.filename);
     if (!existsSync(localPath)) {
-      console.log(`  ${symbols.warn} ${file.filename}  (not present locally — run \`envvault pull\`)`);
+      console.log(`  ${symbols.warn} ${file.filename}  (not present locally — run \`nvault pull\`)`);
       continue;
     }
     if (!file.currentVersion) continue;

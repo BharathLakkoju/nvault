@@ -6,7 +6,7 @@ export const post: BlogPost = {
   description:
     "Pasting your account password into a CLI is a bad habit with real consequences. The device authorization flow gives the terminal access without ever seeing your credentials.",
   date: "2026-08-06",
-  author: "The EnvVault team",
+  author: "The nvault team",
   tags: ["cli", "security"],
   blocks: [
     {
@@ -24,12 +24,12 @@ export const post: BlogPost = {
     { t: "h2", c: "The device flow" },
     {
       t: "p",
-      c: "Instead, `envvault login` uses a browser-based device authorization flow — the same pattern smart TVs use to sign you into streaming apps:",
+      c: "Instead, `nvault login` uses a browser-based device authorization flow — the same pattern smart TVs use to sign you into streaming apps:",
     },
     {
       t: "code",
       lang: "text",
-      c: "$ envvault login\n\nOpen:  https://app.envvault.dev/device\nCode:  X7KD-29PL\n\nWaiting for authentication...\n✓ Device authenticated",
+      c: "$ nvault login\n\nOpen:  https://app.nvault.dev/device\nCode:  X7KD-29PL\n\nWaiting for authentication...\n✓ Device authenticated",
     },
     {
       t: "ol",
@@ -51,7 +51,7 @@ export const post: BlogPost = {
     },
     {
       t: "note",
-      c: "Access tokens are intentionally short-lived so that a leaked one has a small window. The refresh happens quietly in the background; you re-run `envvault login` only when a device is fully de-authorised.",
+      c: "Access tokens are intentionally short-lived so that a leaked one has a small window. The refresh happens quietly in the background; you re-run `nvault login` only when a device is fully de-authorised.",
     },
     {
       t: "quote",

@@ -16,7 +16,7 @@ const detailed: ReadonlyArray<{ heading: string; body: string }> = [
   {
     heading: "Preserve files exactly as written",
     body:
-      "EnvVault stores configuration files as opaque blobs. It does not assume dotenv syntax, so comments, inline quotes, multiline values, key ordering, trailing whitespace and file encoding all survive a round trip unchanged.",
+      "nvault stores configuration files as opaque blobs. It does not assume dotenv syntax, so comments, inline quotes, multiline values, key ordering, trailing whitespace and file encoding all survive a round trip unchanged.",
   },
   {
     heading: "Version every change",
@@ -26,7 +26,7 @@ const detailed: ReadonlyArray<{ heading: string; body: string }> = [
   {
     heading: "Restore by Git remote",
     body:
-      "The CLI reads the Git remote of the current directory and matches it to a project, so 'envvault init' in a fresh clone knows exactly which environment to restore. Git is never required — you can always select a project explicitly.",
+      "The CLI reads the Git remote of the current directory and matches it to a project, so 'nvault init' in a fresh clone knows exactly which environment to restore. Git is never required — you can always select a project explicitly.",
   },
   {
     heading: "Safe by default on write",
@@ -55,7 +55,7 @@ export default function FeaturesPage() {
           <SectionHeading
             eyebrow="Features"
             title="Built for how environment config actually changes"
-            description="Often, across many machines, and in ways that can break a working setup. EnvVault is a secure vault for that reality — not generic cloud storage."
+            description="Often, across many machines, and in ways that can break a working setup. nvault is a secure vault for that reality — not generic cloud storage."
           />
 
           <div className="mt-16 grid gap-10 sm:grid-cols-2 lg:grid-cols-3">

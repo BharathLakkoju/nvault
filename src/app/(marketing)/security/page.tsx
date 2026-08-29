@@ -7,7 +7,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata: Metadata = pageMetadata({
   title: "Security",
   description:
-    "EnvVault's zero-knowledge security model: client-side AES-256-GCM encryption, a PBKDF2 key hierarchy, server-side envelope encryption, and strict authorization.",
+    "nvault's zero-knowledge security model: client-side AES-256-GCM encryption, a PBKDF2 key hierarchy, server-side envelope encryption, and strict authorization.",
   path: "/security",
 });
 

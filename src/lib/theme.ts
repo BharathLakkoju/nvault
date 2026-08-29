@@ -35,8 +35,8 @@ export const ACCENTS: readonly AccentOption[] = [
 export const DEFAULT_MODE: ThemeMode = "system";
 export const DEFAULT_ACCENT = "indigo";
 
-export const MODE_STORAGE_KEY = "envvault.theme.mode";
-export const ACCENT_STORAGE_KEY = "envvault.theme.accent";
+export const MODE_STORAGE_KEY = "nvault.theme.mode";
+export const ACCENT_STORAGE_KEY = "nvault.theme.accent";
 
 export function isThemeMode(value: unknown): value is ThemeMode {
   return value === "light" || value === "dark" || value === "system";

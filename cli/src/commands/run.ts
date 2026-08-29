@@ -16,7 +16,7 @@ import type { DownloadedFileDto, FileDto } from "../lib/types";
  */
 export async function runCommand(projectName: string | undefined, commandParts: string[]): Promise<never> {
   if (commandParts.length === 0) {
-    throw new Error("Usage: envvault run [project] -- <command> [args...]");
+    throw new Error("Usage: nvault run [project] -- <command> [args...]");
   }
 
   const project = await resolveProject(projectName);

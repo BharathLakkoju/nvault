@@ -4,9 +4,9 @@ export const post: BlogPost = {
   slug: "the-cli-is-a-product",
   title: "The CLI is a product, not an afterthought",
   description:
-    "A lot of developer tools ship a thin API wrapper and call it a CLI. For EnvVault the terminal is a first-class surface, because that is where the hard use cases live.",
+    "A lot of developer tools ship a thin API wrapper and call it a CLI. For nvault the terminal is a first-class surface, because that is where the hard use cases live.",
   date: "2026-07-30",
-  author: "The EnvVault team",
+  author: "The nvault team",
   tags: ["cli", "developer-experience"],
   blocks: [
     {
@@ -42,7 +42,7 @@ export const post: BlogPost = {
     {
       t: "code",
       lang: "bash",
-      c: "git clone git@github.com:acme/portfolio-analytics.git\ncd portfolio-analytics\nenvvault init      # detects the repo, matches the project\nenvvault pull      # restores .env, .env.local, .env.production",
+      c: "git clone git@github.com:acme/portfolio-analytics.git\ncd portfolio-analytics\nnvault init      # detects the repo, matches the project\nnvault pull      # restores .env, .env.local, .env.production",
     },
     {
       t: "p",

@@ -1,6 +1,6 @@
-# envvault
+# nvault
 
-Terminal CLI for [EnvVault](https://github.com/BharathLakkoju/nvault) — a
+Terminal CLI for [nvault](https://github.com/BharathLakkoju/nvault) — a
 secure, zero-knowledge developer environment/configuration vault.
 
 > Your development environment, available anywhere.
@@ -12,32 +12,32 @@ SSH sessions, remote servers, CI — without a browser.
 ## Install
 
 ```bash
-npm install -g envvault
+npm install -g nvault
 # or run without installing:
-npx envvault --help
+npx nvault --help
 ```
 
 Requires Node.js ≥ 20.
 
 ## Authenticate
 
-EnvVault is self-hosted, so point the CLI at your server and authenticate
+nvault is self-hosted, so point the CLI at your server and authenticate
 with a **Personal Access Token** created in the web app under
 **Settings → CLI Tokens**. Your account password is never typed into the
 terminal.
 
 ```bash
-envvault login --api-url https://vault.example.com --token evk_xxxxxxxx
+nvault login --api-url https://vault.example.com --token evk_xxxxxxxx
 ```
 
-Run `envvault login` with no flags for an interactive prompt. Credentials
+Run `nvault login` with no flags for an interactive prompt. Credentials
 are stored with owner-only permissions in:
 
 | OS            | Path                                                   |
 | ------------- | ------------------------------------------------------ |
-| Linux / WSL   | `$XDG_CONFIG_HOME/envvault/credentials.json`           |
-| macOS         | `~/Library/Application Support/envvault/credentials.json` |
-| Windows       | `%APPDATA%\envvault\credentials.json`                  |
+| Linux / WSL   | `$XDG_CONFIG_HOME/nvault/credentials.json`           |
+| macOS         | `~/Library/Application Support/nvault/credentials.json` |
+| Windows       | `%APPDATA%\nvault\credentials.json`                  |
 
 The vault passphrase (which derives your encryption key) is **never**
 stored — every command that reads or writes file contents prompts for it,
@@ -47,33 +47,33 @@ for that command only.
 
 | Variable              | Purpose                                              |
 | --------------------- | --------------------------------------------------- |
-| `ENVVAULT_API_URL`    | Server URL (bare origin is fine)                     |
-| `ENVVAULT_TOKEN`      | Personal Access Token (`evk_…`)                      |
-| `ENVVAULT_PASSPHRASE` | Vault passphrase — feed from a secret store only     |
+| `NVAULT_API_URL`    | Server URL (bare origin is fine)                     |
+| `NVAULT_TOKEN`      | Personal Access Token (`evk_…`)                      |
+| `NVAULT_PASSPHRASE` | Vault passphrase — feed from a secret store only     |
 
 ## Commands
 
 ```bash
-envvault login [--api-url <url>] [--token <evk_…>]
-envvault logout
-envvault whoami
+nvault login [--api-url <url>] [--token <evk_…>]
+nvault logout
+nvault whoami
 
-envvault projects                    # list your projects
-envvault project create <name>
-envvault project delete <name> [-y]
+nvault projects                    # list your projects
+nvault project create <name>
+nvault project delete <name> [-y]
 
-envvault init                        # detect this repo's project, restore its files
-envvault status                      # compare local files to what's stored
+nvault init                        # detect this repo's project, restore its files
+nvault status                      # compare local files to what's stored
 
-envvault files [project]             # project auto-detected from the git remote
-envvault push  [project] [file] [-y] # upload .env* (or one named file)
-envvault pull  [project] [file] [-y] # download into the current directory
-envvault delete <project> <file> [-y]
+nvault files [project]             # project auto-detected from the git remote
+nvault push  [project] [file] [-y] # upload .env* (or one named file)
+nvault pull  [project] [file] [-y] # download into the current directory
+nvault delete <project> <file> [-y]
 
-envvault history <file> [-p <project>]
-envvault restore <file> <version> [-p <project>]
+nvault history <file> [-p <project>]
+nvault restore <file> <version> [-p <project>]
 
-envvault run [project] -- <command>  # inject secrets into a child process, no file written
+nvault run [project] -- <command>  # inject secrets into a child process, no file written
 ```
 
 `push` and `pull` auto-detect the project from the current directory's git
@@ -86,7 +86,7 @@ remote (`origin`). Pass a project name explicitly when there's no match.
 - `push` refuses to upload in a non-interactive shell without `-y`, and
   always warns that the files contain credentials.
 - File bytes are preserved exactly — comments, quoting, ordering,
-  whitespace, multiline values. EnvVault stores files, it does not parse
+  whitespace, multiline values. nvault stores files, it does not parse
   and rebuild them.
 
 ## Security model

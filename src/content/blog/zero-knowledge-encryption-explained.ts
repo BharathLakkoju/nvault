@@ -4,19 +4,19 @@ export const post: BlogPost = {
   slug: "zero-knowledge-encryption-explained",
   title: "Zero-knowledge encryption, explained for developers",
   description:
-    "What \"the server can't read your data\" actually means: key derivation, key wrapping, AEAD, and the specific hierarchy EnvVault uses to make it true.",
+    "What \"the server can't read your data\" actually means: key derivation, key wrapping, AEAD, and the specific hierarchy nvault uses to make it true.",
   date: "2026-06-25",
-  author: "The EnvVault team",
+  author: "The nvault team",
   tags: ["security", "cryptography"],
   blocks: [
     {
       t: "p",
-      c: "\"Zero-knowledge\" is an overloaded phrase. In EnvVault's case it has a precise, checkable meaning: the server never holds the information needed to decrypt your files. Here is how that is arranged.",
+      c: "\"Zero-knowledge\" is an overloaded phrase. In nvault's case it has a precise, checkable meaning: the server never holds the information needed to decrypt your files. Here is how that is arranged.",
     },
     { t: "h2", c: "Passwords are not keys" },
     {
       t: "p",
-      c: "A passphrase is low-entropy and human-chosen; an encryption key needs to be high-entropy and uniform. You bridge the gap with a **key derivation function**. EnvVault uses PBKDF2-HMAC-SHA256 with a large iteration count and a random 128-bit salt per user. The iteration count is stored per user, so it can be raised over time without breaking existing vaults — re-derivation just happens on the next unlock.",
+      c: "A passphrase is low-entropy and human-chosen; an encryption key needs to be high-entropy and uniform. You bridge the gap with a **key derivation function**. nvault uses PBKDF2-HMAC-SHA256 with a large iteration count and a random 128-bit salt per user. The iteration count is stored per user, so it can be raised over time without breaking existing vaults — re-derivation just happens on the next unlock.",
     },
     {
       t: "code",
@@ -40,7 +40,7 @@ export const post: BlogPost = {
     { t: "h2", c: "AEAD and bound identifiers" },
     {
       t: "p",
-      c: "Every encryption step uses AES-256-GCM, an **authenticated** cipher: decryption fails loudly if the ciphertext was tampered with. EnvVault also passes an identifier as *additional authenticated data* at each step — `\"master-key\"`, `\"project:<id>\"`, `\"<contentId>\"`. The identifier is not secret, but it is covered by the authentication tag, so a blob encrypted for one record cannot be silently swapped onto another; the tag check fails.",
+      c: "Every encryption step uses AES-256-GCM, an **authenticated** cipher: decryption fails loudly if the ciphertext was tampered with. nvault also passes an identifier as *additional authenticated data* at each step — `\"master-key\"`, `\"project:<id>\"`, `\"<contentId>\"`. The identifier is not secret, but it is covered by the authentication tag, so a blob encrypted for one record cannot be silently swapped onto another; the tag check fails.",
     },
     { t: "h2", c: "What this buys you" },
     {
