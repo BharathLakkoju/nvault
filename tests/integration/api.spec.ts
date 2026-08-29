@@ -66,6 +66,7 @@ describeIf("nvault API (integration)", () => {
     membership: require("@/app/api/v1/organizations/[id]/memberships/[membershipId]/route"),
     transferOwnership: require("@/app/api/v1/organizations/[id]/transfer-ownership/route")
       .POST as Handler,
+    rotateKey: require("@/app/api/v1/organizations/[id]/rotate-key/route").POST as Handler,
   };
 
   const db = require("@/server/db").db as import("@prisma/client").PrismaClient;
@@ -781,6 +782,160 @@ describeIf("nvault API (integration)", () => {
       token: member.token,
     });
     expect(afterRemoval.status).toBe(404);
+  });
+
+  it("rotates the org key: rejects partial coverage, then re-keys projects and members", async () => {
+    const owner = await registerUserWithKeypair("rotate owner");
+    const member = await registerUserWithKeypair("rotate member");
+    const { orgId, orgKey } = await createOrg(owner);
+
+    // Bring `member` on board with key access.
+    const inv = await call(routes.orgInvites.POST, {
+      method: "POST",
+      path: `/api/v1/organizations/${orgId}/invites`,
+      params: { id: orgId },
+      token: owner.token,
+      body: { email: member.email, role: "MEMBER" },
+    });
+    await call(routes.acceptInvite, {
+      method: "POST",
+      path: "/api/v1/invites/accept",
+      token: member.token,
+      body: { token: inv.body.token },
+    });
+    let detail = await call(routes.org.GET, {
+      method: "GET",
+      path: `/api/v1/organizations/${orgId}`,
+      params: { id: orgId },
+      token: owner.token,
+    });
+    const ownerMembership = detail.body.members.find((m: { role: string }) => m.role === "OWNER");
+    const memberRow = detail.body.members.find((m: { email: string }) => m.email === member.email);
+    await call(routes.grantKey, {
+      method: "POST",
+      path: `/api/v1/organizations/${orgId}/memberships/${memberRow.id}/grant-key`,
+      params: { id: orgId, membershipId: memberRow.id },
+      token: owner.token,
+      body: { wrappedOrgKey: await vaultCrypto.wrapToPublicKey(memberRow.publicKey, orgKey), keyEpoch: 0 },
+    });
+
+    // One org project with a file.
+    const projectId = randomUUID();
+    const { wrappedProjectKey, projectKey } = await vaultCrypto.createProjectKey(orgKey, projectId);
+    await call(routes.projects.POST, {
+      method: "POST",
+      path: "/api/v1/projects",
+      token: owner.token,
+      body: { id: projectId, name: `rot-${Date.now()}`, wrappedProjectKey, organizationId: orgId },
+    });
+    const secret = "ROTATED=yes\n";
+    const contentId = randomUUID();
+    await call(routes.files.POST, {
+      method: "POST",
+      path: `/api/v1/projects/${projectId}/files`,
+      params: { id: projectId },
+      token: owner.token,
+      body: {
+        filename: ".env",
+        payload: await vaultCrypto.encryptFileContent(projectKey, contentId, vaultCrypto.utf8ToBytes(secret)),
+        contentId,
+        plaintextSize: secret.length,
+        plaintextSha256: await vaultCrypto.sha256Hex(vaultCrypto.utf8ToBytes(secret)),
+      },
+    });
+
+    // New Org Key, re-wrap everything.
+    const newOrgKey = vaultCrypto.generateDataKey();
+    const newWrappedProjectKey = await vaultCrypto.wrapProjectKey(newOrgKey, projectId, projectKey);
+    const memberKeysFull = [
+      { membershipId: ownerMembership.id, wrappedOrgKey: await vaultCrypto.wrapToPublicKey(owner.publicKey, newOrgKey) },
+      { membershipId: memberRow.id, wrappedOrgKey: await vaultCrypto.wrapToPublicKey(member.publicKey, newOrgKey) },
+    ];
+
+    // Missing a member → 400.
+    const partial = await call(routes.rotateKey, {
+      method: "POST",
+      path: `/api/v1/organizations/${orgId}/rotate-key`,
+      params: { id: orgId },
+      token: owner.token,
+      body: {
+        newEpoch: 1,
+        projectKeys: [{ projectId, wrappedProjectKey: newWrappedProjectKey }],
+        memberKeys: [memberKeysFull[0]],
+      },
+    });
+    expect(partial.status).toBe(400);
+
+    // Wrong epoch → 409.
+    const wrongEpoch = await call(routes.rotateKey, {
+      method: "POST",
+      path: `/api/v1/organizations/${orgId}/rotate-key`,
+      params: { id: orgId },
+      token: owner.token,
+      body: {
+        newEpoch: 5,
+        projectKeys: [{ projectId, wrappedProjectKey: newWrappedProjectKey }],
+        memberKeys: memberKeysFull,
+      },
+    });
+    expect(wrongEpoch.status).toBe(409);
+
+    // Full, correct rotation.
+    const ok = await call(routes.rotateKey, {
+      method: "POST",
+      path: `/api/v1/organizations/${orgId}/rotate-key`,
+      params: { id: orgId },
+      token: owner.token,
+      body: {
+        newEpoch: 1,
+        projectKeys: [{ projectId, wrappedProjectKey: newWrappedProjectKey }],
+        memberKeys: memberKeysFull,
+      },
+    });
+    expect(ok.status).toBe(200);
+    expect(ok.body.epoch).toBe(1);
+
+    // The member, using only the NEW wrapped Org Key, still decrypts the file.
+    detail = await call(routes.org.GET, {
+      method: "GET",
+      path: `/api/v1/organizations/${orgId}`,
+      params: { id: orgId },
+      token: member.token,
+    });
+    expect(detail.body.organization.currentKeyEpoch).toBe(1);
+    const memberNewOrgKey = await vaultCrypto.unwrapFromPrivateKey(
+      member.privateKey,
+      detail.body.self.wrappedOrgKey,
+    );
+    expect(vaultCrypto.bytesToBase64(memberNewOrgKey)).toBe(vaultCrypto.bytesToBase64(newOrgKey));
+
+    const list = await call(routes.projects.GET, {
+      method: "GET",
+      path: "/api/v1/projects",
+      token: member.token,
+    });
+    const proj = list.body.projects.find((p: { id: string }) => p.id === projectId);
+    expect(proj.keyEpoch).toBe(1);
+    const memberProjectKey = await vaultCrypto.openProjectKey(memberNewOrgKey, projectId, proj.wrappedProjectKey);
+    const files = await call(routes.files.GET, {
+      method: "GET",
+      path: `/api/v1/projects/${projectId}/files`,
+      params: { id: projectId },
+      token: member.token,
+    });
+    const dl = await call(routes.fileVersion, {
+      method: "GET",
+      path: `/api/v1/projects/${projectId}/files/${files.body.files[0].id}/versions/${files.body.files[0].currentVersion.id}`,
+      params: { id: projectId, fileId: files.body.files[0].id, versionId: files.body.files[0].currentVersion.id },
+      token: member.token,
+    });
+    const plain = await vaultCrypto.decryptFileContent(memberProjectKey, dl.body.payload.contentId, dl.body.payload);
+    expect(vaultCrypto.bytesToUtf8(plain)).toBe(secret);
+
+    // The pre-rotation Org Key no longer opens the (re-wrapped) project key.
+    await expect(
+      vaultCrypto.openProjectKey(orgKey, projectId, proj.wrappedProjectKey),
+    ).rejects.toThrow();
   });
 
   it("immediately invalidates a revoked session's access token", async () => {

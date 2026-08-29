@@ -32,6 +32,15 @@ export async function openProjectKey(
   return vaultCrypto.openProjectKey(masterKey, projectId, wrappedProjectKey);
 }
 
+/** Re-wraps an existing project key under a different wrapping key (Org Key rotation). */
+export async function rewrapProjectKey(
+  wrappingKey: Uint8Array,
+  projectId: string,
+  projectKey: Uint8Array,
+) {
+  return vaultCrypto.wrapProjectKey(wrappingKey, projectId, projectKey);
+}
+
 /**
  * Provisions a fresh RSA keypair for the current user, with the private key
  * wrapped under the (already-unlocked) vault master key. The returned

@@ -3,8 +3,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api-client";
 import { useAuthStore } from "@/lib/auth-store";
-import { openOrgKey, wrapForMember } from "@/lib/vault-client";
-import type { OrgActivityEntryDto, OrgInviteDto, OrgRole } from "@/lib/types";
+import {
+  generateOrgKey,
+  openOrgKey,
+  openProjectKey,
+  rewrapProjectKey,
+  wrapForMember,
+} from "@/lib/vault-client";
+import type { OrgActivityEntryDto, OrgInviteDto, OrgRole, ProjectDto } from "@/lib/types";
 import { useOrganization } from "./use-organizations";
 
 function invalidate(queryClient: ReturnType<typeof useQueryClient>, orgId: string) {
@@ -111,6 +117,56 @@ export function useTransferOwnership(orgId: string) {
         body: { toMembershipId },
       }),
     onSuccess: () => invalidate(queryClient, orgId),
+  });
+}
+
+/**
+ * Rotates the Organization Key. Generates a fresh Org Key in the browser,
+ * re-wraps every org project key and every active member's Org Key under it,
+ * and submits the whole set. Run this after removing a member so their old
+ * key copy is worthless.
+ */
+export function useRotateOrgKey(orgId: string) {
+  const queryClient = useQueryClient();
+  const { data: detail } = useOrganization(orgId);
+  return useMutation({
+    mutationFn: async () => {
+      const { privateKey } = useAuthStore.getState();
+      if (!privateKey) throw new Error("Unlock your vault first.");
+      if (!detail?.self.wrappedOrgKey) throw new Error("You don't have this organization's key.");
+
+      const oldOrgKey = await openOrgKey(privateKey, detail.self.wrappedOrgKey);
+      const newOrgKey = generateOrgKey();
+      const newEpoch = detail.organization.currentKeyEpoch + 1;
+
+      const allProjects = await apiRequest<{ projects: ProjectDto[] }>("/projects").then(
+        (r) => r.projects,
+      );
+      const orgProjects = allProjects.filter((p) => p.organizationId === orgId);
+      const projectKeys = await Promise.all(
+        orgProjects.map(async (p) => {
+          const projectKey = await openProjectKey(oldOrgKey, p.id, p.wrappedProjectKey);
+          return { projectId: p.id, wrappedProjectKey: await rewrapProjectKey(newOrgKey, p.id, projectKey) };
+        }),
+      );
+
+      const activeMembers = detail.members.filter((m) => m.status === "ACTIVE" && m.publicKey);
+      const memberKeys = await Promise.all(
+        activeMembers.map(async (m) => ({
+          membershipId: m.id,
+          wrappedOrgKey: await wrapForMember(m.publicKey!, newOrgKey),
+        })),
+      );
+
+      return apiRequest(`/organizations/${orgId}/rotate-key`, {
+        method: "POST",
+        body: { newEpoch, projectKeys, memberKeys },
+      });
+    },
+    onSuccess: () => {
+      invalidate(queryClient, orgId);
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
   });
 }
 

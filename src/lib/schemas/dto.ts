@@ -140,6 +140,26 @@ export const TransferOwnershipRequestSchema = z.object({
 });
 export type TransferOwnershipRequest = z.infer<typeof TransferOwnershipRequestSchema>;
 
+export const RotateKeyRequestSchema = z.object({
+  /** Must equal the org's current epoch + 1. */
+  newEpoch: z.number().int().min(1),
+  /** Every org project, re-wrapped under the new Org Key. */
+  projectKeys: z
+    .array(
+      z.object({
+        projectId: z.string().uuid(),
+        wrappedProjectKey: z.object({ iv: z.string().min(1), ciphertext: z.string().min(1) }),
+      }),
+    )
+    .max(2_000),
+  /** Every ACTIVE member, with the new Org Key wrapped to their public key. */
+  memberKeys: z
+    .array(z.object({ membershipId: z.string().cuid(), wrappedOrgKey: WrappedOrgKeySchema }))
+    .min(1)
+    .max(200),
+});
+export type RotateKeyRequest = z.infer<typeof RotateKeyRequestSchema>;
+
 export const RenameProjectRequestSchema = z.object({
   name: ProjectNameSchema,
 });

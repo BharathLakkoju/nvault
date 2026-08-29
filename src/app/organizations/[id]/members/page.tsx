@@ -18,6 +18,7 @@ import {
   useOrgInvites,
   useRemoveMember,
   useRevokeInvite,
+  useRotateOrgKey,
   useTransferOwnership,
 } from "@/hooks/use-org-members";
 import { useOrgContext } from "@/lib/org-context-store";
@@ -106,10 +107,58 @@ function MembersContent({ id }: { id: string }) {
         </ul>
       </Card>
 
+      {isAdmin && <RotateKeyCard orgId={id} keyEpoch={org.currentKeyEpoch} />}
+
       {self.role !== "OWNER" && (
         <LeaveOrgButton orgId={id} membershipId={self.membershipId} orgName={org.name} />
       )}
     </div>
+  );
+}
+
+function RotateKeyCard({ orgId, keyEpoch }: { orgId: string; keyEpoch: number }) {
+  const [open, setOpen] = useState(false);
+  const rotate = useRotateOrgKey(orgId);
+
+  return (
+    <Card>
+      <CardHeader
+        title="Organization key"
+        description={`Currently on generation ${keyEpoch + 1}. Rotate the key after removing a member so their old copy can't decrypt anything they re-download.`}
+      />
+      <div className="px-5 py-4">
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button variant="secondary">Rotate organization key</Button>
+          </DialogTrigger>
+          <DialogContent
+            title="Rotate the organization key?"
+            description="Every org project and every active member's key is re-wrapped in your browser. Members may need to reload once. This can't be undone."
+          >
+            <div className="flex justify-end gap-2">
+              <DialogClose asChild>
+                <Button variant="secondary">Cancel</Button>
+              </DialogClose>
+              <Button
+                variant="danger"
+                loading={rotate.isPending}
+                onClick={() =>
+                  rotate
+                    .mutateAsync()
+                    .then(() => {
+                      useToastStore.getState().push("success", "Organization key rotated");
+                      setOpen(false);
+                    })
+                    .catch((err) => toastError(err, "Failed to rotate key"))
+                }
+              >
+                Rotate key
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </Card>
   );
 }
 
