@@ -8,6 +8,7 @@ import {
   Eye,
   EyeSlash,
   Copy,
+  Check,
   DownloadSimple,
   UploadSimple,
   CaretDown,
@@ -18,6 +19,7 @@ import { isDotenvStyleFile } from "@/lib/schemas";
 import { RequireAuth } from "@/components/require-auth";
 import { RequireVaultUnlocked } from "@/components/require-vault-unlocked";
 import { AppShell } from "@/components/app-shell";
+import { Spinner } from "@/components/spinner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tag } from "@/components/ui/tag";
@@ -59,7 +61,12 @@ function ProjectDetail({ projectId }: { projectId: string }) {
   const { projectKey, error: keyError } = useProjectKey(project);
   const { data: files, isLoading: loadingFiles } = useFiles(projectId);
 
-  if (loadingProject) return <p className="text-sm text-muted">Loading project…</p>;
+  if (loadingProject)
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted">
+        <Spinner className="h-4 w-4" /> Loading project…
+      </div>
+    );
   if (!project) return <p className="text-sm text-red-600 dark:text-red-400">Project not found.</p>;
 
   const fileList = files ?? [];
@@ -99,7 +106,11 @@ function ProjectDetail({ projectId }: { projectId: string }) {
 
       {projectKey && (
         <div className="flex flex-col gap-2.5">
-          {loadingFiles && <p className="text-sm text-muted">Loading files…</p>}
+          {loadingFiles && (
+            <div className="flex items-center gap-2 text-sm text-muted">
+              <Spinner className="h-4 w-4" /> Loading files…
+            </div>
+          )}
           {!loadingFiles && fileList.length === 0 && (
             <Card className="p-8 text-center text-sm text-muted">
               No files yet. Upload your first environment file.
@@ -224,6 +235,9 @@ function FileRow({
   const deleteFile = useDeleteFile(projectId);
   const [revealed, setRevealed] = useState(false);
   const [content, setContent] = useState<string | null>(null);
+  const [contentLoading, setContentLoading] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "busy" | "done">("idle");
+  const [downloadState, setDownloadState] = useState<"idle" | "busy" | "done">("idle");
   const [expanded, setExpanded] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(false);
 
@@ -247,25 +261,46 @@ function FileRow({
       setRevealed(false);
       return;
     }
-    const text = await loadPlaintext();
-    if (text !== null) setRevealed(true);
+    setRevealed(true);
+    if (content === null) {
+      setContentLoading(true);
+      const text = await loadPlaintext();
+      setContentLoading(false);
+      if (text === null) setRevealed(false);
+    }
   }
 
   async function handleCopy() {
+    if (copyState === "busy") return;
+    setCopyState("busy");
     const text = await loadPlaintext();
-    if (text === null) return;
+    if (text === null) {
+      setCopyState("idle");
+      return;
+    }
     try {
       await navigator.clipboard.writeText(text);
+      setCopyState("done");
       useToastStore.getState().push("success", `Copied ${file.filename} — clear your clipboard when done`);
+      setTimeout(() => setCopyState("idle"), 1800);
     } catch {
+      setCopyState("idle");
       toastError(new Error("Clipboard unavailable"), "Couldn't copy");
     }
   }
 
   async function handleDownload() {
+    if (downloadState === "busy") return;
+    setDownloadState("busy");
     const text = await loadPlaintext();
-    if (text === null) return;
+    if (text === null) {
+      setDownloadState("idle");
+      return;
+    }
     downloadBlob(file.filename, new TextEncoder().encode(text), "text/plain");
+    setDownloadState("done");
+    useToastStore.getState().push("success", `Downloaded ${file.filename}`);
+    setTimeout(() => setDownloadState("idle"), 1800);
   }
 
   async function handleDelete() {
@@ -296,14 +331,44 @@ function FileRow({
             </div>
           )}
         </div>
-        <RowIcon label={revealed ? "Hide" : "Reveal"} onClick={toggleReveal}>
-          {revealed ? <EyeSlash size={16} /> : <Eye size={16} />}
+        <RowIcon
+          label={contentLoading ? "Decrypting…" : revealed ? "Hide" : "Reveal"}
+          onClick={toggleReveal}
+          disabled={contentLoading}
+        >
+          {contentLoading ? (
+            <Spinner className="h-4 w-4" />
+          ) : revealed ? (
+            <EyeSlash size={16} />
+          ) : (
+            <Eye size={16} />
+          )}
         </RowIcon>
-        <RowIcon label="Copy" onClick={handleCopy}>
-          <Copy size={16} />
+        <RowIcon
+          label={copyState === "done" ? "Copied" : "Copy"}
+          onClick={handleCopy}
+          disabled={copyState === "busy"}
+        >
+          {copyState === "busy" ? (
+            <Spinner className="h-4 w-4" />
+          ) : copyState === "done" ? (
+            <Check size={16} className="text-green-600 dark:text-green-400" />
+          ) : (
+            <Copy size={16} />
+          )}
         </RowIcon>
-        <RowIcon label="Download" onClick={handleDownload}>
-          <DownloadSimple size={16} />
+        <RowIcon
+          label={downloadState === "done" ? "Downloaded" : "Download"}
+          onClick={handleDownload}
+          disabled={downloadState === "busy"}
+        >
+          {downloadState === "busy" ? (
+            <Spinner className="h-4 w-4" />
+          ) : downloadState === "done" ? (
+            <Check size={16} className="text-green-600 dark:text-green-400" />
+          ) : (
+            <DownloadSimple size={16} />
+          )}
         </RowIcon>
         <RowIcon label="Version history" onClick={() => setExpanded((e) => !e)}>
           {expanded ? <CaretUp size={16} /> : <CaretDown size={16} />}
@@ -313,17 +378,21 @@ function FileRow({
         </RowIcon>
       </div>
 
-      {revealed && content !== null && (
+      {revealed && (
         <div className="px-4 pb-4 pl-12">
-          <pre className="dc-scroll m-0 overflow-x-auto rounded-md border border-line bg-surface-3 px-3.5 py-3 font-mono text-[12.5px] leading-relaxed text-accent-700 dark:text-accent-100">
-            {content}
-          </pre>
+          {contentLoading || content === null ? (
+            <div className="flex items-center gap-2 rounded-md border border-line bg-surface-3 px-3.5 py-3 text-xs text-muted">
+              <Spinner className="h-3.5 w-3.5" /> Decrypting in your browser…
+            </div>
+          ) : (
+            <pre className="dc-scroll m-0 overflow-x-auto rounded-md border border-line bg-surface-3 px-3.5 py-3 font-mono text-[12.5px] leading-relaxed text-accent-700 dark:text-accent-100">
+              {content}
+            </pre>
+          )}
         </div>
       )}
 
-      {expanded && (
-        <VersionHistory projectId={projectId} file={file} projectKey={projectKey} />
-      )}
+      {expanded && <VersionHistory projectId={projectId} file={file} projectKey={projectKey} />}
 
       <Dialog open={pendingDelete} onOpenChange={setPendingDelete}>
         <DialogContent
@@ -347,10 +416,12 @@ function FileRow({
 function RowIcon({
   label,
   onClick,
+  disabled,
   children,
 }: {
   label: string;
   onClick: () => void;
+  disabled?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -358,7 +429,8 @@ function RowIcon({
       title={label}
       aria-label={label}
       onClick={onClick}
-      className="focus-ring inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-muted hover:bg-ink/[0.06] hover:text-ink"
+      disabled={disabled}
+      className="focus-ring inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-muted hover:bg-ink/[0.06] hover:text-ink disabled:cursor-default disabled:opacity-100 disabled:hover:bg-transparent"
     >
       {children}
     </button>
@@ -376,57 +448,88 @@ function VersionHistory({
 }) {
   const { data: versions, isLoading } = useFileVersions(projectId, file.id);
   const restore = useRestoreVersion(projectId, file.id);
+  const [busyDownload, setBusyDownload] = useState<string | null>(null);
+  const [doneDownload, setDoneDownload] = useState<string | null>(null);
+  const [busyRestore, setBusyRestore] = useState<string | null>(null);
 
   async function handleDownload(versionId: string, versionNumber: number) {
+    if (busyDownload) return;
+    setBusyDownload(versionId);
     try {
       const downloaded = await downloadFileVersion(projectId, file.id, versionId);
       const plaintext = await decryptFile(projectKey, downloaded.payload);
       downloadBlob(`${file.filename}.v${versionNumber}`, plaintext, "text/plain");
+      setDoneDownload(versionId);
+      useToastStore.getState().push("success", `Downloaded ${file.filename}.v${versionNumber}`);
+      setTimeout(() => setDoneDownload((id) => (id === versionId ? null : id)), 1800);
     } catch (err) {
       toastError(err, "Failed to download version");
+    } finally {
+      setBusyDownload((id) => (id === versionId ? null : id));
     }
   }
 
   async function handleRestore(versionId: string, versionNumber: number) {
+    if (busyRestore) return;
+    setBusyRestore(versionId);
     try {
       await restore.mutateAsync(versionId);
       useToastStore.getState().push("success", `Restored v${versionNumber} as the new current version`);
     } catch (err) {
       toastError(err, "Failed to restore version");
+    } finally {
+      setBusyRestore((id) => (id === versionId ? null : id));
     }
   }
 
   return (
     <div className="border-t border-line px-4 py-3 pl-12">
       <div className="mb-2 text-[11px] uppercase tracking-[0.06em] text-muted">Version history</div>
-      {isLoading && <p className="text-xs text-muted">Loading…</p>}
+      {isLoading && (
+        <div className="flex items-center gap-2 py-1.5 text-xs text-muted">
+          <Spinner className="h-3.5 w-3.5" /> Loading versions…
+        </div>
+      )}
       <div className="flex flex-col">
-        {versions?.map((ver) => (
-          <div key={ver.id} className="flex items-center gap-3 py-1.5 text-[13px]">
-            <span className="w-9 font-mono text-accent-600 dark:text-accent-300">v{ver.versionNumber}</span>
-            <span className="flex-1 text-ink/70">
-              {formatRelativeTime(ver.createdAt)} · {formatBytes(ver.plaintextSize)}
-            </span>
-            {ver.isCurrent ? (
-              <Tag variant="neutral">current</Tag>
-            ) : (
-              <>
-                <button
-                  onClick={() => handleDownload(ver.id, ver.versionNumber)}
-                  className="focus-ring rounded px-1.5 py-0.5 text-xs text-accent-600 hover:bg-accent-500/10 dark:text-accent-300"
-                >
-                  Download
-                </button>
-                <button
-                  onClick={() => handleRestore(ver.id, ver.versionNumber)}
-                  className="focus-ring rounded px-1.5 py-0.5 text-xs text-accent-600 hover:bg-accent-500/10 dark:text-accent-300"
-                >
-                  Restore
-                </button>
-              </>
-            )}
-          </div>
-        ))}
+        {versions?.map((ver) => {
+          const downloading = busyDownload === ver.id;
+          const downloaded = doneDownload === ver.id;
+          const restoring = busyRestore === ver.id;
+          return (
+            <div key={ver.id} className="flex items-center gap-3 py-1.5 text-[13px]">
+              <span className="w-9 font-mono text-accent-600 dark:text-accent-300">v{ver.versionNumber}</span>
+              <span className="flex-1 text-ink/70">
+                {formatRelativeTime(ver.createdAt)} · {formatBytes(ver.plaintextSize)}
+              </span>
+              {ver.isCurrent ? (
+                <Tag variant="neutral">current</Tag>
+              ) : (
+                <>
+                  <button
+                    onClick={() => handleDownload(ver.id, ver.versionNumber)}
+                    disabled={downloading || restoring}
+                    className="focus-ring inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-accent-600 hover:bg-accent-500/10 disabled:opacity-70 dark:text-accent-300"
+                  >
+                    {downloading ? (
+                      <Spinner className="h-3 w-3" />
+                    ) : downloaded ? (
+                      <Check size={12} className="text-green-600 dark:text-green-400" />
+                    ) : null}
+                    {downloading ? "Downloading…" : downloaded ? "Downloaded" : "Download"}
+                  </button>
+                  <button
+                    onClick={() => handleRestore(ver.id, ver.versionNumber)}
+                    disabled={restoring || downloading}
+                    className="focus-ring inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-accent-600 hover:bg-accent-500/10 disabled:opacity-70 dark:text-accent-300"
+                  >
+                    {restoring && <Spinner className="h-3 w-3" />}
+                    {restoring ? "Restoring…" : "Restore"}
+                  </button>
+                </>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
