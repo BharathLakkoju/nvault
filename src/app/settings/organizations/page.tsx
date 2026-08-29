@@ -34,8 +34,8 @@ function OrganizationsContent() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Organizations</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <h1 className="text-2xl font-medium text-ink sm:text-[28px]">Organizations</h1>
+          <p className="text-sm text-muted">
             Share projects and environment files with a team.
           </p>
         </div>
@@ -54,13 +54,13 @@ function OrganizationsContent() {
 
       <Card>
         <CardHeader title="Your organizations" description="Organizations you own or belong to." />
-        {isLoading && <p className="p-5 text-sm text-slate-500">Loading…</p>}
+        {isLoading && <p className="p-5 text-sm text-muted">Loading…</p>}
         {!isLoading && (orgs?.length ?? 0) === 0 && (
-          <p className="p-5 text-sm text-slate-500 dark:text-slate-400">
+          <p className="p-5 text-sm text-muted">
             You&apos;re not in any organization yet. Create one to invite teammates.
           </p>
         )}
-        <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+        <ul className="divide-y divide-line">
           {orgs?.map((org) => (
             <li
               key={org.id}
@@ -69,11 +69,11 @@ function OrganizationsContent() {
               <div className="min-w-0">
                 <Link
                   href={`/organizations/${org.id}`}
-                  className="text-sm font-medium text-slate-900 hover:underline dark:text-slate-100"
+                  className="text-sm font-medium text-ink hover:underline"
                 >
                   {org.name}
                 </Link>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-muted">
                   /{org.slug} · {org.role?.toLowerCase()} ·{" "}
                   {org.memberCount ?? 0} member{org.memberCount === 1 ? "" : "s"} ·{" "}
                   {org.projectCount ?? 0} project{org.projectCount === 1 ? "" : "s"}
@@ -181,8 +181,8 @@ function CreateOrgForm({ onDone }: { onDone: () => void }) {
                 className={
                   "flex cursor-pointer items-center justify-between rounded-md border px-3 py-2 text-sm " +
                   (tier === t.tier
-                    ? "border-accent-500 bg-accent-50 dark:bg-accent-500/10"
-                    : "border-slate-200 dark:border-slate-700")
+                    ? "border-accent-500 bg-accent-500/10"
+                    : "border-line")
                 }
               >
                 <span className="flex items-center gap-2">
@@ -193,15 +193,15 @@ function CreateOrgForm({ onDone }: { onDone: () => void }) {
                     onChange={() => setTier(t.tier)}
                   />
                   <span className="font-medium capitalize">{t.tier.toLowerCase()}</span>
-                  <span className="text-slate-500 dark:text-slate-400">
+                  <span className="text-muted">
                     up to {t.maxMembers} members
                   </span>
                 </span>
-                <span className="text-slate-600 dark:text-slate-300">{t.priceLabel}</span>
+                <span className="text-ink/70">{t.priceLabel}</span>
               </label>
             ))}
           </div>
-          <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-1.5 text-xs text-muted">
             Billed through Polar. You can change plans later; a secure checkout page opens next.
           </p>
         </div>

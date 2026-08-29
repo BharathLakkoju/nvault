@@ -75,20 +75,19 @@ function BillingContent() {
     }
   }
 
-  if (isLoading) return <p className="text-sm text-slate-500">Loading…</p>;
+  if (isLoading) return <p className="text-sm text-muted">Loading…</p>;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Billing</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          Your personal plan. Organization billing is managed on each organization&apos;s own
-          billing page.
-        </p>
-      </div>
+    <div>
+      <h1 className="text-2xl font-medium text-ink sm:text-[28px]">Billing</h1>
+      <p className="mt-0.5 text-muted">
+        Your personal plan. Organization billing is managed on each organization&apos;s own billing
+        page.
+      </p>
 
-      <Card>
+      <Card className="mt-6">
         <CardHeader
+          kicker="Personal"
           title={isPro ? "Pro" : "Free"}
           description={
             isPro
@@ -98,13 +97,11 @@ function BillingContent() {
         />
 
         {isPro && billing && (
-          <dl className="divide-y divide-slate-200 dark:divide-slate-800">
+          <dl className="divide-y divide-line">
             <Row label="Status" value={STATUS_LABEL[billing.pro.status] ?? billing.pro.status} />
             <Row
               label="Renews"
-              value={
-                billing.pro.currentPeriodEnd ? formatDate(billing.pro.currentPeriodEnd) : "—"
-              }
+              value={billing.pro.currentPeriodEnd ? formatDate(billing.pro.currentPeriodEnd) : "—"}
             />
             {billing.pro.cancelAtPeriodEnd && (
               <Row label="Scheduled to cancel" value="Access ends at the period end" />
@@ -119,9 +116,7 @@ function BillingContent() {
             </Button>
           )}
           {!isPro && !plan?.billingEnabled && (
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Paid plans aren&apos;t enabled on this server.
-            </p>
+            <p className="text-sm text-muted">Paid plans aren&apos;t enabled on this server.</p>
           )}
           {billing?.pro.manageable && (
             <Button variant="secondary" onClick={openPortal} loading={portal.isPending}>
@@ -131,21 +126,18 @@ function BillingContent() {
         </div>
 
         {isPro && (
-          <p className="border-t border-slate-200 px-5 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+          <p className="border-t border-line px-5 py-3 text-xs text-muted">
             Update your card, download invoices, or cancel from the Polar customer portal. nvault
             never sees or stores your payment details.
           </p>
         )}
       </Card>
 
-      <Card>
-        <CardHeader
-          title="Teams"
-          description="Shared, end-to-end encrypted projects for a group."
-        />
-        <div className="px-5 py-4 text-sm text-slate-600 dark:text-slate-300">
+      <Card className="mt-4">
+        <CardHeader kicker="Teams" title="Shared vaults" description="End-to-end encrypted projects for a group." />
+        <div className="px-5 py-4 text-sm text-ink/70">
           Need to share environment files with teammates? Create an{" "}
-          <Link href="/settings/organizations" className="text-accent-600 hover:underline">
+          <Link href="/settings/organizations" className="text-accent-600 hover:underline dark:text-accent-300">
             organization
           </Link>{" "}
           — from {plan?.teamTiers?.[0]?.priceLabel ?? "a monthly plan"} per organization, billed
@@ -159,8 +151,8 @@ function BillingContent() {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between px-5 py-3 text-sm">
-      <dt className="text-slate-500 dark:text-slate-400">{label}</dt>
-      <dd className="font-medium text-slate-900 dark:text-slate-100">{value}</dd>
+      <dt className="text-muted">{label}</dt>
+      <dd className="font-medium text-ink">{value}</dd>
     </div>
   );
 }

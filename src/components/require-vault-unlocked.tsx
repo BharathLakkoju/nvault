@@ -44,8 +44,8 @@ export function RequireVaultUnlocked({ children }: { children: React.ReactNode }
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-4">
       <Card className="w-full max-w-sm p-6">
-        <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">Unlock your vault</h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        <h2 className="text-base font-medium text-ink">Unlock your vault</h2>
+        <p className="mt-1 text-sm text-muted">
           Your vault passphrase never leaves this device. It&apos;s separate from your account password and is
           required to decrypt your files.
         </p>

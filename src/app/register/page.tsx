@@ -78,8 +78,8 @@ export default function RegisterPage() {
       <div className="fixed right-3 top-3">
         <ThemeToggle />
       </div>
-      <Card className="w-full max-w-md bg-white/80 p-6 backdrop-blur-sm dark:bg-slate-900/80">
-        <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Create your nvault account</h1>
+      <Card className="w-full max-w-md bg-surface/80 p-6 backdrop-blur-sm">
+        <h1 className="text-lg font-semibold text-ink">Create your nvault account</h1>
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           <div>
             <Label htmlFor="email">Email</Label>
@@ -100,7 +100,7 @@ export default function RegisterPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Used to log in. At least 12 characters.</p>
+            <p className="mt-1 text-xs text-muted">Used to log in. At least 12 characters.</p>
           </div>
 
           <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950">
@@ -135,7 +135,7 @@ export default function RegisterPage() {
             Create account
           </Button>
         </form>
-        <p className="mt-4 text-center text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-4 text-center text-sm text-muted">
           Already have an account?{" "}
           <Link href="/login" className="font-medium text-accent-600 hover:underline dark:text-accent-400">
             Log in

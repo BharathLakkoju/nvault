@@ -43,9 +43,9 @@ export default function LoginPage() {
       <div className="fixed right-3 top-3">
         <ThemeToggle />
       </div>
-      <Card className="w-full max-w-sm bg-white/80 p-6 backdrop-blur-sm dark:bg-slate-900/80">
-        <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Log in to nvault</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Your development environment, available anywhere.</p>
+      <Card className="w-full max-w-sm bg-surface/80 p-6 backdrop-blur-sm">
+        <h1 className="text-lg font-semibold text-ink">Log in to nvault</h1>
+        <p className="mt-1 text-sm text-muted">Your development environment, available anywhere.</p>
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           <div>
             <Label htmlFor="email">Email</Label>
@@ -67,7 +67,7 @@ export default function LoginPage() {
             Log in
           </Button>
         </form>
-        <p className="mt-4 text-center text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-4 text-center text-sm text-muted">
           Don&apos;t have an account?{" "}
           <Link href="/register" className="font-medium text-accent-600 hover:underline dark:text-accent-400">
             Create one

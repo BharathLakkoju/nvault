@@ -44,30 +44,30 @@ function SecurityContent() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Security activity</h1>
+      <h1 className="text-2xl font-medium text-ink sm:text-[28px]">Security activity</h1>
       <Card>
         <CardHeader
           title="Recent activity"
           description="Security-relevant actions on your account. Never shows secret contents."
         />
-        {isLoading && <p className="p-5 text-sm text-slate-500">Loading…</p>}
-        {!isLoading && data?.length === 0 && <p className="p-5 text-sm text-slate-500">No activity yet.</p>}
-        <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+        {isLoading && <p className="p-5 text-sm text-muted">Loading…</p>}
+        {!isLoading && data?.length === 0 && <p className="p-5 text-sm text-muted">No activity yet.</p>}
+        <ul className="divide-y divide-line">
           {data?.map((entry) => (
             <li key={entry.id} className="flex items-start justify-between gap-3 px-5 py-3 text-sm">
               <div className="min-w-0">
-                <span className="font-medium text-slate-900 dark:text-slate-100">
+                <span className="font-medium text-ink">
                   {ACTION_LABELS[entry.action] ?? entry.action}
                 </span>
                 {entry.metadata && (
-                  <span className="ml-2 text-slate-500 dark:text-slate-400">
+                  <span className="ml-2 text-muted">
                     {Object.entries(entry.metadata)
                       .map(([k, v]) => `${k}: ${v}`)
                       .join(", ")}
                   </span>
                 )}
               </div>
-              <span className="shrink-0 text-xs text-slate-400">{formatRelativeTime(entry.createdAt)}</span>
+              <span className="shrink-0 text-xs text-muted/70">{formatRelativeTime(entry.createdAt)}</span>
             </li>
           ))}
         </ul>

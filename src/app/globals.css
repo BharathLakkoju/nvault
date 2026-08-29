@@ -21,6 +21,34 @@
   --accent-500: 99 102 241;
   --accent-600: 79 70 229;
   --accent-700: 67 56 202;
+
+  /*
+   * Semantic surface tokens
+   * -----------------------
+   * "R G B" triples consumed by tailwind's `canvas` / `surface` / `line` /
+   * `ink` / `muted` colours. `:root` holds the light values (white + slate);
+   * `:root.dark` swaps in the dark values (slate-950 → slate-400). This is the
+   * same slate palette the marketing pages use, expressed once so the
+   * authenticated app and the site stay in step. The accent stays
+   * user-switchable through the `--accent-*` ramp above.
+   */
+  --c-bg: 255 255 255;
+  --c-surface: 255 255 255;
+  --c-surface-2: 248 250 252;
+  --c-surface-3: 241 245 249;
+  --c-line: 226 232 240;
+  --c-ink: 15 23 42;
+  --c-muted: 100 116 139;
+}
+
+:root.dark {
+  --c-bg: 2 6 23;
+  --c-surface: 15 23 42;
+  --c-surface-2: 30 41 59;
+  --c-surface-3: 2 6 23;
+  --c-line: 30 41 59;
+  --c-ink: 241 245 249;
+  --c-muted: 148 163 184;
 }
 
 :root[data-accent="violet"] {
@@ -84,6 +112,38 @@ body {
 
 .focus-ring {
   @apply outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-950;
+}
+
+/* Themed scrollbar for the app's scroll regions (sidebar, main, palette). */
+.dc-scroll::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+.dc-scroll::-webkit-scrollbar-thumb {
+  background: rgb(var(--c-line));
+  border-radius: 8px;
+}
+.dc-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes dc-pop-in {
+  from {
+    transform: scale(0.97);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes dc-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /*

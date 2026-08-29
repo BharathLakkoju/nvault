@@ -61,10 +61,10 @@ function AcceptInvite({ token }: { token: string }) {
   if (done) {
     return (
       <Card className="mx-auto max-w-md p-6 text-center">
-        <h1 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+        <h1 className="text-base font-medium text-ink">
           You&apos;ve joined {done.name}
         </h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-1 text-sm text-muted">
           An admin needs to grant you access to the organization&apos;s encryption key before you can
           open its projects.
         </p>
@@ -77,10 +77,10 @@ function AcceptInvite({ token }: { token: string }) {
 
   return (
     <Card className="mx-auto max-w-md p-6 text-center">
-      <h1 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+      <h1 className="text-base font-medium text-ink">
         Organization invitation
       </h1>
-      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+      <p className="mt-1 text-sm text-muted">
         Accepting as <span className="font-medium">{email}</span>. The invitation must have been sent
         to this address.
       </p>

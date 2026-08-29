@@ -3,17 +3,38 @@
 import { useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import {
+  FileLock,
+  Eye,
+  EyeSlash,
+  Copy,
+  Check,
+  DownloadSimple,
+  UploadSimple,
+  CaretDown,
+  CaretUp,
+  Trash,
+} from "@phosphor-icons/react";
 import { isDotenvStyleFile } from "@/lib/schemas";
 import { RequireAuth } from "@/components/require-auth";
 import { RequireVaultUnlocked } from "@/components/require-vault-unlocked";
 import { AppShell } from "@/components/app-shell";
+import { Spinner } from "@/components/spinner";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog";
-import { VersionHistoryDialog } from "@/components/version-history-dialog";
+import { Card } from "@/components/ui/card";
+import { Tag } from "@/components/ui/tag";
+import { Dialog, DialogContent, DialogClose, DialogTrigger } from "@/components/ui/dialog";
+import { Input, Label } from "@/components/ui/input";
 import { useProject } from "@/hooks/use-projects";
 import { useProjectKey } from "@/hooks/use-project-key";
-import { useDeleteFile, useFiles, useUploadFile, downloadFileVersion } from "@/hooks/use-files";
+import {
+  useDeleteFile,
+  useFiles,
+  useFileVersions,
+  useRestoreVersion,
+  useUploadFile,
+  downloadFileVersion,
+} from "@/hooks/use-files";
 import { decryptFile } from "@/lib/vault-client";
 import { downloadBlob } from "@/lib/download";
 import { buildZip } from "@/lib/zip";
@@ -39,57 +60,73 @@ function ProjectDetail({ projectId }: { projectId: string }) {
   const { data: project, isLoading: loadingProject } = useProject(projectId);
   const { projectKey, error: keyError } = useProjectKey(project);
   const { data: files, isLoading: loadingFiles } = useFiles(projectId);
-  const [historyFile, setHistoryFile] = useState<FileDto | null>(null);
 
-  if (loadingProject) return <p className="text-sm text-slate-500">Loading project…</p>;
-  if (!project) return <p className="text-sm text-red-600">Project not found.</p>;
+  if (loadingProject)
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted">
+        <Spinner className="h-4 w-4" /> Loading project…
+      </div>
+    );
+  if (!project) return <p className="text-sm text-red-600 dark:text-red-400">Project not found.</p>;
+
+  const fileList = files ?? [];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <Link href="/dashboard" className="text-sm text-slate-500 hover:underline dark:text-slate-400">
-          ← Projects
-        </Link>
-        <h1 className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">{project.name}</h1>
-        {project.gitRemoteUrl && (
-          <p className="text-sm text-slate-500 dark:text-slate-400">{project.gitRemoteUrl}</p>
+    <div>
+      <div className="mb-2.5 text-[13px] text-muted">
+        <Link href="/dashboard" className="hover:text-accent-600 dark:hover:text-accent-300">
+          Projects
+        </Link>{" "}
+        / <span className="text-ink/70">{project.name}</span>
+      </div>
+
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-medium text-ink sm:text-[26px]">{project.name}</h1>
+          <p className="mt-0.5 text-muted">
+            {fileList.length} environment file{fileList.length === 1 ? "" : "s"} · zero-knowledge encrypted
+          </p>
+          {project.gitRemoteUrl && <p className="mt-0.5 text-xs text-muted/70">{project.gitRemoteUrl}</p>}
+        </div>
+        {projectKey && (
+          <div className="flex gap-2">
+            {fileList.length > 0 && (
+              <DownloadAllButton projectId={projectId} projectName={project.name} projectKey={projectKey} />
+            )}
+            <UploadDialog projectId={projectId} projectKey={projectKey} />
+          </div>
         )}
       </div>
 
       {keyError && (
-        <Card className="border-red-300 p-4 text-sm text-red-700 dark:border-red-800 dark:text-red-300">
+        <Card className="border-red-500/40 p-4 text-sm text-red-700 dark:text-red-300">
           Couldn&apos;t decrypt this project&apos;s key with your current vault passphrase.
         </Card>
       )}
 
       {projectKey && (
-        <>
-          <UploadCard projectId={projectId} projectKey={projectKey} />
-          <FilesCard
-            projectId={projectId}
-            project={project}
-            files={files ?? []}
-            loading={loadingFiles}
-            projectKey={projectKey}
-            onShowHistory={setHistoryFile}
-          />
-        </>
-      )}
-
-      {historyFile && projectKey && (
-        <VersionHistoryDialog
-          open={!!historyFile}
-          onOpenChange={(open) => !open && setHistoryFile(null)}
-          projectId={projectId}
-          file={historyFile}
-          projectKey={projectKey}
-        />
+        <div className="flex flex-col gap-2.5">
+          {loadingFiles && (
+            <div className="flex items-center gap-2 text-sm text-muted">
+              <Spinner className="h-4 w-4" /> Loading files…
+            </div>
+          )}
+          {!loadingFiles && fileList.length === 0 && (
+            <Card className="p-8 text-center text-sm text-muted">
+              No files yet. Upload your first environment file.
+            </Card>
+          )}
+          {fileList.map((file) => (
+            <FileRow key={file.id} projectId={projectId} file={file} projectKey={projectKey} />
+          ))}
+        </div>
       )}
     </div>
   );
 }
 
-function UploadCard({ projectId, projectKey }: { projectId: string; projectKey: Uint8Array }) {
+function UploadDialog({ projectId, projectKey }: { projectId: string; projectKey: Uint8Array }) {
+  const [open, setOpen] = useState(false);
   const uploadFile = useUploadFile(projectId);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [filename, setFilename] = useState("");
@@ -103,6 +140,7 @@ function UploadCard({ projectId, projectKey }: { projectId: string; projectKey: 
       await uploadFile.mutateAsync({ filename: name, plaintext: buffer, projectKey });
       useToastStore.getState().push("success", `Uploaded ${name}`);
       setFilename("");
+      setOpen(false);
     } catch (err) {
       toastError(err, "Failed to upload file");
     } finally {
@@ -111,68 +149,57 @@ function UploadCard({ projectId, projectKey }: { projectId: string; projectKey: 
   }
 
   return (
-    <Card>
-      <CardHeader
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <UploadSimple size={15} />
+          Upload file
+        </Button>
+      </DialogTrigger>
+      <DialogContent
         title="Upload a file"
         description="Encrypted in your browser before it ever leaves this device — nvault never sees plaintext contents."
-      />
-      <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-end">
-        <div className="flex-1">
-          <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Override filename (optional)
-          </label>
-          <input
-            className="focus-ring w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-            placeholder="defaults to the selected file's name"
-            value={filename}
-            onChange={(e) => setFilename(e.target.value)}
-          />
+      >
+        <div className="space-y-3">
+          <div>
+            <Label htmlFor="upload-name">Override filename (optional)</Label>
+            <Input
+              id="upload-name"
+              placeholder="defaults to the selected file's name"
+              value={filename}
+              onChange={(e) => setFilename(e.target.value)}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <DialogClose asChild>
+              <Button type="button" variant="secondary">
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button loading={uploadFile.isPending} onClick={() => fileInputRef.current?.click()}>
+              Choose file…
+            </Button>
+          </div>
+          <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />
         </div>
-        <Button
-          variant="secondary"
-          loading={uploadFile.isPending}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          Choose file…
-        </Button>
-        <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />
-      </div>
-    </Card>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-function FilesCard({
+function DownloadAllButton({
   projectId,
-  project,
-  files,
-  loading,
+  projectName,
   projectKey,
-  onShowHistory,
 }: {
   projectId: string;
-  project: import("@/lib/types").ProjectDto;
-  files: FileDto[];
-  loading: boolean;
+  projectName: string;
   projectKey: Uint8Array;
-  onShowHistory: (file: FileDto) => void;
 }) {
-  const deleteFile = useDeleteFile(projectId);
-  const [pendingDelete, setPendingDelete] = useState<FileDto | null>(null);
-  const [downloadingAll, setDownloadingAll] = useState(false);
-
-  async function handleDownload(file: FileDto) {
-    if (!file.currentVersion) return;
-    try {
-      const downloaded = await downloadFileVersion(projectId, file.id, file.currentVersion.id);
-      const plaintext = await decryptFile(projectKey, downloaded.payload);
-      downloadBlob(file.filename, plaintext, "text/plain");
-    } catch (err) {
-      toastError(err, "Failed to download file");
-    }
-  }
+  const [busy, setBusy] = useState(false);
 
   async function handleDownloadAll() {
-    setDownloadingAll(true);
+    setBusy(true);
     try {
       const { files: exported } = await apiRequest<{
         files: Array<{ filename: string; payload: { iv: string; ciphertext: string; contentId: string } }>;
@@ -180,86 +207,196 @@ function FilesCard({
       const entries = await Promise.all(
         exported.map(async (f) => ({ name: f.filename, data: await decryptFile(projectKey, f.payload) })),
       );
-      const zip = buildZip(entries);
-      downloadBlob(`${project.name}.zip`, zip, "application/zip");
+      downloadBlob(`${projectName}.zip`, buildZip(entries), "application/zip");
     } catch (err) {
       toastError(err, "Failed to build ZIP archive");
     } finally {
-      setDownloadingAll(false);
-    }
-  }
-
-  async function handleDelete() {
-    if (!pendingDelete) return;
-    try {
-      await deleteFile.mutateAsync(pendingDelete.id);
-      useToastStore.getState().push("success", `Deleted ${pendingDelete.filename}`);
-    } catch (err) {
-      toastError(err, "Failed to delete file");
-    } finally {
-      setPendingDelete(null);
+      setBusy(false);
     }
   }
 
   return (
-    <Card>
-      <CardHeader
-        title="Files"
-        description={`${files.length} file${files.length === 1 ? "" : "s"}`}
-        action={
-          files.length > 0 && (
-            <Button variant="secondary" loading={downloadingAll} onClick={handleDownloadAll}>
-              Download all (.zip)
-            </Button>
-          )
-        }
-      />
-      {loading && <p className="p-5 text-sm text-slate-500">Loading files…</p>}
-      {!loading && files.length === 0 && (
-        <p className="p-5 text-sm text-slate-500 dark:text-slate-400">
-          No files yet. Upload your first environment file above.
-        </p>
-      )}
-      <ul className="divide-y divide-slate-200 dark:divide-slate-800">
-        {files.map((file) => (
-          <li
-            key={file.id}
-            className="flex flex-col gap-3 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
-          >
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="truncate font-mono text-sm text-slate-900 dark:text-slate-100">{file.filename}</span>
-                {isDotenvStyleFile(file.filename) && (
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                    env
-                  </span>
-                )}
-              </div>
-              {file.currentVersion && (
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  v{file.currentVersion.versionNumber} · {formatBytes(file.currentVersion.plaintextSize)} ·
-                  updated {formatRelativeTime(file.currentVersion.createdAt)}
-                </p>
-              )}
-            </div>
-            <div className="flex shrink-0 flex-wrap gap-2">
-              <Button variant="secondary" onClick={() => handleDownload(file)}>
-                Download
-              </Button>
-              <Button variant="secondary" onClick={() => onShowHistory(file)}>
-                History
-              </Button>
-              <Button variant="ghost" className="text-red-600 dark:text-red-400" onClick={() => setPendingDelete(file)}>
-                Delete
-              </Button>
-            </div>
-          </li>
-        ))}
-      </ul>
+    <Button variant="secondary" loading={busy} onClick={handleDownloadAll}>
+      <DownloadSimple size={15} />
+      Download all (.zip)
+    </Button>
+  );
+}
 
-      <Dialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}>
+function FileRow({
+  projectId,
+  file,
+  projectKey,
+}: {
+  projectId: string;
+  file: FileDto;
+  projectKey: Uint8Array;
+}) {
+  const deleteFile = useDeleteFile(projectId);
+  const [revealed, setRevealed] = useState(false);
+  const [content, setContent] = useState<string | null>(null);
+  const [contentLoading, setContentLoading] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "busy" | "done">("idle");
+  const [downloadState, setDownloadState] = useState<"idle" | "busy" | "done">("idle");
+  const [expanded, setExpanded] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(false);
+
+  async function loadPlaintext(): Promise<string | null> {
+    if (content !== null) return content;
+    if (!file.currentVersion) return null;
+    try {
+      const downloaded = await downloadFileVersion(projectId, file.id, file.currentVersion.id);
+      const bytes = await decryptFile(projectKey, downloaded.payload);
+      const text = new TextDecoder().decode(bytes);
+      setContent(text);
+      return text;
+    } catch (err) {
+      toastError(err, "Failed to decrypt file");
+      return null;
+    }
+  }
+
+  async function toggleReveal() {
+    if (revealed) {
+      setRevealed(false);
+      return;
+    }
+    setRevealed(true);
+    if (content === null) {
+      setContentLoading(true);
+      const text = await loadPlaintext();
+      setContentLoading(false);
+      if (text === null) setRevealed(false);
+    }
+  }
+
+  async function handleCopy() {
+    if (copyState === "busy") return;
+    setCopyState("busy");
+    const text = await loadPlaintext();
+    if (text === null) {
+      setCopyState("idle");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyState("done");
+      useToastStore.getState().push("success", `Copied ${file.filename} — clear your clipboard when done`);
+      setTimeout(() => setCopyState("idle"), 1800);
+    } catch {
+      setCopyState("idle");
+      toastError(new Error("Clipboard unavailable"), "Couldn't copy");
+    }
+  }
+
+  async function handleDownload() {
+    if (downloadState === "busy") return;
+    setDownloadState("busy");
+    const text = await loadPlaintext();
+    if (text === null) {
+      setDownloadState("idle");
+      return;
+    }
+    downloadBlob(file.filename, new TextEncoder().encode(text), "text/plain");
+    setDownloadState("done");
+    useToastStore.getState().push("success", `Downloaded ${file.filename}`);
+    setTimeout(() => setDownloadState("idle"), 1800);
+  }
+
+  async function handleDelete() {
+    try {
+      await deleteFile.mutateAsync(file.id);
+      useToastStore.getState().push("success", `Deleted ${file.filename}`);
+    } catch (err) {
+      toastError(err, "Failed to delete file");
+    } finally {
+      setPendingDelete(false);
+    }
+  }
+
+  const v = file.currentVersion;
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="flex items-center gap-3.5 px-4 py-3.5">
+        <FileLock size={18} className="flex-shrink-0 text-accent-600 dark:text-accent-300" />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="truncate text-sm font-medium text-ink">{file.filename}</span>
+            {isDotenvStyleFile(file.filename) && <Tag variant="neutral">env</Tag>}
+          </div>
+          {v && (
+            <div className="text-xs text-muted">
+              {formatBytes(v.plaintextSize)} · updated {formatRelativeTime(v.createdAt)} · v{v.versionNumber}
+            </div>
+          )}
+        </div>
+        <RowIcon
+          label={contentLoading ? "Decrypting…" : revealed ? "Hide" : "Reveal"}
+          onClick={toggleReveal}
+          disabled={contentLoading}
+        >
+          {contentLoading ? (
+            <Spinner className="h-4 w-4" />
+          ) : revealed ? (
+            <EyeSlash size={16} />
+          ) : (
+            <Eye size={16} />
+          )}
+        </RowIcon>
+        <RowIcon
+          label={copyState === "done" ? "Copied" : "Copy"}
+          onClick={handleCopy}
+          disabled={copyState === "busy"}
+        >
+          {copyState === "busy" ? (
+            <Spinner className="h-4 w-4" />
+          ) : copyState === "done" ? (
+            <Check size={16} className="text-green-600 dark:text-green-400" />
+          ) : (
+            <Copy size={16} />
+          )}
+        </RowIcon>
+        <RowIcon
+          label={downloadState === "done" ? "Downloaded" : "Download"}
+          onClick={handleDownload}
+          disabled={downloadState === "busy"}
+        >
+          {downloadState === "busy" ? (
+            <Spinner className="h-4 w-4" />
+          ) : downloadState === "done" ? (
+            <Check size={16} className="text-green-600 dark:text-green-400" />
+          ) : (
+            <DownloadSimple size={16} />
+          )}
+        </RowIcon>
+        <RowIcon label="Version history" onClick={() => setExpanded((e) => !e)}>
+          {expanded ? <CaretUp size={16} /> : <CaretDown size={16} />}
+        </RowIcon>
+        <RowIcon label="Delete" onClick={() => setPendingDelete(true)}>
+          <Trash size={16} className="text-red-600 dark:text-red-400" />
+        </RowIcon>
+      </div>
+
+      {revealed && (
+        <div className="px-4 pb-4 pl-12">
+          {contentLoading || content === null ? (
+            <div className="flex items-center gap-2 rounded-md border border-line bg-surface-3 px-3.5 py-3 text-xs text-muted">
+              <Spinner className="h-3.5 w-3.5" /> Decrypting in your browser…
+            </div>
+          ) : (
+            <pre className="dc-scroll m-0 overflow-x-auto rounded-md border border-line bg-surface-3 px-3.5 py-3 font-mono text-[12.5px] leading-relaxed text-accent-700 dark:text-accent-100">
+              {content}
+            </pre>
+          )}
+        </div>
+      )}
+
+      {expanded && <VersionHistory projectId={projectId} file={file} projectKey={projectKey} />}
+
+      <Dialog open={pendingDelete} onOpenChange={setPendingDelete}>
         <DialogContent
-          title={`Delete "${pendingDelete?.filename}"?`}
+          title={`Delete "${file.filename}"?`}
           description="This permanently deletes the file and all of its version history. This cannot be undone."
         >
           <div className="flex justify-end gap-2">
@@ -273,5 +410,127 @@ function FilesCard({
         </DialogContent>
       </Dialog>
     </Card>
+  );
+}
+
+function RowIcon({
+  label,
+  onClick,
+  disabled,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      title={label}
+      aria-label={label}
+      onClick={onClick}
+      disabled={disabled}
+      className="focus-ring inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-muted hover:bg-ink/[0.06] hover:text-ink disabled:cursor-default disabled:opacity-100 disabled:hover:bg-transparent"
+    >
+      {children}
+    </button>
+  );
+}
+
+function VersionHistory({
+  projectId,
+  file,
+  projectKey,
+}: {
+  projectId: string;
+  file: FileDto;
+  projectKey: Uint8Array;
+}) {
+  const { data: versions, isLoading } = useFileVersions(projectId, file.id);
+  const restore = useRestoreVersion(projectId, file.id);
+  const [busyDownload, setBusyDownload] = useState<string | null>(null);
+  const [doneDownload, setDoneDownload] = useState<string | null>(null);
+  const [busyRestore, setBusyRestore] = useState<string | null>(null);
+
+  async function handleDownload(versionId: string, versionNumber: number) {
+    if (busyDownload) return;
+    setBusyDownload(versionId);
+    try {
+      const downloaded = await downloadFileVersion(projectId, file.id, versionId);
+      const plaintext = await decryptFile(projectKey, downloaded.payload);
+      downloadBlob(`${file.filename}.v${versionNumber}`, plaintext, "text/plain");
+      setDoneDownload(versionId);
+      useToastStore.getState().push("success", `Downloaded ${file.filename}.v${versionNumber}`);
+      setTimeout(() => setDoneDownload((id) => (id === versionId ? null : id)), 1800);
+    } catch (err) {
+      toastError(err, "Failed to download version");
+    } finally {
+      setBusyDownload((id) => (id === versionId ? null : id));
+    }
+  }
+
+  async function handleRestore(versionId: string, versionNumber: number) {
+    if (busyRestore) return;
+    setBusyRestore(versionId);
+    try {
+      await restore.mutateAsync(versionId);
+      useToastStore.getState().push("success", `Restored v${versionNumber} as the new current version`);
+    } catch (err) {
+      toastError(err, "Failed to restore version");
+    } finally {
+      setBusyRestore((id) => (id === versionId ? null : id));
+    }
+  }
+
+  return (
+    <div className="border-t border-line px-4 py-3 pl-12">
+      <div className="mb-2 text-[11px] uppercase tracking-[0.06em] text-muted">Version history</div>
+      {isLoading && (
+        <div className="flex items-center gap-2 py-1.5 text-xs text-muted">
+          <Spinner className="h-3.5 w-3.5" /> Loading versions…
+        </div>
+      )}
+      <div className="flex flex-col">
+        {versions?.map((ver) => {
+          const downloading = busyDownload === ver.id;
+          const downloaded = doneDownload === ver.id;
+          const restoring = busyRestore === ver.id;
+          return (
+            <div key={ver.id} className="flex items-center gap-3 py-1.5 text-[13px]">
+              <span className="w-9 font-mono text-accent-600 dark:text-accent-300">v{ver.versionNumber}</span>
+              <span className="flex-1 text-ink/70">
+                {formatRelativeTime(ver.createdAt)} · {formatBytes(ver.plaintextSize)}
+              </span>
+              {ver.isCurrent ? (
+                <Tag variant="neutral">current</Tag>
+              ) : (
+                <>
+                  <button
+                    onClick={() => handleDownload(ver.id, ver.versionNumber)}
+                    disabled={downloading || restoring}
+                    className="focus-ring inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-accent-600 hover:bg-accent-500/10 disabled:opacity-70 dark:text-accent-300"
+                  >
+                    {downloading ? (
+                      <Spinner className="h-3 w-3" />
+                    ) : downloaded ? (
+                      <Check size={12} className="text-green-600 dark:text-green-400" />
+                    ) : null}
+                    {downloading ? "Downloading…" : downloaded ? "Downloaded" : "Download"}
+                  </button>
+                  <button
+                    onClick={() => handleRestore(ver.id, ver.versionNumber)}
+                    disabled={restoring || downloading}
+                    className="focus-ring inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-accent-600 hover:bg-accent-500/10 disabled:opacity-70 dark:text-accent-300"
+                  >
+                    {restoring && <Spinner className="h-3 w-3" />}
+                    {restoring ? "Restoring…" : "Restore"}
+                  </button>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }

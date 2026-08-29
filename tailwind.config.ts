@@ -12,6 +12,7 @@ import type { Config } from "tailwindcss";
  * variable holds an "R G B" channel triple; see globals.css for the palettes.
  */
 const accent = (shade: number) => `rgb(var(--accent-${shade}) / <alpha-value>)`;
+const token = (name: string) => `rgb(var(--c-${name}) / <alpha-value>)`;
 
 const config: Config = {
   darkMode: "selector",
@@ -29,6 +30,14 @@ const config: Config = {
           600: accent(600),
           700: accent(700),
         },
+        // Semantic surface tokens — light/dark values in globals.css.
+        canvas: token("bg"),
+        surface: token("surface"),
+        "surface-2": token("surface-2"),
+        "surface-3": token("surface-3"),
+        line: token("line"),
+        ink: token("ink"),
+        muted: token("muted"),
       },
     },
   },

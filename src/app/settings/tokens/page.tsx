@@ -65,7 +65,7 @@ function TokensContent() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">CLI access tokens</h1>
+        <h1 className="text-2xl font-medium text-ink sm:text-[28px]">CLI access tokens</h1>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button className="w-full sm:w-auto">New token</Button>
@@ -108,17 +108,17 @@ function TokensContent() {
       </div>
 
       {freshToken && (
-        <Card className="border-accent-300 dark:border-accent-800">
+        <Card className="border-accent-500/40">
           <div className="space-y-3 p-5">
             <div>
-              <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+              <h2 className="text-base font-medium text-ink">
                 Copy your new token now
               </h2>
-              <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+              <p className="mt-0.5 text-sm text-muted">
                 This is the only time it will be shown. If you lose it, revoke it and create a new one.
               </p>
             </div>
-            <code className="block overflow-x-auto rounded-md bg-slate-100 px-3 py-2 font-mono text-sm text-slate-900 dark:bg-slate-800 dark:text-slate-100">
+            <code className="block overflow-x-auto rounded-md bg-surface-2 px-3 py-2 font-mono text-sm text-ink">
               {freshToken}
             </code>
             <div className="flex gap-2">
@@ -146,21 +146,21 @@ function TokensContent() {
           title="Your tokens"
           description="Each token is a long-lived credential for the CLI. Revoking one takes effect immediately."
         />
-        {isLoading && <p className="p-5 text-sm text-slate-500">Loading…</p>}
+        {isLoading && <p className="p-5 text-sm text-muted">Loading…</p>}
         {!isLoading && active.length === 0 && (
-          <p className="p-5 text-sm text-slate-500 dark:text-slate-400">
+          <p className="p-5 text-sm text-muted">
             No active tokens. Create one to authenticate the <code>nvault</code> CLI.
           </p>
         )}
-        <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+        <ul className="divide-y divide-line">
           {active.map((t) => (
             <li
               key={t.id}
               className="flex flex-col gap-2 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
             >
               <div className="min-w-0">
-                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{t.name}</div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <div className="text-sm font-medium text-ink">{t.name}</div>
+                <p className="text-xs text-muted">
                   <code>{t.tokenPrefix}…</code> · created {formatRelativeTime(t.createdAt)} · last used{" "}
                   {formatRelativeTime(t.lastUsedAt)} · expires {formatRelativeTime(t.expiresAt)}
                 </p>

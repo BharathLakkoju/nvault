@@ -45,12 +45,12 @@ function BillingContent({ id }: { id: string }) {
   const changeTier = useChangeOrgTier(id);
   const [pendingTier, setPendingTier] = useState<TeamTier | null>(null);
 
-  if (orgLoading || billingLoading) return <p className="text-sm text-slate-500">Loading…</p>;
+  if (orgLoading || billingLoading) return <p className="text-sm text-muted">Loading…</p>;
 
   if (!org || org.self.role !== "OWNER") {
     return (
       <Card className="p-10 text-center">
-        <p className="text-sm text-slate-500 dark:text-slate-400">
+        <p className="text-sm text-muted">
           Only the organization owner can view billing.
         </p>
         <Link
@@ -102,10 +102,10 @@ function BillingContent({ id }: { id: string }) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+        <h1 className="text-2xl font-medium text-ink sm:text-[28px]">
           Billing — {org.organization.name}
         </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
+        <p className="text-sm text-muted">
           One flat subscription per organization, billed through Polar. {memberCount} member
           {memberCount === 1 ? "" : "s"} currently.
         </p>
@@ -113,7 +113,7 @@ function BillingContent({ id }: { id: string }) {
 
       <Card>
         <CardHeader title="Subscription" description="Managed on Polar's secure hosted pages." />
-        <dl className="divide-y divide-slate-200 dark:divide-slate-800">
+        <dl className="divide-y divide-line">
           <Row label="Status" value={STATUS_LABEL[sub?.status ?? "NONE"] ?? sub?.status ?? "—"} />
           <Row
             label="Plan"
@@ -153,7 +153,7 @@ function BillingContent({ id }: { id: string }) {
             title="Change plan"
             description="Upgrade or downgrade any time — Polar prorates the difference."
           />
-          <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+          <ul className="divide-y divide-line">
             {tiers.map((t) => {
               const isCurrent = t.tier === currentTier;
               const tooSmall = t.maxMembers < memberCount;
@@ -163,10 +163,10 @@ function BillingContent({ id }: { id: string }) {
                   className="flex flex-col gap-2 px-5 py-3 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div>
-                    <span className="text-sm font-medium capitalize text-slate-900 dark:text-slate-100">
+                    <span className="text-sm font-medium capitalize text-ink">
                       {t.tier.toLowerCase()}
                     </span>
-                    <span className="ml-2 text-sm text-slate-500 dark:text-slate-400">
+                    <span className="ml-2 text-sm text-muted">
                       {t.priceLabel} · up to {t.maxMembers} members
                     </span>
                   </div>
@@ -192,7 +192,7 @@ function BillingContent({ id }: { id: string }) {
         </Card>
       )}
 
-      <p className="text-xs text-slate-500 dark:text-slate-400">
+      <p className="text-xs text-muted">
         Update your card, download invoices, or cancel from the Polar customer portal. nvault
         never sees or stores your payment details.
       </p>
@@ -203,8 +203,8 @@ function BillingContent({ id }: { id: string }) {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between px-5 py-3 text-sm">
-      <dt className="text-slate-500 dark:text-slate-400">{label}</dt>
-      <dd className="font-medium text-slate-900 dark:text-slate-100">{value}</dd>
+      <dt className="text-muted">{label}</dt>
+      <dd className="font-medium text-ink">{value}</dd>
     </div>
   );
 }

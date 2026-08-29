@@ -2,17 +2,22 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { FolderSimple, LockKey, ShieldCheck, Plus } from "@phosphor-icons/react";
 import { RequireAuth } from "@/components/require-auth";
 import { RequireVaultUnlocked } from "@/components/require-vault-unlocked";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input, Label, FieldError } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
+import { Card, StatCard } from "@/components/ui/card";
+import { Tag } from "@/components/ui/tag";
 import { Dialog, DialogContent, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { useCreateProject, useDeleteProject, useProjects } from "@/hooks/use-projects";
 import { useOrganizations } from "@/hooks/use-organizations";
 import { usePlanInfo } from "@/hooks/use-plan-info";
+import { useProSubscription } from "@/hooks/use-billing";
 import { useOrgContext } from "@/lib/org-context-store";
+import { formatRelativeTime } from "@/lib/format";
 import { toastError, useToastStore } from "@/lib/toast-store";
 
 export default function DashboardPage() {
@@ -31,7 +36,10 @@ function DashboardContent() {
   const { data: projects, isLoading } = useProjects();
   const { data: orgs } = useOrganizations();
   const { data: plan } = usePlanInfo();
+  const { data: billing } = useProSubscription();
   const currentOrgId = useOrgContext((s) => s.currentOrgId);
+
+  const isProPlan = billing?.pro.status === "ACTIVE" || billing?.pro.status === "PAST_DUE";
   const [open, setOpen] = useState(false);
 
   const currentOrg = orgs?.find((o) => o.id === currentOrgId) ?? null;
@@ -39,6 +47,7 @@ function DashboardContent() {
   const scoped = (projects ?? []).filter((p) =>
     currentOrgId ? p.organizationId === currentOrgId : p.scope === "personal",
   );
+  const fileCount = scoped.reduce((n, p) => n + (p.fileCount ?? 0), 0);
 
   // Free-tier personal-project cap (only relevant outside an org).
   const personalCount = (projects ?? []).filter((p) => p.scope === "personal").length;
@@ -47,12 +56,12 @@ function DashboardContent() {
 
   return (
     <div>
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+          <h1 className="text-2xl font-medium text-ink sm:text-[28px]">
             {currentOrg ? `${currentOrg.name} · Projects` : "Projects"}
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-0.5 text-muted">
             {currentOrg
               ? "Shared across everyone in this organization."
               : "Your development environment, available anywhere."}
@@ -62,31 +71,46 @@ function DashboardContent() {
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button className="w-full sm:w-auto" disabled={atPersonalCap}>
-                + New Project
+                <Plus size={15} />
+                New Project
               </Button>
             </DialogTrigger>
             <DialogContent
               title={currentOrg ? `New project in ${currentOrg.name}` : "Create project"}
               description="Give your project a name to get started."
             >
-              <CreateProjectForm
-                organizationId={currentOrgId}
-                onDone={() => setOpen(false)}
-              />
+              <CreateProjectForm organizationId={currentOrgId} onDone={() => setOpen(false)} />
             </DialogContent>
           </Dialog>
         )}
       </div>
 
+      <div className="mb-6 flex items-center gap-3 rounded-lg border border-accent-500/25 bg-accent-500/10 px-4 py-3">
+        <ShieldCheck size={18} weight="fill" className="flex-shrink-0 text-accent-600 dark:text-accent-300" />
+        <span className="text-[13px] text-ink/80">
+          Every file is encrypted in your browser before it ever leaves your machine — nvault&apos;s servers only
+          ever see ciphertext.
+        </span>
+      </div>
+
+      <div className="mb-8 grid grid-cols-2 gap-3.5 sm:grid-cols-3">
+        <StatCard kicker="Projects" value={scoped.length} />
+        <StatCard kicker="Encrypted files" value={fileCount} />
+        <StatCard
+          kicker="Plan"
+          value={<span className="text-lg">{isProPlan ? "Pro" : "Free — beta"}</span>}
+        />
+      </div>
+
       {atPersonalCap && (
-        <Card className="mb-4 flex flex-col gap-3 border-amber-300 p-4 dark:border-amber-800 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-slate-600 dark:text-slate-300">
+        <Card className="mb-4 flex flex-col gap-3 border-amber-500/40 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-ink/70">
             You&apos;ve reached the Free plan limit of {personalCap} personal projects.
             {plan?.billingEnabled
               ? " Upgrade to Pro for unlimited, or "
               : " Delete a project to free up a slot, or "}
             create an{" "}
-            <Link href="/settings/organizations" className="text-accent-600 hover:underline">
+            <Link href="/settings/organizations" className="text-accent-600 hover:underline dark:text-accent-300">
               organization
             </Link>{" "}
             for your team.
@@ -99,11 +123,11 @@ function DashboardContent() {
         </Card>
       )}
 
-      {isLoading && <p className="text-sm text-slate-500">Loading projects…</p>}
+      {isLoading && <p className="text-sm text-muted">Loading projects…</p>}
 
       {!isLoading && scoped.length === 0 && (
         <Card className="p-10 text-center">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-muted">
             {currentOrg
               ? canCreateHere
                 ? "No projects in this organization yet. Create one to start sharing environment files."
@@ -113,7 +137,7 @@ function DashboardContent() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {scoped.map((p) => (
           <ProjectCard key={p.id} project={p} />
         ))}
@@ -167,6 +191,7 @@ function CreateProjectForm({
 }
 
 function ProjectCard({ project }: { project: import("@/lib/types").ProjectDto }) {
+  const router = useRouter();
   const deleteProject = useDeleteProject();
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -182,32 +207,46 @@ function ProjectCard({ project }: { project: import("@/lib/types").ProjectDto })
   }
 
   return (
-    <Card className="flex flex-col justify-between p-5">
-      <div>
+    <Card className="flex h-full cursor-pointer flex-col gap-2 p-4 transition-colors hover:border-accent-500/40">
+      <div
+        onClick={() => router.push(`/projects/${project.id}`)}
+        className="flex flex-col gap-2"
+      >
+        <div className="flex items-center justify-between">
+          <FolderSimple size={20} className="text-accent-600 dark:text-accent-300" />
+          <Tag variant="outline">
+            <LockKey size={11} />
+            encrypted
+          </Tag>
+        </div>
         <div className="flex items-center gap-2">
-          <Link href={`/projects/${project.id}`} className="font-medium text-slate-900 hover:underline dark:text-slate-100">
-            {project.name}
-          </Link>
+          <span className="font-medium text-ink">{project.name}</span>
           {project.scope === "org" && project.organizationName && (
-            <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-              {project.organizationName}
-            </span>
+            <Tag variant="neutral">{project.organizationName}</Tag>
           )}
         </div>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          {project.fileCount ?? 0} environment file{project.fileCount === 1 ? "" : "s"}
+        <p className="text-xs text-muted">
+          {project.fileCount ?? 0} environment file{project.fileCount === 1 ? "" : "s"} · Updated{" "}
+          {formatRelativeTime(project.updatedAt)}
         </p>
         {project.gitRemoteUrl && (
-          <p className="mt-1 truncate text-xs text-slate-400 dark:text-slate-500">{project.gitRemoteUrl}</p>
+          <p className="truncate text-xs text-muted/70">{project.gitRemoteUrl}</p>
         )}
       </div>
-      <div className="mt-4 flex gap-2">
-        <Link href={`/projects/${project.id}`}>
-          <Button variant="secondary">View</Button>
+
+      <div className="mt-auto flex gap-2 pt-1.5">
+        <Link href={`/projects/${project.id}`} className="flex-1" onClick={(e) => e.stopPropagation()}>
+          <Button variant="secondary" className="w-full">
+            View
+          </Button>
         </Link>
         <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
           <DialogTrigger asChild>
-            <Button variant="ghost" className="text-red-600 dark:text-red-400">
+            <Button
+              variant="secondary"
+              className="text-red-600 dark:text-red-400"
+              onClick={(e) => e.stopPropagation()}
+            >
               Delete
             </Button>
           </DialogTrigger>
