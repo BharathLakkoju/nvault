@@ -2,7 +2,8 @@ name: Publish CLI
 
 # Publishes the `@lbharath/nvault` npm package from cli/ when a tag matching
 # `cli-v*` is pushed (e.g. `cli-v0.1.0`). The tag version must match
-# cli/package.json's "version".
+# cli/package.json's "version". (The package is `envvault-cli`; the binary
+# it installs is still `envvault`.)
 #
 # Auth is via npm Trusted Publishing (OIDC) — no token. Configure a trusted
 # publisher for the `@lbharath/nvault` package on npmjs.com (Settings →
@@ -25,6 +26,17 @@ jobs:
       id-token: write # npm provenance + Trusted Publishing (OIDC)
 
     steps:
+      - name: Check NPM_TOKEN is configured
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NPM_TOKEN" ]; then
+            echo "::error::Repository secret NPM_TOKEN is not set. Create an npm access token" \
+                 "with publish rights (and new-package creation for the first release) and add" \
+                 "it under Settings → Secrets and variables → Actions as NPM_TOKEN."
+            exit 1
+          fi
+
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
