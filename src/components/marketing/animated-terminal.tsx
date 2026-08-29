@@ -31,7 +31,7 @@ export function AnimatedTerminal({ steps, title = "nvault — bash", className }
   const [stepIndex, setStepIndex] = useState(0);
   const [typed, setTyped] = useState(0);
   const [lines, setLines] = useState(0);
-  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     const reduce =

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { me } from "@/server/auth/service";
 import { refreshAccessToken, rotateRefreshToken } from "@/server/auth/session";
-import { verifyAccessToken } from "@/server/auth/tokens";
+import { verifyAccessToken } from "@/server/auth/jwt";
 import { readRefreshCookie, setRefreshCookie } from "@/server/auth/cookies";
 import { RefreshRequestSchema } from "@/server/auth/dto";
 import { env } from "@/server/env";

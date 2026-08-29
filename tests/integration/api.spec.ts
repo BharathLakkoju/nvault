@@ -208,7 +208,7 @@ describeIf("nvault API (integration)", () => {
     });
   }
 
-  const db = require("@/server/db").db as import("@prisma/client").PrismaClient;
+  const db = require("@/server/db").db as import("@/generated/prisma/client").PrismaClient;
   const createdUserIds: string[] = [];
 
   // Each test registers several accounts; the shared-IP register/login rate

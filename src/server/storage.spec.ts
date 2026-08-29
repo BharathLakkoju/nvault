@@ -7,7 +7,9 @@ process.env.DATABASE_URL ||= "postgresql://x";
 process.env.DIRECT_DATABASE_URL ||= "postgresql://x";
 process.env.JWT_SECRET ||= "x".repeat(40);
 
-const rows = new Map<string, { key: string; data: Buffer }>();
+// Prisma 7 hands back `Bytes` columns as `Uint8Array`, and `putObject` now
+// writes one — mirror that here rather than assuming a Node `Buffer`.
+const rows = new Map<string, { key: string; data: Uint8Array }>();
 
 jest.mock("@/server/db", () => ({
   db: {
@@ -47,7 +49,7 @@ describe("storage envelope encryption", () => {
   it("stores something that is NOT the plaintext client ciphertext", async () => {
     await putObject(key, clientCiphertext);
     const stored = rows.get(key)!.data;
-    expect(stored.equals(clientCiphertext)).toBe(false);
+    expect(Buffer.from(stored).equals(clientCiphertext)).toBe(false);
     expect(stored[0]).toBe(1); // format version prefix
     expect(stored.length).toBeGreaterThan(clientCiphertext.length + 1 + 12 + 16 - 1);
   });

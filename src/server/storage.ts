@@ -48,7 +48,9 @@ function open(key: string, sealed: Buffer): Buffer {
 }
 
 export async function putObject(key: string, data: Buffer): Promise<void> {
-  const sealed = seal(key, data);
+  // Prisma 7 types `Bytes` columns as `Uint8Array<ArrayBuffer>`; hand it a
+  // plain view rather than Node's `Buffer<ArrayBufferLike>`.
+  const sealed = new Uint8Array(seal(key, data));
   await db.storageObject.upsert({
     where: { key },
     create: { key, data: sealed },

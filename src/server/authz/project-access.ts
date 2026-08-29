@@ -1,4 +1,4 @@
-import type { OrgRole, Project } from "@prisma/client";
+import type { OrgRole, Project } from "@/generated/prisma/client";
 import { db } from "../db";
 import { ApiError } from "../http";
 import { roleAtLeast } from "./roles";

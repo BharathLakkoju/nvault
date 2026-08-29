@@ -1,12 +1,15 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* Tailwind v4 is CSS-first, but the project's palette/token model still lives
+ * in tailwind.config.mts — load it as a legacy config rather than porting the
+ * whole theme into `@theme`. */
+@config "../../tailwind.config.mts";
 
 /*
  * Accent palettes
  * ---------------
  * Each variable is an "R G B" channel triple consumed by tailwind's `accent`
- * colour (see tailwind.config.ts). `:root` holds the default (indigo); a
+ * colour (see tailwind.config.mts). `:root` holds the default (indigo); a
  * `[data-accent="…"]` attribute on <html> swaps in another palette at runtime.
  * Keep these in sync with the ACCENTS list in src/lib/theme.ts.
  */

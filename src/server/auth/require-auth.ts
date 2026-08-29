@@ -1,7 +1,8 @@
 import { db } from "../db";
 import { ApiError } from "../http";
 import { requireApiToken } from "./api-tokens";
-import { isApiToken, verifyAccessToken } from "./tokens";
+import { verifyAccessToken } from "./jwt";
+import { isApiToken } from "./tokens";
 
 export interface AuthContext {
   userId: string;

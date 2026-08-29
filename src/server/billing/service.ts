@@ -5,7 +5,7 @@ import {
   type SubscriptionPlan,
   type SubscriptionStatus,
   type SubscriptionTier,
-} from "@prisma/client";
+} from "@/generated/prisma/client";
 import { db } from "../db";
 import { ApiError } from "../http";
 import { audit, type AuditAction } from "../audit";
@@ -114,7 +114,6 @@ export async function applyPolarSubscription(
   } else if (plan === "PRO") {
     result = await applyProSubscription(data);
   } else {
-    // eslint-disable-next-line no-console
     console.warn(`[billing] ${eventType} ${data.id} has no resolvable plan metadata — ignored`);
     result = { outcome: "ignored" };
   }
@@ -144,7 +143,6 @@ async function applyTeamSubscription(data: PolarSubscriptionData): Promise<Apply
     },
   });
   if (!org) {
-    // eslint-disable-next-line no-console
     console.warn(`[billing] TEAM event references unknown org ${organizationId} — ignored`);
     return { outcome: "ignored" };
   }
@@ -209,7 +207,6 @@ async function applyProSubscription(data: PolarSubscriptionData): Promise<ApplyR
 
   const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
   if (!user) {
-    // eslint-disable-next-line no-console
     console.warn(`[billing] PRO event references unknown user ${userId} — ignored`);
     return { outcome: "ignored" };
   }

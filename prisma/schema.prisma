@@ -7,18 +7,19 @@
 // src/lib/crypto. Nothing here allows the API to recover plaintext.
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+  // Prisma 7 emits ESM by default; this app's server code is CJS-interop'd
+  // by Next, and Jest runs it through ts-jest as CJS.
+  moduleFormat = "cjs"
 }
 
 datasource db {
-  provider  = "postgresql"
-  // DATABASE_URL: the pooled connection string (a Neon / Supabase PgBouncer
-  // endpoint). Required on Vercel — each serverless invocation can open a
-  // fresh connection, and an unpooled URL exhausts the database's connection
-  // limit fast. DIRECT_DATABASE_URL: the unpooled string, used only by
-  // `prisma migrate`. On a plain local Postgres, point both at the same URL.
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_DATABASE_URL")
+  provider = "postgresql"
+  // Prisma 7 no longer reads connection URLs from the schema. The runtime
+  // connection (pooled DATABASE_URL) is supplied by the driver adapter in
+  // src/server/db.ts; `prisma migrate` reads the unpooled DIRECT_DATABASE_URL
+  // from prisma.config.ts.
 }
 
 model User {

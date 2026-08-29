@@ -1,4 +1,4 @@
-import type { OrganizationMembership, OrgRole } from "@prisma/client";
+import type { OrganizationMembership, OrgRole } from "@/generated/prisma/client";
 import { db } from "../db";
 import { ApiError } from "../http";
 import { generateInviteToken, hashToken } from "../auth/tokens";

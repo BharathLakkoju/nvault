@@ -56,7 +56,6 @@ export const POST = handler(async (req) => {
     void pruneProcessedWebhookEvents();
     return json({ received: true, outcome: result.outcome }, 202);
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error(`[billing] failed to apply ${event.type} ${event.id}:`, err);
     // 200 so Polar doesn't hammer retries on a bug of ours; the event id is
     // NOT recorded as processed on throw, so a manual redelivery can recover.

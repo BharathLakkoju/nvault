@@ -1,4 +1,4 @@
-import type { User } from "@prisma/client";
+import type { User } from "@/generated/prisma/client";
 import { db } from "./db";
 import type { RegisterRequest } from "@/lib/schemas";
 

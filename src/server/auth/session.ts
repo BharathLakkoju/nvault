@@ -1,12 +1,8 @@
 import { db } from "../db";
 import { env } from "../env";
 import { ApiError } from "../http";
-import {
-  generateOpaqueToken,
-  hashToken,
-  signAccessToken,
-  type IssuedTokens,
-} from "./tokens";
+import { signAccessToken } from "./jwt";
+import { generateOpaqueToken, hashToken, type IssuedTokens } from "./tokens";
 
 export interface CreateSessionOptions {
   userAgent?: string;

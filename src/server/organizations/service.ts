@@ -4,7 +4,7 @@ import {
   type OrgStatus,
   type Organization,
   type SubscriptionTier,
-} from "@prisma/client";
+} from "@/generated/prisma/client";
 import { db } from "../db";
 import { ApiError } from "../http";
 

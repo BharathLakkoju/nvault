@@ -26,13 +26,25 @@ export function noContent(): Response {
   return new Response(null, { status: 204 });
 }
 
-type RouteContext = { params: Record<string, string> };
+type RouteParams = Record<string, string>;
+type RouteContext = { params: RouteParams };
 type RouteHandler = (req: NextRequest, ctx: RouteContext) => Promise<Response> | Response;
 
-export function handler(fn: RouteHandler): RouteHandler {
-  return async (req, ctx) => {
+/**
+ * Next 15+ delivers `context.params` as a Promise. `handler()` awaits it once
+ * so route code stays synchronous (`{ params }` is a plain object inside the
+ * handler). The loose `Promise<unknown>` parameter type is what lets the
+ * wrapper satisfy Next's generated per-route handler signature for every
+ * segment shape.
+ */
+export function handler(fn: RouteHandler) {
+  return async (
+    req: NextRequest,
+    ctx?: { params: Promise<unknown> },
+  ): Promise<Response> => {
     try {
-      return await fn(req, ctx ?? { params: {} });
+      const params = (ctx?.params ? await ctx.params : {}) as RouteParams;
+      return await fn(req, { params });
     } catch (err) {
       if (err instanceof ApiError) {
         return Response.json(
@@ -44,7 +56,6 @@ export function handler(fn: RouteHandler): RouteHandler {
           { status: err.status },
         );
       }
-      // eslint-disable-next-line no-console
       console.error("[api] unhandled error:", err);
       return Response.json(
         { statusCode: 500, message: "Internal server error" },
