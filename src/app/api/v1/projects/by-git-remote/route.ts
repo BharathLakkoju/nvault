@@ -9,5 +9,5 @@ export const GET = handler(async (req) => {
   const auth = await requireAuth(req);
   const url = new URL(req.url).searchParams.get("url");
   const project = url ? await findProjectByGitRemote(auth.userId, url) : null;
-  return json({ project: project ? projectToDto(project) : null });
+  return json({ project: project ? projectToDto(project, project.organization) : null });
 });

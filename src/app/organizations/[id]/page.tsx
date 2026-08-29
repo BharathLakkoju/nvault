@@ -1,0 +1,255 @@
+"use client";
+
+import { useState, type FormEvent } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { RequireAuth } from "@/components/require-auth";
+import { AppShell } from "@/components/app-shell";
+import { Card, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input, Label, FieldError } from "@/components/ui/input";
+import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import {
+  useDeleteOrganization,
+  useOrganization,
+  useRenameOrganization,
+} from "@/hooks/use-organizations";
+import { useOrgContext } from "@/lib/org-context-store";
+import { formatRelativeTime } from "@/lib/format";
+import { toastError, useToastStore } from "@/lib/toast-store";
+import type { OrgRole } from "@/lib/types";
+
+const ROLE_LABEL: Record<OrgRole, string> = {
+  OWNER: "Owner",
+  ADMIN: "Admin",
+  MEMBER: "Member",
+};
+
+export default function OrganizationPage() {
+  const { id } = useParams<{ id: string }>();
+  return (
+    <RequireAuth>
+      <AppShell>
+        <OrganizationContent id={id} />
+      </AppShell>
+    </RequireAuth>
+  );
+}
+
+function OrganizationContent({ id }: { id: string }) {
+  const { data, isLoading, error } = useOrganization(id);
+  const router = useRouter();
+  const setCurrentOrg = useOrgContext((s) => s.setCurrentOrg);
+
+  if (isLoading) return <p className="text-sm text-slate-500">Loading…</p>;
+  if (error || !data) {
+    return (
+      <Card className="p-10 text-center">
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Organization not found, or you don&apos;t have access to it.
+        </p>
+        <Link href="/settings/organizations" className="mt-3 inline-block text-sm text-accent-600 hover:underline">
+          Back to organizations
+        </Link>
+      </Card>
+    );
+  }
+
+  const { organization: org, self, members } = data;
+  const isAdmin = self.role === "ADMIN" || self.role === "OWNER";
+  const isOwner = self.role === "OWNER";
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{org.name}</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            /{org.slug} · you are {ROLE_LABEL[self.role].toLowerCase()}
+            {self.status === "INVITED" && " · awaiting key access from an admin"}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setCurrentOrg(org.id);
+              router.push("/dashboard");
+            }}
+          >
+            View projects
+          </Button>
+          {isAdmin && <RenameOrgDialog id={id} name={org.name} slug={org.slug} />}
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader
+          title="Members"
+          description="Everyone with access to this organization's projects."
+        />
+        <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+          {members.map((m) => (
+            <li
+              key={m.id}
+              className="flex flex-col gap-1 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+            >
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                  {m.name || m.email}
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {m.email} · joined {formatRelativeTime(m.createdAt)}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {m.status === "INVITED" && (
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                    no key yet
+                  </span>
+                )}
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                  {ROLE_LABEL[m.role]}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+        {isAdmin && (
+          <div className="border-t border-slate-200 px-5 py-3 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+            Inviting teammates and granting key access is coming next.
+          </div>
+        )}
+      </Card>
+
+      {isOwner && (
+        <Card className="border-red-200 dark:border-red-900">
+          <CardHeader title="Danger zone" description="Irreversible actions for this organization." />
+          <div className="px-5 py-4">
+            <DeleteOrgButton
+              id={id}
+              name={org.name}
+              projectCount={org.projectCount}
+              onDeleted={() => {
+                setCurrentOrg(null);
+                router.push("/settings/organizations");
+              }}
+            />
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function RenameOrgDialog({ id, name, slug }: { id: string; name: string; slug: string }) {
+  const [open, setOpen] = useState(false);
+  const [nextName, setNextName] = useState(name);
+  const [nextSlug, setNextSlug] = useState(slug);
+  const [error, setError] = useState<string | null>(null);
+  const rename = useRenameOrganization(id);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    try {
+      await rename.mutateAsync({ name: nextName.trim(), slug: nextSlug.trim().toLowerCase() });
+      useToastStore.getState().push("success", "Organization updated");
+      setOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update organization");
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="secondary">Settings</Button>
+      </DialogTrigger>
+      <DialogContent title="Organization settings">
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <Label htmlFor="rename-name">Name</Label>
+            <Input id="rename-name" value={nextName} maxLength={100} onChange={(e) => setNextName(e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="rename-slug">URL</Label>
+            <Input
+              id="rename-slug"
+              value={nextSlug}
+              maxLength={40}
+              onChange={(e) => setNextSlug(e.target.value.toLowerCase())}
+            />
+            <FieldError>{error}</FieldError>
+          </div>
+          <div className="flex justify-end gap-2">
+            <DialogClose asChild>
+              <Button type="button" variant="secondary">
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button type="submit" loading={rename.isPending}>
+              Save
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DeleteOrgButton({
+  id,
+  name,
+  projectCount,
+  onDeleted,
+}: {
+  id: string;
+  name: string;
+  projectCount: number;
+  onDeleted: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const del = useDeleteOrganization();
+
+  async function handleDelete() {
+    try {
+      await del.mutateAsync(id);
+      useToastStore.getState().push("success", `Organization "${name}" deleted`);
+      onDeleted();
+    } catch (err) {
+      toastError(err, "Failed to delete organization");
+      setOpen(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="danger">Delete organization</Button>
+      </DialogTrigger>
+      <DialogContent
+        title={`Delete "${name}"?`}
+        description={
+          projectCount > 0
+            ? `This organization still has ${projectCount} project${projectCount === 1 ? "" : "s"}. Delete or move them first.`
+            : "This removes the organization and every membership. This cannot be undone."
+        }
+      >
+        <div className="flex justify-end gap-2">
+          <DialogClose asChild>
+            <Button variant="secondary">Cancel</Button>
+          </DialogClose>
+          <Button
+            variant="danger"
+            loading={del.isPending}
+            disabled={projectCount > 0}
+            onClick={handleDelete}
+          >
+            Delete permanently
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

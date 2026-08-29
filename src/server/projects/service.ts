@@ -1,13 +1,34 @@
 import { Prisma, type Project } from "@prisma/client";
 import type { CreateProjectRequest } from "@/lib/schemas";
 import { db } from "../db";
+import { authorizeOrg } from "../authz/org-access";
 import { ApiError } from "../http";
 import { normalizeGitRemote } from "./normalize-git-remote";
 
+/**
+ * Creates a project. When `dto.organizationId` is set the caller must be an
+ * ADMIN or OWNER of that org, and the project key the client sends is
+ * expected to be wrapped under the Organization Key at the org's current
+ * epoch (the server stores it as opaque ciphertext and records the epoch).
+ */
 export async function createProject(ownerId: string, dto: CreateProjectRequest): Promise<Project> {
-  const existing = await db.project.findUnique({
-    where: { ownerId_name: { ownerId, name: dto.name } },
-  });
+  let organizationId: string | null = null;
+  let keyEpoch = 0;
+
+  if (dto.organizationId) {
+    const membership = await authorizeOrg(ownerId, dto.organizationId, "ADMIN");
+    organizationId = dto.organizationId;
+    const org = await db.organization.findUniqueOrThrow({
+      where: { id: organizationId },
+      select: { currentKeyEpoch: true },
+    });
+    keyEpoch = org.currentKeyEpoch;
+    void membership;
+  }
+
+  const existing = organizationId
+    ? await db.project.findFirst({ where: { organizationId, name: dto.name } })
+    : await db.project.findFirst({ where: { ownerId, organizationId: null, name: dto.name } });
   if (existing) throw new ApiError(409, "A project with this name already exists");
 
   try {
@@ -15,6 +36,8 @@ export async function createProject(ownerId: string, dto: CreateProjectRequest):
       data: {
         id: dto.id,
         ownerId,
+        organizationId,
+        keyEpoch,
         name: dto.name,
         gitRemoteUrl: normalizeGitRemote(dto.gitRemoteUrl),
         wrappedProjectKeyIv: dto.wrappedProjectKey.iv,
@@ -23,75 +46,99 @@ export async function createProject(ownerId: string, dto: CreateProjectRequest):
     });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      if (err.meta && String(err.meta.target ?? "").includes("name")) {
+        throw new ApiError(409, "A project with this name already exists");
+      }
       throw new ApiError(409, "Project id already in use, please retry");
     }
     throw err;
   }
 }
 
-export function listProjectsForOwner(ownerId: string) {
+/**
+ * Every project the user can see: their personal projects, plus the projects
+ * of every org where they hold an ACTIVE membership.
+ */
+export function listProjectsForUser(userId: string) {
   return db.project.findMany({
-    where: { ownerId },
+    where: {
+      OR: [
+        { ownerId: userId, organizationId: null },
+        {
+          organization: {
+            memberships: { some: { userId, status: "ACTIVE" } },
+          },
+        },
+      ],
+    },
     orderBy: { updatedAt: "desc" },
-    include: { _count: { select: { files: true } } },
+    include: {
+      _count: { select: { files: true } },
+      organization: { select: { id: true, name: true, slug: true } },
+    },
   });
 }
 
-/** Throws 404 (not 403) on mismatched ownership so a project's existence cannot be probed. */
-export async function getOwnedProject(ownerId: string, projectId: string): Promise<Project> {
-  const project = await db.project.findUnique({ where: { id: projectId } });
-  if (!project || project.ownerId !== ownerId) {
-    throw new ApiError(404, "Project not found");
-  }
-  return project;
-}
-
-export async function findProjectByGitRemote(
-  ownerId: string,
-  gitRemoteUrl: string,
-): Promise<Project | null> {
+export async function findProjectByGitRemote(userId: string, gitRemoteUrl: string) {
   const normalized = normalizeGitRemote(gitRemoteUrl);
   if (!normalized) return null;
-  return db.project.findFirst({ where: { ownerId, gitRemoteUrl: normalized } });
+  return db.project.findFirst({
+    where: {
+      gitRemoteUrl: normalized,
+      OR: [
+        { ownerId: userId, organizationId: null },
+        { organization: { memberships: { some: { userId, status: "ACTIVE" } } } },
+      ],
+    },
+    include: { organization: { select: { id: true, name: true, slug: true } } },
+  });
 }
 
-export async function renameProject(
-  ownerId: string,
-  projectId: string,
-  name: string,
-): Promise<Project> {
-  await getOwnedProject(ownerId, projectId);
-  const conflict = await db.project.findUnique({ where: { ownerId_name: { ownerId, name } } });
-  if (conflict && conflict.id !== projectId) {
-    throw new ApiError(409, "A project with this name already exists");
-  }
-  return db.project.update({ where: { id: projectId }, data: { name } });
+/** Renames an already-authorized project, enforcing name uniqueness in its namespace. */
+export async function renameProject(project: Project, name: string): Promise<Project> {
+  const conflict = project.organizationId
+    ? await db.project.findFirst({
+        where: { organizationId: project.organizationId, name, id: { not: project.id } },
+      })
+    : await db.project.findFirst({
+        where: { ownerId: project.ownerId, organizationId: null, name, id: { not: project.id } },
+      });
+  if (conflict) throw new ApiError(409, "A project with this name already exists");
+  return db.project.update({ where: { id: project.id }, data: { name } });
 }
 
-export async function deleteProject(ownerId: string, projectId: string): Promise<void> {
-  await getOwnedProject(ownerId, projectId);
+export async function deleteProject(projectId: string): Promise<void> {
   await db.project.delete({ where: { id: projectId } });
-  // The project's file/version rows cascade, but storage_objects has no FK
-  // back to them — every blob for this project is keyed `projects/<id>/…`,
-  // so one prefix delete cleans them all up.
+  // storage_objects has no FK back to file/version rows — every blob for this
+  // project is keyed `projects/<id>/…`, so one prefix delete cleans them all.
   await db.storageObject
     .deleteMany({ where: { key: { startsWith: `projects/${projectId}/` } } })
     .catch(() => {});
 }
 
-export function projectToDto(project: {
-  id: string;
-  name: string;
-  gitRemoteUrl: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  wrappedProjectKeyIv: string;
-  wrappedProjectKeyCiphertext: string;
-}) {
+export function projectToDto(
+  project: {
+    id: string;
+    name: string;
+    gitRemoteUrl: string | null;
+    keyEpoch: number;
+    organizationId: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    wrappedProjectKeyIv: string;
+    wrappedProjectKeyCiphertext: string;
+  },
+  organization?: { id: string; name: string; slug: string } | null,
+) {
   return {
     id: project.id,
     name: project.name,
     gitRemoteUrl: project.gitRemoteUrl,
+    scope: project.organizationId ? ("org" as const) : ("personal" as const),
+    organizationId: project.organizationId,
+    organizationName: organization?.name ?? null,
+    organizationSlug: organization?.slug ?? null,
+    keyEpoch: project.keyEpoch,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
     wrappedProjectKey: {

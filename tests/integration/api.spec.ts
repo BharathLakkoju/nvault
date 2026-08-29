@@ -55,6 +55,9 @@ describeIf("nvault API (integration)", () => {
     restore: require("@/app/api/v1/projects/[id]/files/[fileId]/restore/route").POST as Handler,
     tokens: require("@/app/api/v1/auth/tokens/route"),
     revokeToken: require("@/app/api/v1/auth/tokens/[id]/route").DELETE as Handler,
+    keypair: require("@/app/api/v1/auth/vault/keypair/route"),
+    orgs: require("@/app/api/v1/organizations/route"),
+    org: require("@/app/api/v1/organizations/[id]/route"),
   };
 
   const db = require("@/server/db").db as import("@prisma/client").PrismaClient;
@@ -85,6 +88,20 @@ describeIf("nvault API (integration)", () => {
     expect(res.status).toBe(201);
     createdUserIds.push(res.body.user.id);
     return { email, password, masterKey: provisioned.masterKey, token: res.body.accessToken as string };
+  }
+
+  /** Registers a user and provisions their RSA keypair (required to use orgs). */
+  async function registerUserWithKeypair(vaultPassphrase: string) {
+    const user = await registerUser(vaultPassphrase);
+    const kp = await vaultCrypto.provisionUserKeyPair(user.masterKey);
+    const res = await call(routes.keypair.POST, {
+      method: "POST",
+      path: "/api/v1/auth/vault/keypair",
+      token: user.token,
+      body: kp.material,
+    });
+    expect(res.status).toBe(201);
+    return { ...user, publicKey: kp.material.publicKey, privateKey: kp.privateKey };
   }
 
   it("never echoes secrets in the register response", async () => {
@@ -326,6 +343,187 @@ describeIf("nvault API (integration)", () => {
       token: pat,
     });
     expect(afterRevoke.status).toBe(401);
+  });
+
+  it("provisions a user keypair once, stores only ciphertext, and refuses to replace it", async () => {
+    const { masterKey, token } = await registerUser("keypair vault passphrase");
+
+    // Fresh accounts have no keypair.
+    const before = await call(routes.keypair.GET, {
+      method: "GET",
+      path: "/api/v1/auth/vault/keypair",
+      token,
+    });
+    expect(before.status).toBe(200);
+    expect(before.body.keyPairMaterial).toBeNull();
+
+    const provisioned = await vaultCrypto.provisionUserKeyPair(masterKey);
+    const create = await call(routes.keypair.POST, {
+      method: "POST",
+      path: "/api/v1/auth/vault/keypair",
+      token,
+      body: provisioned.material,
+    });
+    expect(create.status).toBe(201);
+    expect(create.body.keyPairMaterial.publicKey).toBe(provisioned.material.publicKey);
+
+    // The server never returns the raw private key bytes.
+    const serialized = JSON.stringify(create.body);
+    expect(serialized).not.toContain(vaultCrypto.bytesToBase64(provisioned.privateKey));
+
+    // me() now reports the keypair.
+    const meRes = await call(routes.me, { method: "GET", path: "/api/v1/auth/me", token });
+    expect(meRes.body.keyPairMaterial.publicKey).toBe(provisioned.material.publicKey);
+
+    // Write-once: a second provision is rejected and changes nothing.
+    const second = await vaultCrypto.provisionUserKeyPair(masterKey);
+    const replace = await call(routes.keypair.POST, {
+      method: "POST",
+      path: "/api/v1/auth/vault/keypair",
+      token,
+      body: second.material,
+    });
+    expect(replace.status).toBe(409);
+    const after = await call(routes.keypair.GET, {
+      method: "GET",
+      path: "/api/v1/auth/vault/keypair",
+      token,
+    });
+    expect(after.body.keyPairMaterial.publicKey).toBe(provisioned.material.publicKey);
+
+    // The stored wrapped private key round-trips back to the original.
+    const recovered = await vaultCrypto.unwrapUserPrivateKey(
+      masterKey,
+      after.body.keyPairMaterial,
+    );
+    expect(vaultCrypto.bytesToBase64(recovered)).toBe(
+      vaultCrypto.bytesToBase64(provisioned.privateKey),
+    );
+  });
+
+  it("creates an org with the caller as active OWNER, and shares a project zero-knowledge", async () => {
+    const alice = await registerUserWithKeypair("alice org passphrase");
+
+    // Alice generates an Org Key in-memory, wrapped to her own public key.
+    const orgKey = vaultCrypto.generateDataKey();
+    const wrappedForAlice = await vaultCrypto.wrapToPublicKey(alice.publicKey, orgKey);
+
+    const createRes = await call(routes.orgs.POST, {
+      method: "POST",
+      path: "/api/v1/organizations",
+      token: alice.token,
+      body: { name: "Acme", slug: `acme-${Date.now()}`, wrappedOrgKey: wrappedForAlice },
+    });
+    expect(createRes.status).toBe(201);
+    const orgId = createRes.body.organization.id as string;
+    expect(createRes.body.organization.currentKeyEpoch).toBe(0);
+
+    // No response from the org endpoints contains the raw Org Key bytes.
+    const detailRes = await call(routes.org.GET, {
+      method: "GET",
+      path: `/api/v1/organizations/${orgId}`,
+      params: { id: orgId },
+      token: alice.token,
+    });
+    expect(detailRes.status).toBe(200);
+    expect(detailRes.body.self.role).toBe("OWNER");
+    expect(detailRes.body.self.status).toBe("ACTIVE");
+    expect(JSON.stringify(detailRes.body)).not.toContain(vaultCrypto.bytesToBase64(orgKey));
+
+    // Alice unwraps her Org Key and creates an org project keyed under it.
+    const recoveredOrgKey = await vaultCrypto.unwrapFromPrivateKey(
+      alice.privateKey,
+      detailRes.body.self.wrappedOrgKey,
+    );
+    expect(vaultCrypto.bytesToBase64(recoveredOrgKey)).toBe(vaultCrypto.bytesToBase64(orgKey));
+
+    const projectId = randomUUID();
+    const { wrappedProjectKey, projectKey } = await vaultCrypto.createProjectKey(
+      recoveredOrgKey,
+      projectId,
+    );
+    const projRes = await call(routes.projects.POST, {
+      method: "POST",
+      path: "/api/v1/projects",
+      token: alice.token,
+      body: { id: projectId, name: `org-proj-${Date.now()}`, wrappedProjectKey, organizationId: orgId },
+    });
+    expect(projRes.status).toBe(201);
+    expect(projRes.body.project.scope).toBe("org");
+
+    // Upload a file to the org project.
+    const secret = "SHARED_API_KEY=team-secret\n";
+    const contentId = randomUUID();
+    const payload = await vaultCrypto.encryptFileContent(
+      projectKey,
+      contentId,
+      vaultCrypto.utf8ToBytes(secret),
+    );
+    const upRes = await call(routes.files.POST, {
+      method: "POST",
+      path: `/api/v1/projects/${projectId}/files`,
+      params: { id: projectId },
+      token: alice.token,
+      body: {
+        filename: ".env",
+        payload,
+        contentId,
+        plaintextSize: secret.length,
+        plaintextSha256: await vaultCrypto.sha256Hex(vaultCrypto.utf8ToBytes(secret)),
+      },
+    });
+    expect(upRes.status).toBe(201);
+
+    // A non-member cannot see or touch the org project — 404, never 403.
+    const mallory = await registerUserWithKeypair("mallory passphrase");
+    for (const [handler, path] of [
+      [routes.project.GET, `/api/v1/projects/${projectId}`],
+      [routes.files.GET, `/api/v1/projects/${projectId}/files`],
+      [routes.org.GET, `/api/v1/organizations/${orgId}`],
+    ] as const) {
+      const res = await call(handler, {
+        method: "GET",
+        path,
+        params: { id: path.includes("organizations") ? orgId : projectId },
+        token: mallory.token,
+      });
+      expect(res.status).toBe(404);
+    }
+
+    // The org project shows up in Alice's project list, scoped to the org.
+    const listRes = await call(routes.projects.GET, {
+      method: "GET",
+      path: "/api/v1/projects",
+      token: alice.token,
+    });
+    const listed = listRes.body.projects.find((p: { id: string }) => p.id === projectId);
+    expect(listed.organizationId).toBe(orgId);
+    expect(JSON.stringify(listRes.body)).not.toContain("SHARED_API_KEY");
+  });
+
+  it("blocks project creation in an org the caller is not an admin of", async () => {
+    const owner = await registerUserWithKeypair("owner passphrase");
+    const orgKey = vaultCrypto.generateDataKey();
+    const wrapped = await vaultCrypto.wrapToPublicKey(owner.publicKey, orgKey);
+    const createRes = await call(routes.orgs.POST, {
+      method: "POST",
+      path: "/api/v1/organizations",
+      token: owner.token,
+      body: { name: "Beta", slug: `beta-${Date.now()}`, wrappedOrgKey: wrapped },
+    });
+    const orgId = createRes.body.organization.id as string;
+
+    // A stranger cannot create a project in the org (404 — existence hidden).
+    const stranger = await registerUserWithKeypair("stranger passphrase");
+    const projectId = randomUUID();
+    const { wrappedProjectKey } = await vaultCrypto.createProjectKey(orgKey, projectId);
+    const res = await call(routes.projects.POST, {
+      method: "POST",
+      path: "/api/v1/projects",
+      token: stranger.token,
+      body: { id: projectId, name: "nope", wrappedProjectKey, organizationId: orgId },
+    });
+    expect(res.status).toBe(404);
   });
 
   it("immediately invalidates a revoked session's access token", async () => {

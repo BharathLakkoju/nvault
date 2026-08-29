@@ -8,9 +8,55 @@ export interface ProjectDto {
   name: string;
   gitRemoteUrl: string | null;
   fileCount?: number;
+  scope: "personal" | "org";
+  organizationId: string | null;
+  organizationName: string | null;
+  organizationSlug: string | null;
+  keyEpoch: number;
   createdAt: string;
   updatedAt: string;
   wrappedProjectKey: WrappedKeyDto;
+}
+
+export type OrgRole = "OWNER" | "ADMIN" | "MEMBER";
+export type OrgMembershipStatus = "INVITED" | "ACTIVE";
+
+export interface OrganizationDto {
+  id: string;
+  name: string;
+  slug: string;
+  currentKeyEpoch: number;
+  createdAt: string;
+  updatedAt: string;
+  role?: OrgRole;
+  status?: OrgMembershipStatus;
+  memberCount?: number;
+  projectCount?: number;
+}
+
+export interface OrgMemberDto {
+  id: string;
+  userId: string;
+  email: string;
+  name: string | null;
+  publicKey: string | null;
+  role: OrgRole;
+  status: OrgMembershipStatus;
+  keyEpoch: number | null;
+  createdAt: string;
+  keyGrantedAt: string | null;
+}
+
+export interface OrganizationDetailDto {
+  organization: OrganizationDto & { projectCount: number };
+  self: {
+    membershipId: string;
+    role: OrgRole;
+    status: OrgMembershipStatus;
+    wrappedOrgKey: string | null;
+    keyEpoch: number | null;
+  };
+  members: OrgMemberDto[];
 }
 
 export interface FileVersionSummaryDto {

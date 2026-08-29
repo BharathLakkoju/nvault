@@ -10,6 +10,8 @@ import { Input, Label, FieldError } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { useCreateProject, useDeleteProject, useProjects } from "@/hooks/use-projects";
+import { useOrganizations } from "@/hooks/use-organizations";
+import { useOrgContext } from "@/lib/org-context-store";
 import { toastError, useToastStore } from "@/lib/toast-store";
 
 export default function DashboardPage() {
@@ -26,39 +28,63 @@ export default function DashboardPage() {
 
 function DashboardContent() {
   const { data: projects, isLoading } = useProjects();
+  const { data: orgs } = useOrganizations();
+  const currentOrgId = useOrgContext((s) => s.currentOrgId);
   const [open, setOpen] = useState(false);
+
+  const currentOrg = orgs?.find((o) => o.id === currentOrgId) ?? null;
+  const canCreateHere = !currentOrg || currentOrg.role === "ADMIN" || currentOrg.role === "OWNER";
+  const scoped = (projects ?? []).filter((p) =>
+    currentOrgId ? p.organizationId === currentOrgId : p.scope === "personal",
+  );
 
   return (
     <div>
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Projects</h1>
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+            {currentOrg ? `${currentOrg.name} · Projects` : "Projects"}
+          </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Your development environment, available anywhere.
+            {currentOrg
+              ? "Shared across everyone in this organization."
+              : "Your development environment, available anywhere."}
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="w-full sm:w-auto">+ New Project</Button>
-          </DialogTrigger>
-          <DialogContent title="Create project" description="Give your project a name to get started.">
-            <CreateProjectForm onDone={() => setOpen(false)} />
-          </DialogContent>
-        </Dialog>
+        {canCreateHere && (
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button className="w-full sm:w-auto">+ New Project</Button>
+            </DialogTrigger>
+            <DialogContent
+              title={currentOrg ? `New project in ${currentOrg.name}` : "Create project"}
+              description="Give your project a name to get started."
+            >
+              <CreateProjectForm
+                organizationId={currentOrgId}
+                onDone={() => setOpen(false)}
+              />
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       {isLoading && <p className="text-sm text-slate-500">Loading projects…</p>}
 
-      {!isLoading && projects?.length === 0 && (
+      {!isLoading && scoped.length === 0 && (
         <Card className="p-10 text-center">
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            No projects yet. Create one to start storing environment files.
+            {currentOrg
+              ? canCreateHere
+                ? "No projects in this organization yet. Create one to start sharing environment files."
+                : "No projects in this organization yet."
+              : "No projects yet. Create one to start storing environment files."}
           </p>
         </Card>
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {projects?.map((p) => (
+        {scoped.map((p) => (
           <ProjectCard key={p.id} project={p} />
         ))}
       </div>
@@ -66,7 +92,13 @@ function DashboardContent() {
   );
 }
 
-function CreateProjectForm({ onDone }: { onDone: () => void }) {
+function CreateProjectForm({
+  onDone,
+  organizationId,
+}: {
+  onDone: () => void;
+  organizationId?: string | null;
+}) {
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const createProject = useCreateProject();
@@ -75,7 +107,7 @@ function CreateProjectForm({ onDone }: { onDone: () => void }) {
     e.preventDefault();
     setError(null);
     try {
-      await createProject.mutateAsync({ name });
+      await createProject.mutateAsync({ name, organizationId });
       useToastStore.getState().push("success", `Project "${name}" created`);
       onDone();
     } catch (err) {
@@ -122,9 +154,16 @@ function ProjectCard({ project }: { project: import("@/lib/types").ProjectDto })
   return (
     <Card className="flex flex-col justify-between p-5">
       <div>
-        <Link href={`/projects/${project.id}`} className="font-medium text-slate-900 hover:underline dark:text-slate-100">
-          {project.name}
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href={`/projects/${project.id}`} className="font-medium text-slate-900 hover:underline dark:text-slate-100">
+            {project.name}
+          </Link>
+          {project.scope === "org" && project.organizationName && (
+            <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+              {project.organizationName}
+            </span>
+          )}
+        </div>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           {project.fileCount ?? 0} environment file{project.fileCount === 1 ? "" : "s"}
         </p>

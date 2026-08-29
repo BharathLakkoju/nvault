@@ -24,6 +24,7 @@ export const POST = handler(async (req) => {
     accessTokenExpiresInSeconds: result.tokens.accessTokenExpiresInSeconds,
     user: result.user,
     vaultKeyMaterial: result.vaultKeyMaterial,
+    keyPairMaterial: result.keyPairMaterial,
   });
   setRefreshCookie(res, result.tokens.refreshToken, env.REFRESH_TOKEN_TTL_SECONDS);
   return res;

@@ -11,7 +11,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
   // DATABASE_URL: the pooled connection string (a Neon / Supabase PgBouncer
   // endpoint). Required on Vercel — each serverless invocation can open a
   // fresh connection, and an unpooled URL exhausts the database's connection
@@ -34,12 +34,26 @@ model User {
   wrappedMasterKeyIv         String
   wrappedMasterKeyCiphertext String
 
+  // Per-user asymmetric keypair (RSA-OAEP-3072, see src/lib/crypto/asymmetric.ts).
+  // `publicKey` is cleartext SPKI (base64); anyone may wrap an Organization Key
+  // to it. The private key is persisted ONLY wrapped under the master key
+  // (AAD "user-privkey") — opaque to the server, recoverable only by a client
+  // that has unlocked the vault. Nullable until provisioned (backfilled on the
+  // user's next vault unlock); a user without a keypair cannot join an org.
+  publicKey                   String?
+  wrappedPrivateKeyIv         String?
+  wrappedPrivateKeyCiphertext String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  sessions  Session[]
-  projects  Project[]
-  auditLogs AuditLog[]
+  sessions           Session[]
+  projects           Project[]
+  auditLogs          AuditLog[]
+  orgMemberships     OrganizationMembership[]
+  membershipsInvited OrganizationMembership[] @relation("MembershipInvitedBy")
+  invitesSent        OrganizationInvite[]     @relation("InviteInvitedBy")
+  keyEpochsRotated   OrganizationKeyEpoch[]   @relation("KeyEpochRotatedBy")
 
   @@map("users")
 }
@@ -81,8 +95,17 @@ model Project {
   // exists, so the client originates the id rather than the server assigning
   // one on insert.
   id      String @id
+  // The user who created the project. For personal projects this is also the
+  // sole authorized user. For org projects it is retained for attribution;
+  // authorization is derived from org membership, not from ownerId.
   ownerId String
   owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // Set iff this is an organization-scoped project. When set, the project key
+  // is wrapped under the Organization Key (not a user master key) and every
+  // active member of the org can decrypt it.
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   name String
 
@@ -90,17 +113,26 @@ model Project {
   // Optional — git is never required.
   gitRemoteUrl String?
 
-  // The project's data-encryption key, wrapped under the owner's master key.
+  // The project's data-encryption key. Wrapped under the owner's master key
+  // for personal projects, or under the Organization Key (at `keyEpoch`) for
+  // org projects. Opaque ciphertext either way.
   wrappedProjectKeyIv         String
   wrappedProjectKeyCiphertext String
+  // Org Key epoch this wrapped key belongs to. 0 for personal projects and
+  // for org projects created before the first key rotation.
+  keyEpoch                    Int    @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   files ProjectFile[]
 
-  @@unique([ownerId, name])
+  // Uniqueness is enforced by two partial unique indexes added in the
+  // migration (Prisma cannot express `WHERE` on a unique constraint):
+  //   (owner_id, name)        WHERE organization_id IS NULL
+  //   (organization_id, name) WHERE organization_id IS NOT NULL
   @@index([ownerId, gitRemoteUrl])
+  @@index([organizationId])
   @@map("projects")
 }
 
@@ -190,6 +222,12 @@ model AuditLog {
   userId String?
   user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
+  // Set for organization-scoped actions, so an org's admins can review all
+  // activity in the org (not just their own). Kept (SetNull) if the org is
+  // later deleted.
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
   action     String
   targetType String?
   targetId   String?
@@ -199,5 +237,118 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
+  @@index([organizationId, createdAt])
   @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Organizations / teams
+// ---------------------------------------------------------------------------
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum OrgMembershipStatus {
+  INVITED // invite accepted, account linked, but the Org Key has not been granted yet
+  ACTIVE // holds the wrapped Org Key — full access to org projects
+}
+
+/// A team that owns projects shared across its members. The org row holds NO
+/// key material: the Organization Key exists only as ciphertext, wrapped once
+/// per member to that member's public key (OrganizationMembership).
+model Organization {
+  id   String @id @default(cuid())
+  name String
+  slug String @unique
+
+  /// Monotonic Org Key epoch. Bumped on every key rotation (member removal).
+  /// Members / projects carry the epoch their wrapped key belongs to; a
+  /// mismatch means "re-fetch, your key is stale".
+  currentKeyEpoch Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships OrganizationMembership[]
+  invites     OrganizationInvite[]
+  keyEpochs   OrganizationKeyEpoch[]
+  projects    Project[]
+  auditLogs   AuditLog[]
+
+  @@map("organizations")
+}
+
+model OrganizationMembership {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  role   OrgRole
+  status OrgMembershipStatus @default(INVITED)
+
+  /// The Organization Key, RSA-wrapped to THIS member's public key. Null
+  /// until an admin grants it (at which point `status` flips to ACTIVE).
+  /// Opaque ciphertext — the server can neither produce nor read it.
+  wrappedOrgKeyCiphertext String?
+  /// The Org Key epoch `wrappedOrgKeyCiphertext` belongs to.
+  keyEpoch                Int?
+
+  invitedById String?
+  invitedBy   User?   @relation("MembershipInvitedBy", fields: [invitedById], references: [id], onDelete: SetNull)
+
+  createdAt    DateTime  @default(now())
+  keyGrantedAt DateTime?
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@map("organization_memberships")
+}
+
+/// A pending invitation. The raw token (`oiv_…`) is shown once to the
+/// inviting admin and shared out-of-band; only its sha256 is stored.
+model OrganizationInvite {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  /// Lowercased. The accepting account's email must match this exactly.
+  email String
+  role  OrgRole
+
+  tokenHash   String @unique
+  tokenPrefix String
+
+  invitedById String?
+  invitedBy   User?   @relation("InviteInvitedBy", fields: [invitedById], references: [id], onDelete: SetNull)
+
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([organizationId])
+  @@index([email])
+  @@map("organization_invites")
+}
+
+/// One row per Org Key generation. History for audit + lets a client tell
+/// whether the key it holds is current.
+model OrganizationKeyEpoch {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  epoch     Int
+  createdAt DateTime @default(now())
+
+  rotatedById String?
+  rotatedBy   User?   @relation("KeyEpochRotatedBy", fields: [rotatedById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, epoch])
+  @@map("organization_key_epochs")
 }
