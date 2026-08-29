@@ -43,6 +43,71 @@ different record without the AEAD tag check failing.
 without breaking already-provisioned vaults (re-derivation happens
 transparently on the next unlock).
 
+## Organizations (shared projects, still zero-knowledge)
+
+A project belongs to **either** one user **or** one organization. Personal
+projects are unchanged (key wrapped under the owner's master key). Org
+projects introduce two more layers, all client-side:
+
+```
+Per-user RSA-OAEP-3072 keypair
+  · public key  — stored in cleartext (users.publicKey)
+  · private key — AES-256-GCM wrapped under the user's master key,
+                  AAD "user-privkey"  (opaque to the server)
+        │  RSA-OAEP unwrap
+        ▼
+Organization Key (random 256 bits, one per org, per epoch)
+  · persisted ONLY as ciphertext: wrapped once per member to that member's
+    RSA public key  (organization_memberships.wrappedOrgKeyCiphertext)
+        │  AES-256-GCM wrap, AAD "project:<projectId>"
+        ▼
+Org project data key  ──▶  file version ciphertext  (unchanged)
+```
+
+Consequences and deliberate decisions:
+
+- **The server never holds an unwrapped Org Key or org project key.** No
+  endpoint returns one. `grant-key` and `rotate-key` payloads are opaque
+  ciphertext produced by an admin's browser.
+- **Joining is two-step.** Accepting an invite creates an `INVITED`
+  membership with no key. An existing admin's client then wraps the Org Key
+  to the new member's public key (`grant-key`), flipping them to `ACTIVE`.
+  Until then the member cannot decrypt anything — the API also hides org
+  projects from `INVITED` members.
+- **Removal + rotation.** Deleting a membership cuts API access immediately
+  (every project/file route re-derives access from `organization_memberships`
+  on each request, 404 on no-access — never 403, so neither a project nor an
+  org can be probed by id). To also revoke a removed member's ability to
+  decrypt blobs they already downloaded or could re-download, an admin runs
+  `rotate-key`: a fresh Org Key, every org project key and every remaining
+  member's Org Key re-wrapped under it, `currentKeyEpoch` bumped **last** so
+  a partial failure leaves clients on the old (working) epoch. The server
+  enforces that a rotation covers *exactly* the current project set and
+  active-membership set.
+- **Invite tokens** (`oiv_…`) are 256-bit, stored only as sha256, single-use,
+  expire in 7 days, are bound to the invitee's exact account email (a leaked
+  link can't be redeemed by another account), and are rate-limited per org
+  and per IP.
+- **Role hierarchy** `OWNER > ADMIN > MEMBER`: an actor can only assign or
+  act on roles strictly below their own (OWNER excepted). The last OWNER
+  cannot be demoted, removed, or leave. Ownership transfer promotes the
+  target before demoting the outgoing owner (never zero owners).
+- **Residual risks (documented, not accidental):**
+  - A malicious/buggy admin can wrap a *garbage* Org Key to a member during
+    `grant-key`/`rotate-key`. The server cannot verify a blob decrypts
+    correctly without breaking zero-knowledge. Impact is a denial of service
+    for that one member — never disclosure. Fully audited.
+  - A member removed *before* a key rotation keeps whatever plaintext they
+    had already decrypted locally. This is true of every cryptographic
+    access-revocation scheme; rotation limits it to "what they had already
+    seen", not "everything going forward".
+  - A CLI Personal Access Token inherits all of the user's org access.
+    Org-scoped tokens are a future addition.
+  - `POST /auth/vault/keypair` is **write-once** — a stolen session cannot
+    swap a user's keypair (which would lock them out of orgs / enable a
+    grant-key MITM). Rotating a keypair intentionally is a future, audited
+    re-key flow.
+
 ## Storage encryption (server-side, defense in depth)
 
 The ciphertext the browser uploads is encrypted **again** before it is
@@ -79,7 +144,13 @@ See [src/server/storage.ts](src/server/storage.ts). Consequences:
 
 - `users`: email, Argon2id password hash, `kdfSalt`, `kdfIterations`,
   `wrappedMasterKeyIv/Ciphertext`.
-- `projects`: name, optional normalized git remote, `wrappedProjectKeyIv/Ciphertext`.
+- `projects`: name, optional normalized git remote, `wrappedProjectKeyIv/Ciphertext`,
+  optional `organizationId` + `keyEpoch`.
+- `users` (cont.): optional `publicKey` (cleartext SPKI) + `wrappedPrivateKey*` (ciphertext).
+- `organizations` / `organization_memberships` / `organization_invites` /
+  `organization_key_epochs`: org metadata, roles, per-member **wrapped** Org
+  Key ciphertext, sha256 of invite tokens, key-rotation history. No plaintext
+  key material.
 - `project_files` / `file_versions`: filename, version number, storage key,
   iv, `contentId`, plaintext size + sha256 (integrity/dedup display only — a
   hash is not reversible and is not key material).
@@ -133,8 +204,9 @@ archive in the browser from already-decrypted files).
 
 ## Rate limiting
 
-`register`, `login`, and `refresh` are rate-limited by `"<route>:<ip>"` using
-a Postgres fixed-window counter
+`register`, `login`, `refresh`, org invite creation, and invite acceptance
+are rate-limited by `"<route>:<ip>"` (invite creation additionally per org)
+using a Postgres fixed-window counter
 ([src/server/ratelimit.ts](src/server/ratelimit.ts)). Because the counter is
 in the database, the limit holds across every concurrent serverless instance
 without an external store. This is the deliberate trade for a Vercel-only,
