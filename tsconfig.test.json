@@ -1,8 +1,14 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "types": ["node", "jest"]
+    "types": ["node", "jest"],
+    "lib": ["ES2022", "DOM"],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@core/crypto": ["./src/lib/crypto/index.ts"],
+      "@core/filename": ["./src/lib/schemas/filename.ts"]
+    }
   },
-  "include": ["src/**/*.spec.ts", "tests/**/*.ts", "scripts/**/*.ts"],
+  "include": ["src/**/*.spec.ts", "tests/**/*.ts", "scripts/**/*.ts", "cli/src/**/*.ts"],
   "exclude": ["node_modules"]
 }
