@@ -104,6 +104,38 @@ export async function revokeSession(userId: string, sessionId: string): Promise<
   await db.session.update({ where: { id: sessionId }, data: { revokedAt: new Date() } });
 }
 
+/**
+ * Enforces the "devices" cap for browser sessions. Keeps the `limit`
+ * most-recently-used active browser sessions (a session just created by the
+ * current login sorts first, so it is always kept) and revokes the rest.
+ * CLI Personal Access Tokens (`apiTokenHash` set) are never touched. Returns
+ * the ids that were revoked.
+ */
+export async function enforceBrowserSessionLimit(
+  userId: string,
+  limit: number,
+): Promise<string[]> {
+  if (!Number.isFinite(limit)) return [];
+  const active = await db.session.findMany({
+    where: {
+      userId,
+      apiTokenHash: null,
+      revokedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+    orderBy: [{ lastUsedAt: "desc" }, { createdAt: "desc" }],
+    select: { id: true },
+  });
+  const excess = active.slice(Math.max(0, limit)).map((s) => s.id);
+  if (excess.length > 0) {
+    await db.session.updateMany({
+      where: { id: { in: excess } },
+      data: { revokedAt: new Date() },
+    });
+  }
+  return excess;
+}
+
 export async function revokeAllExcept(userId: string, keepSessionId: string): Promise<void> {
   // Browser sessions only — CLI Personal Access Tokens are managed from the
   // dedicated CLI-tokens screen, not swept by "log out everywhere else".

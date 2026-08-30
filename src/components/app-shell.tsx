@@ -16,16 +16,21 @@ import {
   Bell,
   CaretLeft,
   CaretRight,
+  CaretUpDown,
   List as ListIcon,
   User,
   Check,
+  Plus,
   SignOut,
   Lock,
   type Icon,
 } from "@phosphor-icons/react";
 import { useAuthStore } from "@/lib/auth-store";
 import { useOrganizations } from "@/hooks/use-organizations";
+import { useProSubscription } from "@/hooks/use-billing";
 import { useOrgContext } from "@/lib/org-context-store";
+import { teamPlanLabel } from "@/lib/plan";
+import type { OrgBillingStatus } from "@/lib/types";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CommandPalette } from "@/components/command-palette";
 import { Logo, LogoMark } from "@/components/marketing/logo";
@@ -40,7 +45,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Projects", icon: FolderSimple },
   { href: "/settings/organizations", label: "Organizations", icon: Buildings },
-  { href: "/settings/billing", label: "Billing", icon: CreditCard },
+  { href: "/settings/billing", label: "Plans & billing", icon: CreditCard },
   { href: "/settings/sessions", label: "Sessions", icon: Devices },
   { href: "/settings/tokens", label: "CLI Tokens", icon: TerminalWindow },
   { href: "/settings/security", label: "Activity", icon: ClockCounterClockwise },
@@ -199,7 +204,7 @@ function Sidebar({
         </button>
       )}
 
-      <OrgScopeList collapsed={collapsed} />
+      <WorkspaceSwitcher collapsed={collapsed} />
 
       <nav className="dc-scroll flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-1">
         {NAV_ITEMS.map((item) => {
@@ -246,8 +251,15 @@ function Sidebar({
   );
 }
 
-function OrgScopeList({ collapsed }: { collapsed: boolean }) {
+/**
+ * The workspace ("scope") switcher at the top of the sidebar. Personal vault +
+ * every ACTIVE org membership, each showing its plan and the caller's role.
+ * Selecting a row only changes what the dashboard shows — the server always
+ * re-derives access from membership (see org-context-store).
+ */
+function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
   const { data: orgs } = useOrganizations();
+  const { data: billing } = useProSubscription();
   const currentOrgId = useOrgContext((s) => s.currentOrgId);
   const hydrated = useOrgContext((s) => s.hydrated);
   const hydrate = useOrgContext((s) => s.hydrate);
@@ -263,32 +275,140 @@ function OrgScopeList({ collapsed }: { collapsed: boolean }) {
     }
   }, [hydrated, currentOrgId, orgs, setCurrentOrg]);
 
-  const rows = [
-    { id: null as string | null, name: "Personal", icon: User },
-    ...(orgs ?? []).map((o) => ({ id: o.id, name: o.name, icon: Buildings })),
-  ];
+  const isPro = billing?.pro.status === "ACTIVE" || billing?.pro.status === "PAST_DUE";
+  const activeOrgs = (orgs ?? []).filter((o) => o.status === "ACTIVE");
+  const hasPendingInvite = (orgs ?? []).some((o) => o.status === "INVITED");
+  const currentOrg = activeOrgs.find((o) => o.id === currentOrgId) ?? null;
+
+  const CurrentIcon = currentOrg ? Buildings : User;
+  const currentName = currentOrg ? currentOrg.name : "Personal";
+  const currentPlan = currentOrg
+    ? teamPlanLabel(currentOrg.tier)
+    : isPro
+      ? "Pro"
+      : "Free";
 
   return (
-    <div className={cn("flex flex-col gap-0.5 px-3 pb-3", collapsed && "md:hidden")}>
-      {rows.map((row) => {
-        const active = currentOrgId === row.id;
-        const Icon = row.icon;
-        return (
+    <div className={cn("px-3 pb-3", collapsed && "md:px-2")}>
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger asChild>
           <button
-            key={row.id ?? "personal"}
-            onClick={() => setCurrentOrg(row.id)}
+            title="Switch workspace"
             className={cn(
-              "focus-ring flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px]",
-              active ? "bg-accent-500/15 text-accent-700 dark:text-accent-100" : "text-ink/70 hover:bg-ink/[0.05]",
+              "focus-ring flex w-full items-center gap-2.5 rounded-lg border border-line bg-canvas px-2.5 py-2 text-left hover:bg-ink/[0.04]",
+              collapsed && "md:justify-center md:gap-0 md:px-0",
             )}
           >
-            <Icon size={15} className="flex-shrink-0" />
-            <span className="flex-1 truncate text-left">{row.name}</span>
-            {active && <Check size={13} />}
+            <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-accent-500/15 text-accent-700 dark:text-accent-200">
+              <CurrentIcon size={15} weight="fill" />
+            </span>
+            <span className={cn("min-w-0 flex-1", collapsed && "md:hidden")}>
+              <span className="block truncate text-[13px] font-medium text-ink">{currentName}</span>
+              <span className="block truncate text-[11px] text-muted">{currentPlan}</span>
+            </span>
+            <CaretUpDown
+              size={14}
+              className={cn("flex-shrink-0 text-muted", collapsed && "md:hidden")}
+            />
           </button>
-        );
-      })}
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content
+            align="start"
+            sideOffset={6}
+            className="z-[70] w-60 rounded-lg border border-line bg-surface p-1 shadow-xl"
+          >
+            <DropdownMenu.Label className="px-2 py-1.5 text-[10px] font-medium uppercase tracking-[0.1em] text-muted">
+              Switch workspace
+            </DropdownMenu.Label>
+
+            <WorkspaceRow
+              icon={User}
+              name="Personal"
+              detail={isPro ? "Pro plan" : "Free plan"}
+              active={!currentOrgId}
+              onSelect={() => setCurrentOrg(null)}
+            />
+            {activeOrgs.map((o) => (
+              <WorkspaceRow
+                key={o.id}
+                icon={Buildings}
+                name={o.name}
+                detail={`${teamPlanLabel(o.tier)} · ${o.role?.toLowerCase() ?? "member"}`}
+                status={o.orgStatus}
+                active={currentOrgId === o.id}
+                onSelect={() => setCurrentOrg(o.id)}
+              />
+            ))}
+
+            {hasPendingInvite && (
+              <p className="px-2 py-1 text-[11px] text-muted">
+                A pending invite becomes selectable once you have key access.
+              </p>
+            )}
+
+            <DropdownMenu.Separator className="my-1 h-px bg-line" />
+            <DropdownMenu.Item asChild>
+              <Link
+                href="/settings/organizations"
+                className="focus-ring flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[13px] text-ink outline-none hover:bg-ink/[0.06]"
+              >
+                <Plus size={14} /> New organization
+              </Link>
+            </DropdownMenu.Item>
+            <DropdownMenu.Item asChild>
+              <Link
+                href="/settings/billing"
+                className="focus-ring flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[13px] text-ink outline-none hover:bg-ink/[0.06]"
+              >
+                <CreditCard size={14} /> Plans &amp; billing
+              </Link>
+            </DropdownMenu.Item>
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
     </div>
+  );
+}
+
+function WorkspaceRow({
+  icon: Icon,
+  name,
+  detail,
+  status,
+  active,
+  onSelect,
+}: {
+  icon: Icon;
+  name: string;
+  detail: string;
+  status?: OrgBillingStatus;
+  active: boolean;
+  onSelect: () => void;
+}) {
+  const dot =
+    status && status !== "ACTIVE"
+      ? status === "SUSPENDED"
+        ? "bg-red-500"
+        : "bg-amber-500"
+      : null;
+  return (
+    <DropdownMenu.Item
+      onSelect={onSelect}
+      className="focus-ring flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 outline-none hover:bg-ink/[0.06]"
+    >
+      <Icon size={15} weight="fill" className="flex-shrink-0 text-muted" />
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-1.5">
+          <span className="truncate text-[13px] text-ink">{name}</span>
+          {dot && <span className={cn("h-1.5 w-1.5 flex-shrink-0 rounded-full", dot)} />}
+        </span>
+        <span className="block truncate text-[11px] capitalize text-muted">{detail}</span>
+      </span>
+      {active && (
+        <Check size={13} className="flex-shrink-0 text-accent-600 dark:text-accent-300" />
+      )}
+    </DropdownMenu.Item>
   );
 }
 

@@ -21,7 +21,26 @@ import { ApiError } from "../http";
 
 export const FREE_LIMITS = {
   /** Personal (non-org) projects a free account may own. */
-  maxPersonalProjects: 5,
+  maxPersonalProjects: 3,
+  /**
+   * Versions of a single file a free account may ever create. This is a
+   * lifetime high-water mark, NOT a live count — deleting an old version does
+   * not free up room (see ProjectFile.versionsCreated).
+   */
+  maxVersionsPerFile: 2,
+  /** Concurrent browser sessions ("devices"); the oldest is evicted past this. */
+  maxBrowserSessions: 2,
+  /** Active CLI Personal Access Tokens. */
+  maxCliTokens: 1,
+} as const;
+
+/**
+ * Pro lifts every Free cap. Devices are not literally unlimited — just a much
+ * higher, still-finite ceiling.
+ */
+export const PRO_LIMITS = {
+  maxBrowserSessions: 5,
+  maxCliTokens: 5,
 } as const;
 
 /** Projects any paid organization may own, regardless of size tier. */
@@ -72,6 +91,59 @@ export function assertCanCreatePersonalProject(currentCount: number, hasPro: boo
       402,
       `Free accounts can keep up to ${FREE_LIMITS.maxPersonalProjects} personal projects. ` +
         "Upgrade to Pro for unlimited personal projects, or create an organization for shared team projects.",
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Version history
+// ---------------------------------------------------------------------------
+
+/**
+ * How many versions of one file the caller may create. `unlimited` is true for
+ * Pro personal projects and for every organization project (governed by the
+ * org's own Team subscription, never by the member's personal plan).
+ */
+export function fileVersionLimit(unlimited: boolean): number {
+  return unlimited ? Number.POSITIVE_INFINITY : FREE_LIMITS.maxVersionsPerFile;
+}
+
+/**
+ * `versionsCreated` is the file's lifetime version count (monotonic — deletes
+ * never decrement it). Blocks a free account from adding another version once
+ * that ceiling is reached, even if some old versions have since been deleted.
+ */
+export function assertCanAddFileVersion(versionsCreated: number, unlimited: boolean): void {
+  if (versionsCreated >= fileVersionLimit(unlimited)) {
+    throw new ApiError(
+      402,
+      `Free accounts keep up to ${FREE_LIMITS.maxVersionsPerFile} versions of each file. ` +
+        "This ceiling counts every version ever uploaded, so deleting an old one does not free up room. " +
+        "Upgrade to Pro for unlimited version history.",
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Devices (browser sessions + CLI tokens)
+// ---------------------------------------------------------------------------
+
+export function browserSessionLimit(hasPro: boolean): number {
+  return hasPro ? PRO_LIMITS.maxBrowserSessions : FREE_LIMITS.maxBrowserSessions;
+}
+
+export function cliTokenLimit(hasPro: boolean): number {
+  return hasPro ? PRO_LIMITS.maxCliTokens : FREE_LIMITS.maxCliTokens;
+}
+
+export function assertCanCreateCliToken(activeCount: number, hasPro: boolean): void {
+  const limit = cliTokenLimit(hasPro);
+  if (activeCount >= limit) {
+    throw new ApiError(
+      409,
+      hasPro
+        ? `You have reached the limit of ${limit} active CLI tokens. Revoke one before creating another.`
+        : `Free accounts can have ${limit} active CLI token. Revoke it first, or upgrade to Pro for up to ${PRO_LIMITS.maxCliTokens}.`,
     );
   }
 }
