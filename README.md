@@ -78,8 +78,20 @@ pnpm dev        # http://localhost:3000  (web app + /api/v1)
 pnpm typecheck            # tsc
 pnpm lint
 pnpm test                 # unit: crypto, filename validation, tokens, storage, rate limiting
-pnpm test:integration     # web -> API -> Postgres round-trips (needs DATABASE_URL)
+pnpm test:integration     # web -> API -> Postgres round-trips (needs a DISPOSABLE DB)
 pnpm build                # production build, as Vercel runs it
+```
+
+The integration suite creates and deletes users, orgs, and projects. It
+targets `TEST_DATABASE_URL` if set, else `DATABASE_URL`, and **refuses to run
+against anything that doesn't look like a throwaway database** (non-local host
+with a db name that isn't `*test*`/`*shadow*`) unless `CI=1` or
+`ALLOW_UNSAFE_INTEGRATION_DB=1`. Point it at a local Postgres:
+
+```bash
+createdb nvault_test
+TEST_DATABASE_URL=postgresql://localhost/nvault_test pnpm prisma migrate deploy
+TEST_DATABASE_URL=postgresql://localhost/nvault_test pnpm test:integration
 ```
 
 ## Deployment

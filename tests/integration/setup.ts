@@ -32,7 +32,40 @@ if (existsSync(envPath)) {
 
 process.env.STORAGE_ENCRYPTION_KEY ||= Buffer.alloc(32, 7).toString("base64");
 process.env.JWT_SECRET ||= "integration-test-jwt-secret-integration-test-0";
+
+// These tests TRUNCATE-adjacent: they create and delete users, orgs, and
+// projects freely. `TEST_DATABASE_URL`, when set, wins over DATABASE_URL so a
+// disposable database can be targeted without editing .env (whose
+// DATABASE_URL often points at a shared/hosted DB — Neon, staging, etc.).
+if (process.env.TEST_DATABASE_URL) {
+  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
+  process.env.DIRECT_DATABASE_URL = process.env.TEST_DATABASE_URL;
+}
 process.env.DIRECT_DATABASE_URL ||= process.env.DATABASE_URL ?? "";
+
+// Guard against pointing the suite at a real database. Allowed only when the
+// host is local, the database name marks it as throwaway (…test…/…shadow…/
+// …ci…), we're on CI, or the operator has explicitly opted in.
+if (process.env.DATABASE_URL && !process.env.ALLOW_UNSAFE_INTEGRATION_DB && !process.env.CI) {
+  let host = "";
+  let dbName = "";
+  try {
+    const u = new URL(process.env.DATABASE_URL);
+    host = u.hostname;
+    dbName = u.pathname.replace(/^\//, "");
+  } catch {
+    /* leave blank — fails the check below */
+  }
+  const localHost = /^(localhost|127\.0\.0\.1|\[::1\]|.*\.local)$/.test(host);
+  const throwawayName = /(test|shadow|_ci\b|-ci\b)/i.test(dbName);
+  if (!localHost && !throwawayName) {
+    throw new Error(
+      `[integration] refusing to run against ${host}/${dbName}: it does not look like a ` +
+        `disposable test database. Set TEST_DATABASE_URL to a throwaway DB, name the DB ` +
+        `"*test*", or set ALLOW_UNSAFE_INTEGRATION_DB=1 to override.`,
+    );
+  }
+}
 
 // Billing: make billingConfigured() true so the paywall path is exercised.
 // The Polar HTTP client is mocked in the spec; only the webhook signer
