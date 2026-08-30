@@ -17,6 +17,7 @@
     "typecheck:test": "tsc --noEmit -p tsconfig.test.json",
     "test": "jest --selectProjects unit",
     "test:integration": "node --experimental-vm-modules node_modules/jest/bin/jest.js --selectProjects integration --runInBand",
+    "seed:scenarios": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.seed.config.cjs --runInBand",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev && prisma generate",
     "prisma:deploy": "prisma migrate deploy"
