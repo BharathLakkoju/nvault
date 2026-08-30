@@ -100,6 +100,16 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md). Short version: one Vercel project, root
 directory `/`, four environment variables, `prisma migrate deploy` from CI or
 your machine.
 
+## Legal & compliance
+
+The public policy pages live under `src/app/(marketing)/` (`/legal`, `/privacy`,
+`/terms`, `/refunds`, `/acceptable-use`, `/cookies`, `/subprocessors`, `/dpa`),
+configured via `legalConfig` in [src/lib/site.ts](src/lib/site.ts).
+[docs/compliance-roadmap.md](./docs/compliance-roadmap.md) tracks *when* each
+obligation (virtual office address, grievance clause, GST registration,
+incorporation, EU representative) actually starts to matter, and what to do at
+that point.
+
 ## Architecture notes
 
 - **Storage**: encrypted file bytes live in Postgres (`storage_objects`).

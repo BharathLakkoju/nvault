@@ -19,8 +19,14 @@ const staticRoutes: ReadonlyArray<{ path: string; priority: number; changeFreque
   { path: "/faq", priority: 0.7, changeFrequency: "monthly" },
   { path: "/about", priority: 0.5, changeFrequency: "yearly" },
   { path: "/contact", priority: 0.5, changeFrequency: "yearly" },
+  { path: "/legal", priority: 0.3, changeFrequency: "yearly" },
   { path: "/privacy", priority: 0.3, changeFrequency: "yearly" },
   { path: "/terms", priority: 0.3, changeFrequency: "yearly" },
+  { path: "/refunds", priority: 0.3, changeFrequency: "yearly" },
+  { path: "/acceptable-use", priority: 0.3, changeFrequency: "yearly" },
+  { path: "/cookies", priority: 0.3, changeFrequency: "yearly" },
+  { path: "/subprocessors", priority: 0.3, changeFrequency: "yearly" },
+  { path: "/dpa", priority: 0.3, changeFrequency: "yearly" },
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

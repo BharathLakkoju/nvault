@@ -103,6 +103,11 @@ export function Prose({ children }: { children: React.ReactNode }) {
         "[&_a]:font-medium [&_a]:text-accent-600 hover:[&_a]:underline dark:[&_a]:text-accent-400",
         "[&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:space-y-2",
         "[&_code]:rounded [&_code]:bg-slate-100 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-sm dark:[&_code]:bg-slate-800",
+        "[&_p+p]:mt-4",
+        "[&_table]:my-6 [&_table]:block [&_table]:w-full [&_table]:overflow-x-auto [&_table]:text-sm",
+        "[&_th]:border [&_th]:border-slate-200 [&_th]:bg-slate-50 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_th]:text-slate-900",
+        "dark:[&_th]:border-slate-800 dark:[&_th]:bg-slate-900 dark:[&_th]:text-slate-100",
+        "[&_td]:border [&_td]:border-slate-200 [&_td]:px-3 [&_td]:py-2 [&_td]:align-top dark:[&_td]:border-slate-800",
       )}
     >
       {children}

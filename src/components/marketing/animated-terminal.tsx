@@ -74,10 +74,24 @@ export function AnimatedTerminal({ steps, title = "nvault — bash", className }
         <span className="ml-3 truncate text-xs text-slate-400">{title}</span>
       </div>
       <pre
-        className="overflow-x-auto px-4 py-4 text-[13px] leading-relaxed text-slate-300"
+        className="grid overflow-x-auto px-4 py-4 text-[13px] leading-relaxed text-slate-300"
         aria-label="Terminal demonstration"
       >
-        <code>
+        {/*
+          Invisible sizing layer: the full transcript, always present, so the
+          box is locked to its final height and never grows line-by-line as the
+          animation reveals commands and output. Only rendered once the client
+          animation takes over — the static (no-JS / reduced-motion) render is
+          already full height on its own.
+        */}
+        {animate && (
+          <code aria-hidden className="invisible col-start-1 row-start-1">
+            {steps.map((step, i) => (
+              <CompletedStep key={i} step={step} />
+            ))}
+          </code>
+        )}
+        <code className={animate ? "col-start-1 row-start-1" : undefined}>
           {steps.map((step, i) => {
             const done = !animate || i < stepIndex;
             const active = animate && i === stepIndex;

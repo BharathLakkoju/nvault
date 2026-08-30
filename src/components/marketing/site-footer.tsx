@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { LogoMark } from "@/components/marketing/logo";
-import { footerNav, siteConfig } from "@/lib/site";
+import { footerNav, legalConfig, siteConfig } from "@/lib/site";
 
 export function SiteFooter() {
   const year = new Date().getFullYear();
@@ -35,16 +35,24 @@ export function SiteFooter() {
       </div>
 
       <div className="border-t border-slate-200 dark:border-slate-800">
-        <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-2 px-4 py-6 text-sm text-slate-500 dark:text-slate-400 sm:flex-row sm:px-6">
-          <p>© {year} {siteConfig.name}. All rights reserved.</p>
-          <p>
-            <a
-              href={`mailto:${siteConfig.contactEmail}`}
-              className="focus-ring rounded hover:text-slate-900 dark:hover:text-slate-100"
-            >
-              {siteConfig.contactEmail}
-            </a>
-          </p>
+        <div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-6 text-xs text-slate-500 dark:text-slate-400 sm:px-6">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              © {year} {legalConfig.operatorName}. An independent project — {legalConfig.operatorLocation}.
+            </p>
+            <p className="flex flex-wrap gap-x-3">
+              <a
+                href={`mailto:${siteConfig.contactEmail}`}
+                className="focus-ring rounded hover:text-slate-900 dark:hover:text-slate-100"
+              >
+                {siteConfig.contactEmail}
+              </a>
+              <Link href="/legal" className="focus-ring rounded hover:text-slate-900 dark:hover:text-slate-100">
+                Legal
+              </Link>
+            </p>
+          </div>
+          {legalConfig.operatorAddress ? <p>{legalConfig.operatorAddress}</p> : null}
         </div>
       </div>
     </footer>
