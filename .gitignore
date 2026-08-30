@@ -30,3 +30,6 @@ pnpm-debug.log*
 
 # Test artifacts
 coverage/
+
+# Seed harness output — per-run credentials for the throwaway test accounts
+docs/test-scenarios.local.md
