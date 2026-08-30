@@ -6,3 +6,5 @@ export * from "./envelope";
 export * from "./hash";
 export * from "./vault";
 export * from "./asymmetric";
+export * from "./org-enrollment";
+export * from "./org-roster";

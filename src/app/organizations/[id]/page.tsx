@@ -15,6 +15,7 @@ import {
   useRenameOrganization,
   useStartOrgCheckout,
 } from "@/hooks/use-organizations";
+import { EnrollPrompt } from "@/components/enroll-prompt";
 import { useOrgContext } from "@/lib/org-context-store";
 import { formatRelativeTime } from "@/lib/format";
 import { toastError, useToastStore } from "@/lib/toast-store";
@@ -85,7 +86,7 @@ function OrganizationContent({ id }: { id: string }) {
           <h1 className="text-2xl font-medium text-ink sm:text-[28px]">{org.name}</h1>
           <p className="text-sm text-muted">
             /{org.slug} · you are {ROLE_LABEL[self.role].toLowerCase()}
-            {self.status === "INVITED" && " · awaiting key access from an admin"}
+            {self.status === "INVITED" && " · not enrolled yet"}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -119,14 +120,7 @@ function OrganizationContent({ id }: { id: string }) {
         <OrgBillingBanner id={id} status={org.orgStatus} isOwner={isOwner} />
       )}
 
-      {self.status === "INVITED" && (
-        <Card className="border-amber-500/40">
-          <div className="p-5 text-sm text-ink/70">
-            You&apos;ve joined this organization, but an admin still needs to grant you access to its
-            encryption key before you can open its projects.
-          </div>
-        </Card>
-      )}
+      {self.status === "INVITED" && <EnrollPrompt orgId={id} onEnrolled={() => void refetch()} />}
 
       <Card>
         <CardHeader
@@ -155,7 +149,7 @@ function OrganizationContent({ id }: { id: string }) {
               <div className="flex items-center gap-2">
                 {m.status === "INVITED" && (
                   <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">
-                    no key yet
+                    not enrolled
                   </span>
                 )}
                 <span className="rounded-md bg-ink/[0.08] px-2 py-0.5 text-xs font-medium text-ink/80">

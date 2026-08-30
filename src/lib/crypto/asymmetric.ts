@@ -112,6 +112,27 @@ export async function wrapToPublicKey(publicKeySpkiBase64: string, data: Uint8Ar
 }
 
 /**
+ * Verifies that a stored SPKI public key really is the counterpart of a
+ * (trusted, master-key-unwrapped) private key, by round-tripping a random
+ * nonce through it. The wrapped private key is authenticated under the master
+ * key, so it cannot be forged by the server; this closes the remaining gap
+ * where a malicious server serves a bogus `publicKey` alongside it. Throws
+ * {@link DecryptionError} on mismatch.
+ */
+export async function assertKeyPairConsistent(
+  privateKeyPkcs8: Uint8Array,
+  publicKeySpkiBase64: string,
+): Promise<void> {
+  const nonce = new Uint8Array(32);
+  getWebcrypto().getRandomValues(nonce);
+  const wrapped = await wrapToPublicKey(publicKeySpkiBase64, nonce);
+  const recovered = await unwrapFromPrivateKey(privateKeyPkcs8, wrapped);
+  if (recovered.length !== nonce.length || !recovered.every((b, i) => b === nonce[i])) {
+    throw new DecryptionError("Stored public key does not match the private key.");
+  }
+}
+
+/**
  * Unwraps a blob produced by {@link wrapToPublicKey} using the raw PKCS#8
  * private key. Throws {@link DecryptionError} on any failure (wrong key,
  * tampered ciphertext) so callers fail closed.

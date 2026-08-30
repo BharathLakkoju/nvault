@@ -11,6 +11,13 @@ import { utf8ToBytes } from "./encoding";
 export const DEFAULT_KDF_ITERATIONS = 600_000;
 
 /**
+ * Unicode normalization form applied to a passphrase before it is fed to the
+ * KDF, so visually identical input derives the same key regardless of how it
+ * was encoded (composed vs. decomposed, compatibility characters, …).
+ */
+const NORMALIZATION_FORM = "NFKC";
+
+/**
  * Derives a 256-bit Key Encryption Key (KEK) from the user's vault
  * passphrase. This is a pure function of (passphrase, salt, iterations) —
  * it never leaves the caller's process and the server never sees the
@@ -21,10 +28,26 @@ export async function deriveKek(
   salt: Uint8Array,
   iterations: number = DEFAULT_KDF_ITERATIONS,
 ): Promise<Uint8Array> {
+  const normalized = utf8ToBytes(passphrase.normalize(NORMALIZATION_FORM));
+  return deriveKekFromBytes(normalized, salt, iterations);
+}
+
+/**
+ * Same PBKDF2 construction as {@link deriveKek}, but keyed from raw secret
+ * bytes rather than a UTF-8 passphrase. Used for the Organization Enrollment
+ * Secret (a 128-bit generated value, see src/lib/crypto/org-enrollment.ts):
+ * the iterations still matter as a brute-force speed bump if a DB dump leaks
+ * the wrapped Org Key, but the secret already carries full entropy.
+ */
+export async function deriveKekFromBytes(
+  secret: Uint8Array,
+  salt: Uint8Array,
+  iterations: number = DEFAULT_KDF_ITERATIONS,
+): Promise<Uint8Array> {
   const subtle = getWebcrypto().subtle;
   const passphraseKey = await subtle.importKey(
     "raw",
-    utf8ToBytes(passphrase.normalize("NFKC")) as unknown as BufferSource,
+    secret as unknown as BufferSource,
     "PBKDF2",
     false,
     ["deriveBits"],

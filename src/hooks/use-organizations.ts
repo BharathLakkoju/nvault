@@ -3,7 +3,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api-client";
 import { useAuthStore } from "@/lib/auth-store";
-import { generateOrgKey, wrapForMember } from "@/lib/vault-client";
+import {
+  createOrgEnrollment,
+  emptyRoster,
+  encryptRoster,
+  fingerprintPublicKey,
+  generateOrgKey,
+  rosterWithEntry,
+  wrapForMember,
+} from "@/lib/vault-client";
 import type {
   OrgBillingDto,
   OrganizationDetailDto,
@@ -27,9 +35,22 @@ export function useOrganization(id: string | null) {
   });
 }
 
+export interface CreateOrgResult {
+  organization: OrganizationDto;
+  checkout: { url: string } | null;
+  /**
+   * The Enrollment Secret, shown to the creator exactly once. Not persisted
+   * anywhere in plaintext — the creator must save it and share it with each
+   * invitee out-of-band.
+   */
+  enrollmentSecret: string;
+}
+
 /**
- * Creates an organization. The Org Key is generated here, in the browser,
- * and only ever leaves wrapped to the creator's own public key.
+ * Creates an organization. The Org Key is generated here, in the browser. It
+ * leaves the machine only (a) wrapped to the creator's own public key and
+ * (b) wrapped under a freshly generated Enrollment Secret, which is returned
+ * to the caller once and never sent to the server.
  */
 export function useCreateOrganization() {
   const queryClient = useQueryClient();
@@ -42,21 +63,37 @@ export function useCreateOrganization() {
       name: string;
       slug: string;
       tier: TeamTier;
-    }) => {
-      const { keyPairMaterial, privateKey } = useAuthStore.getState();
-      if (!privateKey || !keyPairMaterial) {
+    }): Promise<CreateOrgResult> => {
+      const { keyPairMaterial, privateKey, user } = useAuthStore.getState();
+      if (!privateKey || !keyPairMaterial || !user) {
         throw new Error("Unlock your vault before creating an organization.");
       }
       const orgKey = generateOrgKey();
       const wrappedOrgKey = await wrapForMember(keyPairMaterial.publicKey, orgKey);
+      const { secret, enrollment } = await createOrgEnrollment(orgKey);
+
+      const roster = rosterWithEntry(emptyRoster(), user.id, {
+        fingerprint: await fingerprintPublicKey(keyPairMaterial.publicKey),
+        addedAt: new Date().toISOString(),
+      });
+      const rosterBlob = await encryptRoster(orgKey, roster);
+
       const res = await apiRequest<{
         organization: OrganizationDto;
         checkout: { url: string } | null;
       }>("/organizations", {
         method: "POST",
-        body: { name, slug, wrappedOrgKey, tier },
+        body: {
+          name,
+          slug,
+          wrappedOrgKey,
+          enrollment,
+          roster: rosterBlob,
+          pinnedPublicKey: keyPairMaterial.publicKey,
+          tier,
+        },
       });
-      return res;
+      return { ...res, enrollmentSecret: secret };
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["organizations"] }),
   });

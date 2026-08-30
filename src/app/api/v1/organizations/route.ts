@@ -38,6 +38,9 @@ export const POST = handler(async (req) => {
     name: dto.name,
     slug: dto.slug,
     wrappedOrgKeyCiphertext: dto.wrappedOrgKey,
+    enrollment: dto.enrollment,
+    roster: dto.roster,
+    pinnedPublicKey: dto.pinnedPublicKey,
     tier: dto.tier,
   });
   await audit({

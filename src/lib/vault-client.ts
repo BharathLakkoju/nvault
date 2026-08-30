@@ -68,6 +68,67 @@ export async function openOrgKey(privateKey: Uint8Array, wrappedOrgKeyCiphertext
   return vaultCrypto.unwrapFromPrivateKey(privateKey, wrappedOrgKeyCiphertext);
 }
 
+// --- Organization Enrollment Secret + roster ----------------------------
+
+export type OrgEnrollmentBlob = {
+  kdfSalt: string;
+  kdfIterations: number;
+  wrappedOrgKey: { iv: string; ciphertext: string };
+};
+export type OrgRosterBlob = { iv: string; ciphertext: string };
+
+/**
+ * Wraps `orgKey` under a brand-new Enrollment Secret. Used at org creation and
+ * on every key rotation. The returned `secret` is shown to the owner once and
+ * shared out-of-band; only `enrollment` is sent to the server.
+ */
+export async function createOrgEnrollment(orgKey: Uint8Array): Promise<{
+  secret: string;
+  enrollment: OrgEnrollmentBlob;
+}> {
+  const secret = vaultCrypto.generateEnrollmentSecret();
+  const enrollment = await vaultCrypto.wrapOrgKeyWithEnrollmentSecret(orgKey, secret);
+  return { secret, enrollment };
+}
+
+/** Recovers the Org Key from the server's OES-wrapped blob using a typed-in secret. */
+export async function openOrgKeyWithSecret(
+  secret: string,
+  enrollment: OrgEnrollmentBlob,
+): Promise<Uint8Array> {
+  return vaultCrypto.openOrgKeyWithEnrollmentSecret(secret, enrollment);
+}
+
+export const {
+  formatEnrollmentSecret,
+  normalizeEnrollmentSecret,
+  emptyRoster,
+  fingerprintPublicKey,
+  formatFingerprint,
+  verifyAgainstRoster,
+  withEntry: rosterWithEntry,
+  withoutEntries: rosterWithoutEntries,
+} = vaultCrypto;
+
+export async function encryptRoster(
+  orgKey: Uint8Array,
+  roster: vaultCrypto.OrgRoster,
+): Promise<OrgRosterBlob> {
+  return vaultCrypto.encryptRoster(orgKey, roster);
+}
+
+export async function decryptRoster(
+  orgKey: Uint8Array,
+  blob: OrgRosterBlob,
+): Promise<vaultCrypto.OrgRoster> {
+  return vaultCrypto.decryptRoster(orgKey, blob);
+}
+
+/** Fails closed if the stored public key isn't the counterpart of our private key. */
+export async function assertKeyPairConsistent(privateKey: Uint8Array, publicKey: string) {
+  return vaultCrypto.assertKeyPairConsistent(privateKey, publicKey);
+}
+
 export async function encryptFile(projectKey: Uint8Array, plaintext: Uint8Array) {
   const contentId = newId();
   const payload = await vaultCrypto.encryptFileContent(projectKey, contentId, plaintext);

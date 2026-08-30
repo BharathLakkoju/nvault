@@ -153,6 +153,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         : provisioned.privateKey;
     }
 
+    // The wrapped private key is authenticated under the master key, so it
+    // cannot be forged by the server — but `publicKey` is served in the
+    // clear. Verify they are a pair, so a server that swapped the public key
+    // (to intercept an Org Key wrapped "to us" at rotation) is caught here
+    // rather than silently trusted.
+    if (keyPairMaterial) {
+      await vaultCrypto.assertKeyPairConsistent(privateKey, keyPairMaterial.publicKey);
+    }
+
     set({ masterKey, privateKey, keyPairMaterial });
   },
 

@@ -5,6 +5,7 @@ import { authorizeOrg } from "@/server/authz/org-access";
 import { clientIp, handler, json, noContent, readJson } from "@/server/http";
 import {
   deleteOrganization,
+  enrollmentToDto,
   getOrganizationForMember,
   membershipToDto,
   organizationToDto,
@@ -26,10 +27,13 @@ export const GET = handler(async (req, { params }) => {
       membershipId: self.id,
       role: self.role,
       status: self.status,
-      // The caller's own wrapped Org Key — null until an admin grants it.
+      // The caller's own wrapped Org Key — null until they enroll.
       wrappedOrgKey: self.wrappedOrgKeyCiphertext,
       keyEpoch: self.keyEpoch,
     },
+    // OES-wrapped Org Key + roster ciphertext: opaque, needed by an INVITED
+    // member to enroll and by an admin to rotate. Safe for any member.
+    ...enrollmentToDto(org),
     members: org.memberships.map(membershipToDto),
   });
 });

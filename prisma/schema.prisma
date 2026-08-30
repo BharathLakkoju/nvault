@@ -316,6 +316,31 @@ model Organization {
   /// mismatch means "re-fetch, your key is stale".
   currentKeyEpoch Int @default(0)
 
+  /// Organization Enrollment Secret (OES) layer. The Org Key wrapped under a
+  /// KEK derived (PBKDF2) from a 128-bit secret generated in the creator's
+  /// browser and shared with each invitee OUT-OF-BAND. This is how a new
+  /// member obtains the Org Key — the server never sees the secret and is not
+  /// in the key-delivery path, so it cannot add itself as a reader. All four
+  /// fields are opaque ciphertext / KDF parameters. Regenerated on every
+  /// rotation; `enrollmentKeyEpoch` is the Org Key epoch this blob wraps.
+  /// See src/lib/crypto/org-enrollment.ts.
+  enrollmentKdfSalt                 String
+  enrollmentKdfIterations           Int
+  enrollmentWrappedOrgKeyIv         String
+  enrollmentWrappedOrgKeyCiphertext String
+  enrollmentKeyEpoch                Int    @default(0)
+
+  /// Encrypted member roster: {membershipId -> {userId, pubkey fingerprint}},
+  /// AES-256-GCM under the Org Key (AAD "org-roster:<id>"). Each member writes
+  /// their own entry (fingerprint of their local public key) as they enroll;
+  /// key rotation checks every server-supplied member public key against it to
+  /// detect substitution. `rosterVersion` is a monotonic optimistic-concurrency
+  /// guard enforced on write. Opaque to the server (it holds no Org Key).
+  /// See src/lib/crypto/org-roster.ts.
+  rosterIv         String
+  rosterCiphertext String
+  rosterVersion    Int    @default(0)
+
   /// Billing gate. New orgs start `PENDING_PAYMENT` and are unusable until
   /// the Polar `subscription.active` webhook flips them to `ACTIVE`. A
   /// lapsed subscription drops them to `SUSPENDED` (read-only).
@@ -345,11 +370,20 @@ model OrganizationMembership {
   status OrgMembershipStatus @default(INVITED)
 
   /// The Organization Key, RSA-wrapped to THIS member's public key. Null
-  /// until an admin grants it (at which point `status` flips to ACTIVE).
+  /// until the member enrolls with the Enrollment Secret (at which point
+  /// `status` flips to ACTIVE). The member's own client produces it — from
+  /// the Org Key it recovered via the OES, re-wrapped to its own public key.
   /// Opaque ciphertext — the server can neither produce nor read it.
   wrappedOrgKeyCiphertext String?
   /// The Org Key epoch `wrappedOrgKeyCiphertext` belongs to.
   keyEpoch                Int?
+
+  /// The member's own public key (SPKI base64) as recorded by THEIR client at
+  /// enrollment — the pin that key rotation checks the server-supplied key
+  /// against. Null until enrolled. Distinct from `user.publicKey` (the
+  /// account-level copy the server serves): a divergence is the signal that
+  /// the server may have swapped it.
+  pinnedPublicKey String?
 
   invitedById String?
   invitedBy   User?   @relation("MembershipInvitedBy", fields: [invitedById], references: [id], onDelete: SetNull)

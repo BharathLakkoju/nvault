@@ -91,6 +91,24 @@ export const OrgSlugSchema = z
 // member's public key. ~512 bytes for a 3072-bit key; cap generously.
 export const WrappedOrgKeySchema = z.string().min(1).max(4_000);
 
+// SPKI public key (base64), same shape as ProvisionKeyPairRequestSchema.
+export const PublicKeySchema = z.string().min(1).max(4_000);
+
+// The Org Key wrapped under a KEK derived from the Enrollment Secret, plus
+// its KDF parameters. All opaque — see src/lib/crypto/org-enrollment.ts.
+export const EnrollmentWrapSchema = z.object({
+  kdfSalt: z.string().min(1).max(256),
+  kdfIterations: z.number().int().min(100_000).max(10_000_000),
+  wrappedOrgKey: WrappedKeySchema,
+});
+
+// AES-GCM ciphertext of the member roster (keyed under the Org Key). Grows
+// with membership; a 200-member org is well under this cap.
+export const RosterCiphertextSchema = z.object({
+  iv: z.string().min(1).max(256),
+  ciphertext: z.string().min(1).max(200_000),
+});
+
 export const TeamTierSchema = z.enum(["STARTER", "GROWTH", "SCALE"]);
 
 export const CreateOrganizationRequestSchema = z.object({
@@ -98,10 +116,30 @@ export const CreateOrganizationRequestSchema = z.object({
   slug: OrgSlugSchema,
   /** The freshly-generated Org Key, wrapped to the creator's own public key. */
   wrappedOrgKey: WrappedOrgKeySchema,
+  /** The same Org Key wrapped under the Enrollment Secret (for future members). */
+  enrollment: EnrollmentWrapSchema,
+  /** Initial roster: exactly the creator's own membership entry, under the Org Key. */
+  roster: RosterCiphertextSchema,
+  /** The creator's own public key, pinned for later rotation checks. */
+  pinnedPublicKey: PublicKeySchema,
   /** Team size tier to bill for. Defaults to the smallest. */
   tier: TeamTierSchema.default("STARTER"),
 });
 export type CreateOrganizationRequest = z.infer<typeof CreateOrganizationRequestSchema>;
+
+export const EnrollRequestSchema = z.object({
+  /** The Org Key (recovered via the Enrollment Secret) re-wrapped to my own public key. */
+  wrappedOrgKey: WrappedOrgKeySchema,
+  /** Must equal the org's current key epoch. */
+  keyEpoch: z.number().int().min(0),
+  /** My own public key — pinned so rotation can detect a substituted key. */
+  pinnedPublicKey: PublicKeySchema,
+  /** The roster with my entry added, re-encrypted under the Org Key. */
+  roster: RosterCiphertextSchema,
+  /** The roster version I based my edit on (optimistic concurrency). */
+  expectedRosterVersion: z.number().int().min(0),
+});
+export type EnrollRequest = z.infer<typeof EnrollRequestSchema>;
 
 export const ChangeTierRequestSchema = z.object({ tier: TeamTierSchema });
 export type ChangeTierRequest = z.infer<typeof ChangeTierRequestSchema>;
@@ -128,14 +166,6 @@ export const AcceptInviteRequestSchema = z.object({
   token: z.string().min(1).max(200),
 });
 export type AcceptInviteRequest = z.infer<typeof AcceptInviteRequestSchema>;
-
-export const GrantKeyRequestSchema = z.object({
-  /** The Org Key, RSA-wrapped to the target member's public key. */
-  wrappedOrgKey: WrappedOrgKeySchema,
-  /** Must equal the org's current key epoch (stale grants are rejected). */
-  keyEpoch: z.number().int().min(0),
-});
-export type GrantKeyRequest = z.infer<typeof GrantKeyRequestSchema>;
 
 export const UpdateMembershipRequestSchema = z.object({
   role: OrgRoleSchema,
@@ -164,6 +194,12 @@ export const RotateKeyRequestSchema = z.object({
     .array(z.object({ membershipId: z.string().cuid(), wrappedOrgKey: WrappedOrgKeySchema }))
     .min(1)
     .max(200),
+  /** The new Org Key wrapped under a freshly-generated Enrollment Secret. */
+  enrollment: EnrollmentWrapSchema,
+  /** The roster re-encrypted under the new Org Key (same entries). */
+  roster: RosterCiphertextSchema,
+  /** The roster version the rotation was based on (optimistic concurrency). */
+  expectedRosterVersion: z.number().int().min(0),
 });
 export type RotateKeyRequest = z.infer<typeof RotateKeyRequestSchema>;
 

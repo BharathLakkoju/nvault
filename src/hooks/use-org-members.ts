@@ -4,14 +4,33 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api-client";
 import { useAuthStore } from "@/lib/auth-store";
 import {
+  createOrgEnrollment,
+  decryptRoster,
+  encryptRoster,
+  fingerprintPublicKey,
   generateOrgKey,
   openOrgKey,
+  openOrgKeyWithSecret,
   openProjectKey,
   rewrapProjectKey,
+  rosterWithEntry,
+  verifyAgainstRoster,
   wrapForMember,
 } from "@/lib/vault-client";
 import type { OrgActivityEntryDto, OrgInviteDto, OrgRole, ProjectDto } from "@/lib/types";
 import { useOrganization } from "./use-organizations";
+
+/** A member public key served by the API did not match its roster pin. */
+export class RosterKeyMismatch extends Error {
+  constructor(public readonly userIds: string[]) {
+    super(
+      "One or more members' encryption keys don't match what was pinned when they joined. " +
+        "This can mean the server tried to substitute a key. Verify with those members " +
+        "out-of-band before rotating.",
+    );
+    this.name = "RosterKeyMismatch";
+  }
+}
 
 function invalidate(queryClient: ReturnType<typeof useQueryClient>, orgId: string) {
   queryClient.invalidateQueries({ queryKey: ["organizations", orgId] });
@@ -61,23 +80,41 @@ export function useRevokeInvite(orgId: string) {
 }
 
 /**
- * Grants a member the Organization Key. The wrap happens here in the admin's
- * browser: unwrap our own Org Key with our private key, re-wrap it to the
- * target member's public key, and send only the ciphertext.
+ * Completes the caller's own join. They type in the Enrollment Secret the
+ * org owner shared out-of-band; the client recovers the Org Key from the
+ * server's OES-wrapped blob, re-wraps it to the caller's own public key,
+ * adds the caller's fingerprint to the roster, and submits all three. The
+ * secret never leaves the browser.
  */
-export function useGrantKey(orgId: string) {
+export function useEnroll(orgId: string) {
   const queryClient = useQueryClient();
   const { data: detail } = useOrganization(orgId);
   return useMutation({
-    mutationFn: async ({ membershipId, publicKey }: { membershipId: string; publicKey: string }) => {
-      const { privateKey } = useAuthStore.getState();
-      if (!privateKey) throw new Error("Unlock your vault first.");
-      if (!detail?.self.wrappedOrgKey) throw new Error("You don't have this organization's key.");
-      const orgKey = await openOrgKey(privateKey, detail.self.wrappedOrgKey);
-      const wrappedOrgKey = await wrapForMember(publicKey, orgKey);
-      return apiRequest(`/organizations/${orgId}/memberships/${membershipId}/grant-key`, {
+    mutationFn: async (enrollmentSecret: string) => {
+      const { keyPairMaterial, user } = useAuthStore.getState();
+      if (!keyPairMaterial || !user) throw new Error("Unlock your vault first.");
+      if (!detail) throw new Error("Organization not loaded yet.");
+
+      const orgKey = await openOrgKeyWithSecret(enrollmentSecret.trim(), detail.enrollment);
+      const wrappedOrgKey = await wrapForMember(keyPairMaterial.publicKey, orgKey);
+
+      // Read-modify-write on the roster, guarded by its version server-side.
+      const roster = await decryptRoster(orgKey, detail.roster);
+      const next = rosterWithEntry(roster, user.id, {
+        fingerprint: await fingerprintPublicKey(keyPairMaterial.publicKey),
+        addedAt: new Date().toISOString(),
+      });
+      const rosterBlob = await encryptRoster(orgKey, next);
+
+      return apiRequest(`/organizations/${orgId}/enroll`, {
         method: "POST",
-        body: { wrappedOrgKey, keyEpoch: detail.organization.currentKeyEpoch },
+        body: {
+          wrappedOrgKey,
+          keyEpoch: detail.enrollment.keyEpoch,
+          pinnedPublicKey: keyPairMaterial.publicKey,
+          roster: rosterBlob,
+          expectedRosterVersion: detail.roster.version,
+        },
       });
     },
     onSuccess: () => invalidate(queryClient, orgId),
@@ -139,6 +176,21 @@ export function useRotateOrgKey(orgId: string) {
       const newOrgKey = generateOrgKey();
       const newEpoch = detail.organization.currentKeyEpoch + 1;
 
+      const activeMembers = detail.members.filter(
+        (m): m is typeof m & { publicKey: string } => m.status === "ACTIVE" && !!m.publicKey,
+      );
+
+      // Verify every member's served public key against the roster pin BEFORE
+      // wrapping the new key to it — a substituted key aborts here.
+      const oldRoster = await decryptRoster(oldOrgKey, detail.roster);
+      const { mismatched, unpinned } = await verifyAgainstRoster(
+        oldRoster,
+        activeMembers.map((m) => ({ userId: m.userId, publicKey: m.publicKey })),
+      );
+      if (mismatched.length > 0) {
+        throw new RosterKeyMismatch(mismatched.map((x) => x.userId));
+      }
+
       const allProjects = await apiRequest<{ projects: ProjectDto[] }>("/projects").then(
         (r) => r.projects,
       );
@@ -146,22 +198,51 @@ export function useRotateOrgKey(orgId: string) {
       const projectKeys = await Promise.all(
         orgProjects.map(async (p) => {
           const projectKey = await openProjectKey(oldOrgKey, p.id, p.wrappedProjectKey);
-          return { projectId: p.id, wrappedProjectKey: await rewrapProjectKey(newOrgKey, p.id, projectKey) };
+          return {
+            projectId: p.id,
+            wrappedProjectKey: await rewrapProjectKey(newOrgKey, p.id, projectKey),
+          };
         }),
       );
 
-      const activeMembers = detail.members.filter((m) => m.status === "ACTIVE" && m.publicKey);
       const memberKeys = await Promise.all(
         activeMembers.map(async (m) => ({
           membershipId: m.id,
-          wrappedOrgKey: await wrapForMember(m.publicKey!, newOrgKey),
+          wrappedOrgKey: await wrapForMember(m.publicKey, newOrgKey),
         })),
       );
 
-      return apiRequest(`/organizations/${orgId}/rotate-key`, {
+      // Rebuild the roster: keep a pin for every current active member.
+      // Trust-on-first-use for any that had none (the served key becomes the
+      // pin now that we are about to wrap the new Org Key to it).
+      const unpinnedSet = new Set(unpinned.map((x) => x.userId));
+      let nextRoster = { version: oldRoster.version, entries: {} as typeof oldRoster.entries };
+      for (const m of activeMembers) {
+        const existing = oldRoster.entries[m.userId];
+        nextRoster.entries[m.userId] = unpinnedSet.has(m.userId)
+          ? { fingerprint: await fingerprintPublicKey(m.publicKey), addedAt: new Date().toISOString() }
+          : existing;
+      }
+      nextRoster = { version: oldRoster.version + 1, entries: nextRoster.entries };
+      const rosterBlob = await encryptRoster(newOrgKey, nextRoster);
+
+      // A new Org Key means a new Enrollment Secret. The old one can no longer
+      // unwrap anything; the owner must save this and use it for future
+      // invites.
+      const { secret: enrollmentSecret, enrollment } = await createOrgEnrollment(newOrgKey);
+
+      const res = await apiRequest<{ epoch: number }>(`/organizations/${orgId}/rotate-key`, {
         method: "POST",
-        body: { newEpoch, projectKeys, memberKeys },
+        body: {
+          newEpoch,
+          projectKeys,
+          memberKeys,
+          enrollment,
+          roster: rosterBlob,
+          expectedRosterVersion: detail.roster.version,
+        },
       });
+      return { ...res, enrollmentSecret };
     },
     onSuccess: () => {
       invalidate(queryClient, orgId);

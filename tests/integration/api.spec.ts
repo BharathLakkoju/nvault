@@ -75,8 +75,7 @@ describeIf("nvault API (integration)", () => {
     orgInvites: require("@/app/api/v1/organizations/[id]/invites/route"),
     revokeInvite: require("@/app/api/v1/organizations/[id]/invites/[inviteId]/route").DELETE as Handler,
     acceptInvite: require("@/app/api/v1/invites/accept/route").POST as Handler,
-    grantKey: require("@/app/api/v1/organizations/[id]/memberships/[membershipId]/grant-key/route")
-      .POST as Handler,
+    enroll: require("@/app/api/v1/organizations/[id]/enroll/route").POST as Handler,
     membership: require("@/app/api/v1/organizations/[id]/memberships/[membershipId]/route"),
     transferOwnership: require("@/app/api/v1/organizations/[id]/transfer-ownership/route")
       .POST as Handler,
@@ -262,6 +261,69 @@ describeIf("nvault API (integration)", () => {
     });
     expect(res.status).toBe(201);
     return { ...user, publicKey: kp.material.publicKey, privateKey: kp.privateKey };
+  }
+
+  type KeypairUser = Awaited<ReturnType<typeof registerUserWithKeypair>>;
+
+  /** Builds the full /organizations POST body (OES + roster + pin). */
+  async function buildOrgBody(
+    owner: KeypairUser,
+    opts: { name?: string; slug?: string; tier?: string } = {},
+  ) {
+    const orgKey = vaultCrypto.generateDataKey();
+    const wrappedOrgKey = await vaultCrypto.wrapToPublicKey(owner.publicKey, orgKey);
+    const secret = vaultCrypto.generateEnrollmentSecret();
+    const enrollment = await vaultCrypto.wrapOrgKeyWithEnrollmentSecret(orgKey, secret);
+    const roster = vaultCrypto.withEntry(vaultCrypto.emptyRoster(), owner.id, {
+      fingerprint: await vaultCrypto.fingerprintPublicKey(owner.publicKey),
+      addedAt: new Date().toISOString(),
+    });
+    const rosterBlob = await vaultCrypto.encryptRoster(orgKey, roster);
+    return {
+      orgKey,
+      secret,
+      body: {
+        name: opts.name ?? "Team",
+        slug: opts.slug ?? `team-${randomUUID().slice(0, 8)}`,
+        wrappedOrgKey,
+        enrollment,
+        roster: rosterBlob,
+        pinnedPublicKey: owner.publicKey,
+        ...(opts.tier ? { tier: opts.tier } : {}),
+      },
+    };
+  }
+
+  /** Runs the member side of enrollment: recover Org Key via secret, submit. */
+  async function enrollUser(user: KeypairUser, orgId: string, secret: string) {
+    const detail = await call(routes.org.GET, {
+      method: "GET",
+      path: `/api/v1/organizations/${orgId}`,
+      params: { id: orgId },
+      token: user.token,
+    });
+    const orgKey = await vaultCrypto.openOrgKeyWithEnrollmentSecret(secret, detail.body.enrollment);
+    const wrappedOrgKey = await vaultCrypto.wrapToPublicKey(user.publicKey, orgKey);
+    const roster = await vaultCrypto.decryptRoster(orgKey, detail.body.roster);
+    const next = vaultCrypto.withEntry(roster, user.id, {
+      fingerprint: await vaultCrypto.fingerprintPublicKey(user.publicKey),
+      addedAt: new Date().toISOString(),
+    });
+    const rosterBlob = await vaultCrypto.encryptRoster(orgKey, next);
+    const res = await call(routes.enroll, {
+      method: "POST",
+      path: `/api/v1/organizations/${orgId}/enroll`,
+      params: { id: orgId },
+      token: user.token,
+      body: {
+        wrappedOrgKey,
+        keyEpoch: detail.body.enrollment.keyEpoch,
+        pinnedPublicKey: user.publicKey,
+        roster: rosterBlob,
+        expectedRosterVersion: detail.body.roster.version,
+      },
+    });
+    return { res, orgKey };
   }
 
   it("never echoes secrets in the register response", async () => {
@@ -701,15 +763,15 @@ describeIf("nvault API (integration)", () => {
   it("creates an org with the caller as active OWNER, and shares a project zero-knowledge", async () => {
     const alice = await registerUserWithKeypair("alice org passphrase");
 
-    // Alice generates an Org Key in-memory, wrapped to her own public key.
-    const orgKey = vaultCrypto.generateDataKey();
-    const wrappedForAlice = await vaultCrypto.wrapToPublicKey(alice.publicKey, orgKey);
+    // Alice generates an Org Key in-memory, wrapped to her own public key and
+    // under a fresh enrollment secret.
+    const { orgKey, body } = await buildOrgBody(alice, { name: "Acme", slug: `acme-${Date.now()}` });
 
     const createRes = await call(routes.orgs.POST, {
       method: "POST",
       path: "/api/v1/organizations",
       token: alice.token,
-      body: { name: "Acme", slug: `acme-${Date.now()}`, wrappedOrgKey: wrappedForAlice },
+      body,
     });
     expect(createRes.status).toBe(201);
     const orgId = createRes.body.organization.id as string;
@@ -803,13 +865,12 @@ describeIf("nvault API (integration)", () => {
 
   it("blocks project creation in an org the caller is not an admin of", async () => {
     const owner = await registerUserWithKeypair("owner passphrase");
-    const orgKey = vaultCrypto.generateDataKey();
-    const wrapped = await vaultCrypto.wrapToPublicKey(owner.publicKey, orgKey);
+    const { orgKey, body } = await buildOrgBody(owner, { name: "Beta", slug: `beta-${Date.now()}` });
     const createRes = await call(routes.orgs.POST, {
       method: "POST",
       path: "/api/v1/organizations",
       token: owner.token,
-      body: { name: "Beta", slug: `beta-${Date.now()}`, wrappedOrgKey: wrapped },
+      body,
     });
     const orgId = createRes.body.organization.id as string;
 
@@ -827,26 +888,25 @@ describeIf("nvault API (integration)", () => {
   });
 
   async function createOrg(owner: Awaited<ReturnType<typeof registerUserWithKeypair>>) {
-    const orgKey = vaultCrypto.generateDataKey();
-    const wrapped = await vaultCrypto.wrapToPublicKey(owner.publicKey, orgKey);
+    const { orgKey, secret, body } = await buildOrgBody(owner);
     const res = await call(routes.orgs.POST, {
       method: "POST",
       path: "/api/v1/organizations",
       token: owner.token,
-      body: { name: "Team", slug: `team-${randomUUID().slice(0, 8)}`, wrappedOrgKey: wrapped },
+      body,
     });
     expect(res.status).toBe(201);
     expect(res.body.organization.orgStatus).toBe("PENDING_PAYMENT");
     expect(res.body.checkout.url).toContain("polar.test");
     const orgId = res.body.organization.id as string;
     await activateOrg(orgId);
-    return { orgId, orgKey };
+    return { orgId, orgKey, secret };
   }
 
-  it("runs the full invite → accept → grant-key → shared-decrypt flow", async () => {
+  it("runs the full invite → accept → enroll → shared-decrypt flow", async () => {
     const alice = await registerUserWithKeypair("alice invite flow");
     const bob = await registerUserWithKeypair("bob invite flow");
-    const { orgId, orgKey } = await createOrg(alice);
+    const { orgId, orgKey, secret: enrollmentSecret } = await createOrg(alice);
 
     // Alice invites Bob as MEMBER.
     const inviteRes = await call(routes.orgInvites.POST, {
@@ -926,28 +986,18 @@ describeIf("nvault API (integration)", () => {
     });
     expect(bobProjects.body.projects.some((p: { id: string }) => p.id === projectId)).toBe(false);
 
-    // Alice grants Bob the Org Key (wrapped to Bob's public key).
-    const detail = await call(routes.org.GET, {
-      method: "GET",
-      path: `/api/v1/organizations/${orgId}`,
-      params: { id: orgId },
-      token: alice.token,
-    });
-    const bobMembership = detail.body.members.find(
-      (m: { email: string }) => m.email === bob.email,
-    );
-    const wrappedForBob = await vaultCrypto.wrapToPublicKey(bobMembership.publicKey, orgKey);
-    const grantRes = await call(routes.grantKey, {
-      method: "POST",
-      path: `/api/v1/organizations/${orgId}/memberships/${bobMembership.id}/grant-key`,
-      params: { id: orgId, membershipId: bobMembership.id },
-      token: alice.token,
-      body: { wrappedOrgKey: wrappedForBob, keyEpoch: 0 },
-    });
-    expect(grantRes.status).toBe(200);
+    // A wrong secret is rejected client-side (never reaches the server as a
+    // usable key) — decryption throws.
+    await expect(enrollUser(bob, orgId, vaultCrypto.generateEnrollmentSecret())).rejects.toThrow();
+
+    // Bob enrolls with the real secret: recovers the Org Key, re-wraps it to
+    // his own key, pins himself in the roster.
+    const { res: enrollRes } = await enrollUser(bob, orgId, enrollmentSecret);
+    expect(enrollRes.status).toBe(200);
+    expect(enrollRes.body.membership.status).toBe("ACTIVE");
 
     // Now Bob sees the project and can decrypt the file end-to-end with only
-    // his own keypair + the granted Org Key blob.
+    // his own keypair + the enrolled Org Key blob.
     const bobDetail = await call(routes.org.GET, {
       method: "GET",
       path: `/api/v1/organizations/${orgId}`,
@@ -1001,9 +1051,9 @@ describeIf("nvault API (integration)", () => {
   it("enforces role rules: members can't invite, last owner is protected, removal cuts access", async () => {
     const owner = await registerUserWithKeypair("owner rules");
     const member = await registerUserWithKeypair("member rules");
-    const { orgId, orgKey } = await createOrg(owner);
+    const { orgId, secret } = await createOrg(owner);
 
-    // Add member (invite + accept + grant).
+    // Add member (invite + accept + enroll).
     const inv = await call(routes.orgInvites.POST, {
       method: "POST",
       path: `/api/v1/organizations/${orgId}/invites`,
@@ -1017,6 +1067,7 @@ describeIf("nvault API (integration)", () => {
       token: member.token,
       body: { token: inv.body.token },
     });
+    expect((await enrollUser(member, orgId, secret)).res.status).toBe(200);
     const detail = await call(routes.org.GET, {
       method: "GET",
       path: `/api/v1/organizations/${orgId}`,
@@ -1024,14 +1075,6 @@ describeIf("nvault API (integration)", () => {
       token: owner.token,
     });
     const memberRow = detail.body.members.find((m: { email: string }) => m.email === member.email);
-    const wrappedForMember = await vaultCrypto.wrapToPublicKey(memberRow.publicKey, orgKey);
-    await call(routes.grantKey, {
-      method: "POST",
-      path: `/api/v1/organizations/${orgId}/memberships/${memberRow.id}/grant-key`,
-      params: { id: orgId, membershipId: memberRow.id },
-      token: owner.token,
-      body: { wrappedOrgKey: wrappedForMember, keyEpoch: 0 },
-    });
 
     // A MEMBER cannot invite.
     const memberInvite = await call(routes.orgInvites.POST, {
@@ -1076,9 +1119,9 @@ describeIf("nvault API (integration)", () => {
   it("rotates the org key: rejects partial coverage, then re-keys projects and members", async () => {
     const owner = await registerUserWithKeypair("rotate owner");
     const member = await registerUserWithKeypair("rotate member");
-    const { orgId, orgKey } = await createOrg(owner);
+    const { orgId, orgKey, secret: enrollmentSecret } = await createOrg(owner);
 
-    // Bring `member` on board with key access.
+    // Bring `member` on board (invite + accept + enroll).
     const inv = await call(routes.orgInvites.POST, {
       method: "POST",
       path: `/api/v1/organizations/${orgId}/invites`,
@@ -1092,21 +1135,31 @@ describeIf("nvault API (integration)", () => {
       token: member.token,
       body: { token: inv.body.token },
     });
+    expect((await enrollUser(member, orgId, enrollmentSecret)).res.status).toBe(200);
     let detail = await call(routes.org.GET, {
       method: "GET",
       path: `/api/v1/organizations/${orgId}`,
       params: { id: orgId },
       token: owner.token,
     });
-    const ownerMembership = detail.body.members.find((m: { role: string }) => m.role === "OWNER");
-    const memberRow = detail.body.members.find((m: { email: string }) => m.email === member.email);
-    await call(routes.grantKey, {
-      method: "POST",
-      path: `/api/v1/organizations/${orgId}/memberships/${memberRow.id}/grant-key`,
-      params: { id: orgId, membershipId: memberRow.id },
-      token: owner.token,
-      body: { wrappedOrgKey: await vaultCrypto.wrapToPublicKey(memberRow.publicKey, orgKey), keyEpoch: 0 },
-    });
+    const rosterVersion = detail.body.roster.version as number;
+
+    // Build the enrollment + roster extras every rotation must carry.
+    async function rotationExtras(key: Uint8Array) {
+      const s = vaultCrypto.generateEnrollmentSecret();
+      let roster = vaultCrypto.emptyRoster();
+      for (const u of [owner, member]) {
+        roster = vaultCrypto.withEntry(roster, u.id, {
+          fingerprint: await vaultCrypto.fingerprintPublicKey(u.publicKey),
+          addedAt: new Date().toISOString(),
+        });
+      }
+      return {
+        enrollment: await vaultCrypto.wrapOrgKeyWithEnrollmentSecret(key, s),
+        roster: await vaultCrypto.encryptRoster(key, roster),
+        expectedRosterVersion: rosterVersion,
+      };
+    }
 
     // One org project with a file.
     const projectId = randomUUID();
@@ -1134,12 +1187,15 @@ describeIf("nvault API (integration)", () => {
     });
 
     // New Org Key, re-wrap everything.
+    const ownerMembership = detail.body.members.find((m: { role: string }) => m.role === "OWNER");
+    const memberRow = detail.body.members.find((m: { email: string }) => m.email === member.email);
     const newOrgKey = vaultCrypto.generateDataKey();
     const newWrappedProjectKey = await vaultCrypto.wrapProjectKey(newOrgKey, projectId, projectKey);
     const memberKeysFull = [
       { membershipId: ownerMembership.id, wrappedOrgKey: await vaultCrypto.wrapToPublicKey(owner.publicKey, newOrgKey) },
       { membershipId: memberRow.id, wrappedOrgKey: await vaultCrypto.wrapToPublicKey(member.publicKey, newOrgKey) },
     ];
+    const extras = await rotationExtras(newOrgKey);
 
     // Missing a member → 400.
     const partial = await call(routes.rotateKey, {
@@ -1151,6 +1207,7 @@ describeIf("nvault API (integration)", () => {
         newEpoch: 1,
         projectKeys: [{ projectId, wrappedProjectKey: newWrappedProjectKey }],
         memberKeys: [memberKeysFull[0]],
+        ...extras,
       },
     });
     expect(partial.status).toBe(400);
@@ -1165,6 +1222,7 @@ describeIf("nvault API (integration)", () => {
         newEpoch: 5,
         projectKeys: [{ projectId, wrappedProjectKey: newWrappedProjectKey }],
         memberKeys: memberKeysFull,
+        ...extras,
       },
     });
     expect(wrongEpoch.status).toBe(409);
@@ -1179,6 +1237,7 @@ describeIf("nvault API (integration)", () => {
         newEpoch: 1,
         projectKeys: [{ projectId, wrappedProjectKey: newWrappedProjectKey }],
         memberKeys: memberKeysFull,
+        ...extras,
       },
     });
     expect(ok.status).toBe(200);
@@ -1232,16 +1291,15 @@ describeIf("nvault API (integration)", () => {
   // -------------------------------------------------------------------------
 
   async function createRawOrg(owner: Awaited<ReturnType<typeof registerUserWithKeypair>>) {
-    const orgKey = vaultCrypto.generateDataKey();
-    const wrapped = await vaultCrypto.wrapToPublicKey(owner.publicKey, orgKey);
+    const { orgKey, secret, body } = await buildOrgBody(owner);
     const res = await call(routes.orgs.POST, {
       method: "POST",
       path: "/api/v1/organizations",
       token: owner.token,
-      body: { name: "Team", slug: `team-${randomUUID().slice(0, 8)}`, wrappedOrgKey: wrapped },
+      body,
     });
     expect(res.status).toBe(201);
-    return { orgId: res.body.organization.id as string, orgKey, body: res.body };
+    return { orgId: res.body.organization.id as string, orgKey, secret, body: res.body };
   }
 
   it("a new org is PENDING_PAYMENT: gets a checkout URL, and its writes are 402 until paid", async () => {
