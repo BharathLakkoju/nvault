@@ -199,8 +199,6 @@ function Sidebar({
         </button>
       )}
 
-      <OrgScopeList collapsed={collapsed} />
-
       <nav className="dc-scroll flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-1">
         {NAV_ITEMS.map((item) => {
           const active =
@@ -228,19 +226,27 @@ function Sidebar({
         })}
       </nav>
 
-      <div className="flex flex-shrink-0 flex-col gap-2.5 border-t border-line p-3">
-        <span
-          className={cn(
-            "inline-flex items-center gap-1 self-start rounded-md px-2 py-0.5 text-[11px]",
-            collapsed && "md:hidden",
-            masterKey
-              ? "bg-accent-500/15 text-accent-700 dark:text-accent-200"
-              : "bg-amber-500/15 text-amber-700 dark:text-amber-300",
-          )}
-        >
-          <ShieldCheck size={12} weight="fill" />
-          {masterKey ? "Unlocked" : "Locked"}
-        </span>
+      <div className="flex flex-shrink-0 flex-col">
+        <div className={cn("border-t border-line px-3 pb-2 pt-2.5", collapsed && "md:hidden")}>
+          <div className="px-2.5 pb-1 text-[10px] font-medium uppercase tracking-[0.08em] text-muted">
+            Account
+          </div>
+          <OrgScopeList collapsed={collapsed} />
+        </div>
+        <div className="flex flex-col gap-2.5 border-t border-line p-3">
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 self-start rounded-md px-2 py-0.5 text-[11px]",
+              collapsed && "md:hidden",
+              masterKey
+                ? "bg-accent-500/15 text-accent-700 dark:text-accent-200"
+                : "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+            )}
+          >
+            <ShieldCheck size={12} weight="fill" />
+            {masterKey ? "Unlocked" : "Locked"}
+          </span>
+        </div>
       </div>
     </aside>
   );
@@ -269,7 +275,7 @@ function OrgScopeList({ collapsed }: { collapsed: boolean }) {
   ];
 
   return (
-    <div className={cn("flex flex-col gap-0.5 px-3 pb-3", collapsed && "md:hidden")}>
+    <div className={cn("flex flex-col gap-0.5", collapsed && "md:hidden")}>
       {rows.map((row) => {
         const active = currentOrgId === row.id;
         const Icon = row.icon;

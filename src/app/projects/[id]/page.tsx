@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -135,6 +135,14 @@ function UploadDialog({ projectId, projectKey }: { projectId: string; projectKey
     const file = e.target.files?.[0];
     if (!file) return;
     const name = filename.trim() || file.name;
+    if (!isDotenvStyleFile(name)) {
+      toastError(
+        new Error("Only .env files can be stored (.env, .env.local, .env.development, .env.production, …)."),
+        "Unsupported file type",
+      );
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
     try {
       const buffer = new Uint8Array(await file.arrayBuffer());
       await uploadFile.mutateAsync({ filename: name, plaintext: buffer, projectKey });
@@ -169,6 +177,10 @@ function UploadDialog({ projectId, projectKey }: { projectId: string; projectKey
               value={filename}
               onChange={(e) => setFilename(e.target.value)}
             />
+            <p className="mt-1 text-xs text-muted">
+              Only <code className="font-mono">.env</code> files are accepted — <code className="font-mono">.env</code>,{" "}
+              <code className="font-mono">.env.local</code>, <code className="font-mono">.env.production</code>, etc.
+            </p>
           </div>
           <div className="flex justify-end gap-2">
             <DialogClose asChild>
@@ -180,7 +192,13 @@ function UploadDialog({ projectId, projectKey }: { projectId: string; projectKey
               Choose file…
             </Button>
           </div>
-          <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".env,.env.local,.env.development,.env.production,.env.test,.env.staging"
+            className="hidden"
+            onChange={handleFileChange}
+          />
         </div>
       </DialogContent>
     </Dialog>
@@ -241,13 +259,20 @@ function FileRow({
   const [expanded, setExpanded] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(false);
 
+  // Which version's plaintext currently sits in `content`. Lets us notice when
+  // a newer version arrives (e.g. right after an upload) and drop the stale
+  // cache so the view pane always reflects the latest version.
+  const loadedVersionId = useRef<string | null>(null);
+  const currentVersionId = file.currentVersion?.id ?? null;
+
   async function loadPlaintext(): Promise<string | null> {
-    if (content !== null) return content;
-    if (!file.currentVersion) return null;
+    if (content !== null && loadedVersionId.current === currentVersionId) return content;
+    if (!currentVersionId) return null;
     try {
-      const downloaded = await downloadFileVersion(projectId, file.id, file.currentVersion.id);
+      const downloaded = await downloadFileVersion(projectId, file.id, currentVersionId);
       const bytes = await decryptFile(projectKey, downloaded.payload);
       const text = new TextDecoder().decode(bytes);
+      loadedVersionId.current = currentVersionId;
       setContent(text);
       return text;
     } catch (err) {
@@ -255,6 +280,32 @@ function FileRow({
       return null;
     }
   }
+
+  // A new version landed (upload / restore) while this row is mounted. Discard
+  // the cached plaintext; if the view pane is open, show the loading state and
+  // pull the latest version back down so the user never sees a stale value.
+  useEffect(() => {
+    if (!currentVersionId) return;
+    if (loadedVersionId.current === null || loadedVersionId.current === currentVersionId) return;
+    loadedVersionId.current = null;
+    setContent(null);
+    if (!revealed) return;
+    let cancelled = false;
+    setContentLoading(true);
+    void loadPlaintext()
+      .then((text) => {
+        if (!cancelled && text === null) setRevealed(false);
+      })
+      .finally(() => {
+        if (!cancelled) setContentLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // loadPlaintext is stable enough for this effect's purpose; only the
+    // version id should retrigger it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentVersionId]);
 
   async function toggleReveal() {
     if (revealed) {
@@ -319,11 +370,10 @@ function FileRow({
   return (
     <Card className="overflow-hidden">
       <div className="flex items-center gap-3.5 px-4 py-3.5">
-        <FileLock size={18} className="flex-shrink-0 text-accent-600 dark:text-accent-300" />
+        <FileLock size={18} className="flex-shrink-0 text-muted" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="truncate text-sm font-medium text-ink">{file.filename}</span>
-            {isDotenvStyleFile(file.filename) && <Tag variant="neutral">env</Tag>}
           </div>
           {v && (
             <div className="text-xs text-muted">
@@ -385,7 +435,7 @@ function FileRow({
               <Spinner className="h-3.5 w-3.5" /> Decrypting in your browser…
             </div>
           ) : (
-            <pre className="dc-scroll m-0 overflow-x-auto rounded-md border border-line bg-surface-3 px-3.5 py-3 font-mono text-[12.5px] leading-relaxed text-accent-700 dark:text-accent-100">
+            <pre className="dc-scroll m-0 overflow-x-auto rounded-md border border-line bg-surface-3 px-3.5 py-3 font-mono text-[12.5px] leading-relaxed text-ink">
               {content}
             </pre>
           )}
@@ -497,7 +547,7 @@ function VersionHistory({
           const restoring = busyRestore === ver.id;
           return (
             <div key={ver.id} className="flex items-center gap-3 py-1.5 text-[13px]">
-              <span className="w-9 font-mono text-accent-600 dark:text-accent-300">v{ver.versionNumber}</span>
+              <span className="w-9 font-mono text-muted">v{ver.versionNumber}</span>
               <span className="flex-1 text-ink/70">
                 {formatRelativeTime(ver.createdAt)} · {formatBytes(ver.plaintextSize)}
               </span>
