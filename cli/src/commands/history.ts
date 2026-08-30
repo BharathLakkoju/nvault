@@ -16,12 +16,19 @@ export async function historyCommand(filename: string, options: HistoryOptions):
   const file = files.find((f) => f.filename === filename);
   if (!file) throw new Error(`No file named "${filename}" in project "${project.name}".`);
 
-  const { versions } = await apiRequest<{ versions: FileVersionSummaryDto[] }>(
-    `/projects/${project.id}/files/${file.id}/versions`,
-  );
+  const { versions, capped, limit } = await apiRequest<{
+    versions: FileVersionSummaryDto[];
+    capped?: boolean;
+    limit?: number | null;
+  }>(`/projects/${project.id}/files/${file.id}/versions`);
 
   console.log(`${filename}\n`);
   for (const v of versions) {
     console.log(`v${v.versionNumber}   ${formatDate(v.createdAt)}${v.isCurrent ? "   current" : ""}`);
+  }
+  if (capped) {
+    console.log(
+      `\nFree keeps the last ${limit ?? 2} versions of each file — upgrade to Pro for full history.`,
+    );
   }
 }

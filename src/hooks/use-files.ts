@@ -39,13 +39,19 @@ export async function downloadFileVersion(projectId: string, fileId: string, ver
   return apiRequest<DownloadedFileDto>(`/projects/${projectId}/files/${fileId}/versions/${versionId}`);
 }
 
+interface FileVersionsResponse {
+  versions: import("@/lib/types").FileVersionSummaryDto[];
+  /** True when the Free-plan history cap hid older versions. */
+  capped: boolean;
+  /** The Free-plan per-file version limit, or null when unlimited. */
+  limit: number | null;
+}
+
 export function useFileVersions(projectId: string, fileId: string | null) {
   return useQuery({
     queryKey: ["projects", projectId, "files", fileId, "versions"],
     queryFn: () =>
-      apiRequest<{ versions: import("@/lib/types").FileVersionSummaryDto[] }>(
-        `/projects/${projectId}/files/${fileId}/versions`,
-      ).then((r) => r.versions),
+      apiRequest<FileVersionsResponse>(`/projects/${projectId}/files/${fileId}/versions`),
     enabled: !!fileId,
   });
 }

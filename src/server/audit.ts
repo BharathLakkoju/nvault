@@ -7,6 +7,7 @@ export type AuditAction =
   | "auth.logout"
   | "session.revoked"
   | "session.revoked_all"
+  | "session.evicted"
   | "apitoken.created"
   | "apitoken.revoked"
   | "vaultkeypair.provisioned"

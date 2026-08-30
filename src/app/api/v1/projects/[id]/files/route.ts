@@ -3,6 +3,7 @@ import { audit } from "@/server/audit";
 import { requireAuth } from "@/server/auth/require-auth";
 import { ApiError, clientIp, handler, json, readJson } from "@/server/http";
 import { authorizeProject } from "@/server/authz/project-access";
+import { userHasActivePro } from "@/server/billing/service";
 import { listFiles, uploadVersion } from "@/server/files/service";
 
 export const runtime = "nodejs";
@@ -43,14 +44,17 @@ export const POST = handler(async (req, { params }) => {
     throw new ApiError(413, "File is too large. The maximum config file size is 2.5 MiB.");
   }
 
-  const { project } = await authorizeProject(auth.userId, params.id, "write");
+  const { project, scope } = await authorizeProject(auth.userId, params.id, "write");
   const dto = await readJson(req, UploadFileVersionRequestSchema);
 
   if (Buffer.byteLength(dto.payload.ciphertext, "base64") > MAX_FILE_SIZE_BYTES + 4096) {
     throw new ApiError(413, "File is too large. The maximum config file size is 2.5 MiB.");
   }
 
-  const { file, version } = await uploadVersion(params.id, dto, auth.sessionId);
+  // Org projects follow the org's Team subscription; personal projects follow
+  // the owner's Pro status. Free personal projects are capped per file.
+  const unlimited = scope === "org" || (await userHasActivePro(project.ownerId));
+  const { file, version } = await uploadVersion(params.id, dto, auth.sessionId, { unlimited });
   await audit({
     userId: auth.userId,
     organizationId: project.organizationId,

@@ -109,7 +109,7 @@ export function listOrganizationsForUser(userId: string) {
       organization: {
         include: {
           _count: { select: { memberships: true, projects: true } },
-          subscription: { select: { status: true } },
+          subscription: { select: { status: true, tier: true } },
         },
       },
     },

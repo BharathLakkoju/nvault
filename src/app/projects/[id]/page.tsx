@@ -496,7 +496,8 @@ function VersionHistory({
   file: FileDto;
   projectKey: Uint8Array;
 }) {
-  const { data: versions, isLoading } = useFileVersions(projectId, file.id);
+  const { data: history, isLoading } = useFileVersions(projectId, file.id);
+  const versions = history?.versions;
   const restore = useRestoreVersion(projectId, file.id);
   const [busyDownload, setBusyDownload] = useState<string | null>(null);
   const [doneDownload, setDoneDownload] = useState<string | null>(null);
@@ -581,6 +582,15 @@ function VersionHistory({
           );
         })}
       </div>
+      {history?.capped && (
+        <p className="mt-2 text-[11px] text-muted">
+          Free keeps the last {history.limit} versions of each file.{" "}
+          <Link href="/settings/billing" className="text-accent-600 hover:underline dark:text-accent-300">
+            Upgrade to Pro
+          </Link>{" "}
+          for full history.
+        </p>
+      )}
     </div>
   );
 }

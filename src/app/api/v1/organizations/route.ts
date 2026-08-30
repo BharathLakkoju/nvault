@@ -23,6 +23,7 @@ export const GET = handler(async (req) => {
       role: m.role,
       status: m.status, // membership status (INVITED / ACTIVE)
       billingStatus: m.organization.subscription?.status ?? "NONE",
+      tier: m.organization.subscription?.tier ?? null,
       memberCount: m.organization._count.memberships,
       projectCount: m.organization._count.projects,
     })),

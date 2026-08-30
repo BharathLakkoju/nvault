@@ -3,8 +3,19 @@ import { Prisma, type FileVersion, type ProjectFile } from "@/generated/prisma/c
 import { assertSafeFilename, InvalidFilenameError } from "@/lib/schemas";
 import type { UploadFileVersionRequest } from "@/lib/schemas";
 import { db } from "../db";
+import { assertCanAddFileVersion } from "../billing/entitlements";
 import { ApiError } from "../http";
 import { deleteObject, getObject, putObject } from "../storage";
+
+/**
+ * Version-history entitlement for one operation. `unlimited` is true for Pro
+ * personal projects and for every organization project; false caps the file
+ * at FREE_LIMITS.maxVersionsPerFile. The caller (route handler) resolves this
+ * from the project's scope + owner's Pro status.
+ */
+export interface HistoryEntitlement {
+  unlimited: boolean;
+}
 
 function newStorageKey(projectId: string): string {
   // Server-generated and random — never derived from the user-supplied
@@ -41,7 +52,10 @@ async function appendVersion(fileId: string, data: NewVersionData): Promise<File
     const versionNumber = (last?.versionNumber ?? 0) + 1;
     try {
       const version = await db.fileVersion.create({ data: { fileId, versionNumber, ...data } });
-      await db.projectFile.update({ where: { id: fileId }, data: { currentVersionId: version.id } });
+      await db.projectFile.update({
+        where: { id: fileId },
+        data: { currentVersionId: version.id, versionsCreated: { increment: 1 } },
+      });
       return version;
     } catch (err) {
       if (
@@ -71,10 +85,11 @@ export async function getFileOwned(projectId: string, fileId: string): Promise<P
   return file;
 }
 
-export function listVersions(fileId: string) {
+export function listVersions(fileId: string, limit?: number) {
   return db.fileVersion.findMany({
     where: { fileId },
     orderBy: { versionNumber: "desc" },
+    ...(limit != null ? { take: limit } : {}),
   });
 }
 
@@ -82,6 +97,7 @@ export async function uploadVersion(
   projectId: string,
   dto: UploadFileVersionRequest,
   sessionId: string,
+  history: HistoryEntitlement,
 ) {
   let filename: string;
   try {
@@ -90,6 +106,13 @@ export async function uploadVersion(
     if (err instanceof InvalidFilenameError) throw new ApiError(400, err.message);
     throw err;
   }
+
+  // Enforce the free-tier history cap before writing any bytes.
+  const priorFile = await db.projectFile.findUnique({
+    where: { projectId_filename: { projectId, filename } },
+    select: { versionsCreated: true },
+  });
+  assertCanAddFileVersion(priorFile?.versionsCreated ?? 0, history.unlimited);
 
   const ciphertext = Buffer.from(dto.payload.ciphertext, "base64");
   const storageKey = newStorageKey(projectId);
@@ -138,7 +161,15 @@ export async function restoreVersion(
   fileId: string,
   versionId: string,
   sessionId: string,
+  history: HistoryEntitlement,
 ) {
+  // A restore mints a brand-new version, so it is subject to the same cap.
+  const file = await db.projectFile.findUniqueOrThrow({
+    where: { id: fileId },
+    select: { versionsCreated: true },
+  });
+  assertCanAddFileVersion(file.versionsCreated, history.unlimited);
+
   const target = await getVersionOwned(fileId, versionId);
   const bytes = await getObject(target.storageKey);
   const storageKey = newStorageKey(projectId);

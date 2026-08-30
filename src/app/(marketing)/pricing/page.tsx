@@ -25,14 +25,13 @@ const tiers: ReadonlyArray<{
   {
     name: "Free",
     price: "$0",
-    description: "Your personal development environment, available anywhere.",
+    description: "Everything you need to try nvault for personal use.",
     features: [
-      "Up to 5 personal projects",
-      "Unlimited environment files per project",
-      "Full version history",
+      "Up to 3 personal projects",
+      "The last 2 versions of each file",
+      "2 signed-in devices",
       "Zero-knowledge client-side encryption",
       "Web app + terminal CLI (push, pull, init, run)",
-      "Device & session management, audit log",
     ],
     cta: { label: "Get started", href: "/register" },
   },
@@ -40,12 +39,13 @@ const tiers: ReadonlyArray<{
     name: "Pro",
     price: "$10",
     cadence: "per user / month",
-    description: "For individuals with more than a handful of projects.",
+    description: "For individuals who live in their environment files.",
     features: [
-      "Everything in Free",
       "Unlimited personal projects",
-      "Same zero-knowledge encryption and full history",
-      "Cancel anytime — no card data touches nvault",
+      "Unlimited version history",
+      "More devices — 5 browser sessions + 5 CLI tokens",
+      "Advanced features as they ship",
+      "Priority support",
     ],
     cta: { label: "Start with Pro", href: "/register" },
     featured: true,
@@ -55,13 +55,13 @@ const tiers: ReadonlyArray<{
     pricePrefix: "from",
     price: "$29",
     cadence: "per organization / month",
-    description: "Shared, zero-knowledge projects for a whole team.",
+    description: "Collaboration and organization control for a whole team.",
     features: [
-      "Everything in Pro",
-      "Starter — $29/mo, up to 10 members",
-      "Growth — $79/mo, up to 25 members",
-      "Scale — $199/mo, up to 100 members",
-      "Owner / admin / member roles, activity log",
+      "Shared, zero-knowledge projects across the org",
+      "Owner / admin / member roles",
+      "Per-organization key with member rotation",
+      "Organization activity log",
+      "Starter $29 · Growth $79 · Scale $199 (10 / 25 / 100 members)",
       "One flat price per org — no per-seat charges",
     ],
     cta: { label: "Start an organization", href: "/register" },
@@ -72,7 +72,12 @@ const pricingFaqs = [
   {
     question: "Is nvault free for personal use?",
     answer:
-      "Yes. A personal vault — up to five projects with unlimited files and full version history — is free, with no card required. Pro ($10/month) lifts the project cap to unlimited; everything is end-to-end encrypted in your browser on every tier.",
+      "Yes. The Free plan gives you a personal vault with up to 3 projects, the last 2 versions of each file, and 2 signed-in devices — no card required. It is meant for trying nvault and light personal use. Everything is end-to-end encrypted in your browser on every tier.",
+  },
+  {
+    question: "What does “limited history” mean on Free?",
+    answer:
+      "Free keeps the two most recent versions of each file, and that ceiling counts every version ever uploaded — deleting an old one does not free up room. Pro ($10/month) removes the cap entirely: unlimited version history, plus unlimited projects and more devices.",
   },
   {
     question: "How does billing work?",
@@ -103,7 +108,7 @@ export default function PricingPage() {
           <SectionHeading
             eyebrow="Pricing"
             title="Free to start. Simple when you grow."
-            description="A personal vault is free. Pro lifts the project cap for one person; Team unlocks shared organizations at one flat price each. Billed through Polar."
+            description="Free is for trying nvault and personal use. Pro removes every limit for one person. Team adds collaboration and organization control at one flat price each. Billed through Polar."
           />
 
           <div className="mt-16 grid gap-8 lg:grid-cols-3">

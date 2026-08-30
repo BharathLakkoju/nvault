@@ -9,8 +9,10 @@ import {
   toPublicProfile,
   toVaultKeyMaterial,
 } from "../users";
+import { browserSessionLimit } from "../billing/entitlements";
+import { userHasActivePro } from "../billing/service";
 import { hashPassword, verifyPassword } from "./password";
-import { createSession, revokeSession } from "./session";
+import { createSession, enforceBrowserSessionLimit, revokeSession } from "./session";
 import type { IssuedTokens } from "./tokens";
 
 export interface RequestMeta {
@@ -76,6 +78,19 @@ export async function login(dto: LoginRequest, meta: RequestMeta): Promise<AuthR
   });
 
   await audit({ userId: user.id, action: "auth.login", ipAddress: meta.ipAddress });
+
+  // "Devices" cap — a new sign-in past the plan's limit evicts the
+  // least-recently-used browser session (CLI tokens are never touched).
+  const hasPro = await userHasActivePro(user.id);
+  const evicted = await enforceBrowserSessionLimit(user.id, browserSessionLimit(hasPro));
+  if (evicted.length > 0) {
+    await audit({
+      userId: user.id,
+      action: "session.evicted",
+      metadata: { count: evicted.length, reason: "device_limit" },
+      ipAddress: meta.ipAddress,
+    });
+  }
 
   return {
     tokens,
