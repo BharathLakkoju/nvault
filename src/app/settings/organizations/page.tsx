@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Label, FieldError } from "@/components/ui/input";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { useCreateOrganization, useOrganizations } from "@/hooks/use-organizations";
+import { EnrollmentSecretReveal } from "@/components/enrollment-secret-reveal";
 import { usePlanInfo } from "@/hooks/use-plan-info";
 import { useOrgContext } from "@/lib/org-context-store";
 import { toastError, useToastStore } from "@/lib/toast-store";
@@ -77,7 +78,7 @@ function OrganizationsContent() {
                   /{org.slug} · {org.role?.toLowerCase()} ·{" "}
                   {org.memberCount ?? 0} member{org.memberCount === 1 ? "" : "s"} ·{" "}
                   {org.projectCount ?? 0} project{org.projectCount === 1 ? "" : "s"}
-                  {org.status === "INVITED" && " · awaiting key access"}
+                  {org.status === "INVITED" && " · not enrolled"}
                   {org.orgStatus === "PENDING_PAYMENT" && (
                     <span className="text-amber-600 dark:text-amber-500"> · payment pending</span>
                   )}
@@ -112,6 +113,12 @@ function CreateOrgForm({ onDone }: { onDone: () => void }) {
   const [slugTouched, setSlugTouched] = useState(false);
   const [tier, setTier] = useState<"STARTER" | "GROWTH" | "SCALE">("STARTER");
   const [error, setError] = useState<string | null>(null);
+  const [created, setCreated] = useState<{
+    secret: string;
+    orgId: string;
+    orgName: string;
+    checkoutUrl: string | null;
+  } | null>(null);
   const create = useCreateOrganization();
   const { data: plan } = usePlanInfo();
   const setCurrentOrg = useOrgContext((s) => s.setCurrentOrg);
@@ -122,24 +129,47 @@ function CreateOrgForm({ onDone }: { onDone: () => void }) {
     e.preventDefault();
     setError(null);
     try {
-      const { organization, checkout } = await create.mutateAsync({
+      const { organization, checkout, enrollmentSecret } = await create.mutateAsync({
         name: name.trim(),
         slug: effectiveSlug,
         tier,
       });
-      if (checkout?.url) {
-        // Off to Polar-hosted checkout; the org stays PENDING_PAYMENT until
-        // the subscription.active webhook lands.
-        window.location.href = checkout.url;
-        return;
-      }
-      useToastStore.getState().push("success", `Organization "${organization.name}" created`);
-      setCurrentOrg(organization.id);
-      onDone();
+      // Show the enrollment secret BEFORE going anywhere — it is shown once
+      // and a checkout redirect would otherwise lose it.
+      setCreated({
+        secret: enrollmentSecret,
+        orgId: organization.id,
+        orgName: organization.name,
+        checkoutUrl: checkout?.url ?? null,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create organization");
       toastError(err, "Failed to create organization");
     }
+  }
+
+  function proceed() {
+    if (!created) return;
+    if (created.checkoutUrl) {
+      window.location.href = created.checkoutUrl;
+      return;
+    }
+    useToastStore.getState().push("success", `Organization "${created.orgName}" created`);
+    setCurrentOrg(created.orgId);
+    onDone();
+  }
+
+  if (created) {
+    return (
+      <div className="space-y-4">
+        <EnrollmentSecretReveal secret={created.secret} />
+        <div className="flex justify-end">
+          <Button onClick={proceed}>
+            {created.checkoutUrl ? "Continue to payment" : "Done"}
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (

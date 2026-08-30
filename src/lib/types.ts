@@ -79,9 +79,23 @@ export interface OrgMemberDto {
   keyEpoch: number | null;
   createdAt: string;
   keyGrantedAt: string | null;
+  /** Whether this member's public key is pinned in the roster (i.e. enrolled). */
+  pinned: boolean;
 }
 
-export interface OrganizationDetailDto {
+export interface OrgEnrollmentDto {
+  /** OES-wrapped Org Key + KDF params. Opaque. */
+  enrollment: {
+    kdfSalt: string;
+    kdfIterations: number;
+    wrappedOrgKey: { iv: string; ciphertext: string };
+    keyEpoch: number;
+  };
+  /** Encrypted member roster + its monotonic version. */
+  roster: { iv: string; ciphertext: string; version: number };
+}
+
+export interface OrganizationDetailDto extends OrgEnrollmentDto {
   organization: OrganizationDto & { projectCount: number };
   self: {
     membershipId: string;

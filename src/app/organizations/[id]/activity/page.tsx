@@ -15,7 +15,7 @@ const ACTION_LABELS: Record<string, string> = {
   "org.member_invited": "invited a member",
   "org.invite_revoked": "revoked an invitation",
   "org.member_joined": "accepted an invitation",
-  "org.member_key_granted": "granted key access",
+  "org.member_enrolled": "enrolled with the organization secret",
   "org.member_removed": "removed a member",
   "org.member_role_changed": "changed a member's role",
   "org.key_rotated": "rotated the organization key",

@@ -18,44 +18,6 @@ async function ownerCount(orgId: string): Promise<number> {
   return db.organizationMembership.count({ where: { organizationId: orgId, role: "OWNER" } });
 }
 
-/**
- * Grants (or re-grants) the Org Key to a member. `wrappedOrgKey` is opaque
- * ciphertext produced by an admin's client (Org Key wrapped to the target's
- * public key). The server verifies only the epoch and the actor's role — it
- * cannot check that the blob decrypts correctly, so a buggy/malicious admin
- * can lock one member out (DoS), never disclose anything.
- */
-export async function grantKey(
-  orgId: string,
-  actor: OrganizationMembership,
-  membershipId: string,
-  input: { wrappedOrgKey: string; keyEpoch: number },
-): Promise<OrganizationMembership> {
-  const target = await getTargetMembership(orgId, membershipId);
-
-  const org = await db.organization.findUniqueOrThrow({
-    where: { id: orgId },
-    select: { currentKeyEpoch: true },
-  });
-  if (input.keyEpoch !== org.currentKeyEpoch) {
-    throw new ApiError(409, "The organization key has changed. Reload and try again.");
-  }
-  // An admin cannot grant a key to someone above their own role.
-  if (target.userId !== actor.userId && !canActOnRole(actor.role, target.role) && actor.role !== "OWNER") {
-    throw new ApiError(403, "You can't manage a member at your own role or higher.");
-  }
-
-  return db.organizationMembership.update({
-    where: { id: membershipId },
-    data: {
-      wrappedOrgKeyCiphertext: input.wrappedOrgKey,
-      keyEpoch: input.keyEpoch,
-      status: "ACTIVE",
-      keyGrantedAt: new Date(),
-    },
-  });
-}
-
 export async function changeRole(
   orgId: string,
   actor: OrganizationMembership,

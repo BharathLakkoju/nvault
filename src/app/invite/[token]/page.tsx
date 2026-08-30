@@ -8,6 +8,7 @@ import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAcceptInvite } from "@/hooks/use-org-members";
+import { EnrollPrompt } from "@/components/enroll-prompt";
 import { useOrgContext } from "@/lib/org-context-store";
 import { useAuthStore } from "@/lib/auth-store";
 
@@ -60,18 +61,27 @@ function AcceptInvite({ token }: { token: string }) {
 
   if (done) {
     return (
-      <Card className="mx-auto max-w-md p-6 text-center">
-        <h1 className="text-base font-medium text-ink">
-          You&apos;ve joined {done.name}
-        </h1>
-        <p className="mt-1 text-sm text-muted">
-          An admin needs to grant you access to the organization&apos;s encryption key before you can
-          open its projects.
-        </p>
-        <div className="mt-4 flex justify-center gap-2">
-          <Button onClick={() => router.push(`/organizations/${done.id}`)}>Go to organization</Button>
+      <div className="mx-auto max-w-md space-y-4">
+        <Card className="p-6 text-center">
+          <h1 className="text-base font-medium text-ink">You&apos;ve joined {done.name}</h1>
+          <p className="mt-1 text-sm text-muted">
+            One more step: enter the enrollment secret the owner shared with you to unlock the
+            organization&apos;s projects.
+          </p>
+        </Card>
+        <EnrollPrompt
+          orgId={done.id}
+          onEnrolled={() => {
+            setCurrentOrg(done.id);
+            router.push(`/organizations/${done.id}`);
+          }}
+        />
+        <div className="text-center">
+          <Button variant="ghost" onClick={() => router.push(`/organizations/${done.id}`)}>
+            I&apos;ll do this later
+          </Button>
         </div>
-      </Card>
+      </div>
     );
   }
 

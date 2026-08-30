@@ -14,13 +14,13 @@ import { useOrganization } from "@/hooks/use-organizations";
 import {
   useChangeMemberRole,
   useCreateInvite,
-  useGrantKey,
   useOrgInvites,
   useRemoveMember,
   useRevokeInvite,
   useRotateOrgKey,
   useTransferOwnership,
 } from "@/hooks/use-org-members";
+import { EnrollmentSecretReveal } from "@/components/enrollment-secret-reveal";
 import { useOrgContext } from "@/lib/org-context-store";
 import { formatRelativeTime } from "@/lib/format";
 import { toastError, useToastStore } from "@/lib/toast-store";
@@ -96,13 +96,7 @@ function MembersContent({ id }: { id: string }) {
         <CardHeader title={`${members.length} member${members.length === 1 ? "" : "s"}`} />
         <ul className="divide-y divide-line">
           {members.map((m) => (
-            <MemberRow
-              key={m.id}
-              orgId={id}
-              member={m}
-              self={self}
-              currentKeyEpoch={org.currentKeyEpoch}
-            />
+            <MemberRow key={m.id} orgId={id} member={m} self={self} />
           ))}
         </ul>
       </Card>
@@ -118,22 +112,23 @@ function MembersContent({ id }: { id: string }) {
 
 function RotateKeyCard({ orgId, keyEpoch }: { orgId: string; keyEpoch: number }) {
   const [open, setOpen] = useState(false);
+  const [newSecret, setNewSecret] = useState<string | null>(null);
   const rotate = useRotateOrgKey(orgId);
 
   return (
     <Card>
       <CardHeader
         title="Organization key"
-        description={`Currently on generation ${keyEpoch + 1}. Rotate the key after removing a member so their old copy can't decrypt anything they re-download.`}
+        description={`Currently on generation ${keyEpoch + 1}. Rotate the key after removing a member so their old copy can't decrypt anything they re-download. Rotating also issues a new enrollment secret.`}
       />
-      <div className="px-5 py-4">
+      <div className="space-y-4 px-5 py-4">
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button variant="secondary">Rotate organization key</Button>
           </DialogTrigger>
           <DialogContent
             title="Rotate the organization key?"
-            description="Every org project and every active member's key is re-wrapped in your browser. Members may need to reload once. This can't be undone."
+            description="Every org project and every active member's key is re-wrapped in your browser, after checking each member's key against the roster. A new enrollment secret is issued. Members may need to reload once. This can't be undone."
           >
             <div className="flex justify-end gap-2">
               <DialogClose asChild>
@@ -145,8 +140,9 @@ function RotateKeyCard({ orgId, keyEpoch }: { orgId: string; keyEpoch: number })
                 onClick={() =>
                   rotate
                     .mutateAsync()
-                    .then(() => {
+                    .then((r) => {
                       useToastStore.getState().push("success", "Organization key rotated");
+                      setNewSecret(r.enrollmentSecret);
                       setOpen(false);
                     })
                     .catch((err) => toastError(err, "Failed to rotate key"))
@@ -157,6 +153,14 @@ function RotateKeyCard({ orgId, keyEpoch }: { orgId: string; keyEpoch: number })
             </div>
           </DialogContent>
         </Dialog>
+
+        {newSecret && (
+          <EnrollmentSecretReveal
+            secret={newSecret}
+            context="rotated"
+            onDone={() => setNewSecret(null)}
+          />
+        )}
       </div>
     </Card>
   );
@@ -188,7 +192,7 @@ function InviteCard({ orgId, selfRole }: { orgId: string; selfRole: OrgRole }) {
     <Card>
       <CardHeader
         title="Invite a teammate"
-        description="Generates a one-time link. Share it directly with the person you're inviting."
+        description="Generates a one-time link. Send it to the person you're inviting — then send them the organization's enrollment secret separately (not in the same message)."
       />
       <form onSubmit={submit} className="space-y-3 p-5">
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -278,14 +282,11 @@ function MemberRow({
   orgId,
   member,
   self,
-  currentKeyEpoch,
 }: {
   orgId: string;
   member: OrgMemberDto;
   self: { membershipId: string; role: OrgRole };
-  currentKeyEpoch: number;
 }) {
-  const grant = useGrantKey(orgId);
   const changeRole = useChangeMemberRole(orgId);
   const remove = useRemoveMember(orgId);
   const transfer = useTransferOwnership(orgId);
@@ -293,7 +294,6 @@ function MemberRow({
   const isSelf = member.id === self.membershipId;
   const canManage =
     !isSelf && (self.role === "OWNER" || RANK[self.role] > RANK[member.role]);
-  const canGrant = canManage && member.status !== "ACTIVE" && !!member.publicKey;
   const assignableRoles =
     self.role === "OWNER" ? ROLES : ROLES.filter((r) => RANK[r] < RANK[self.role]);
 
@@ -306,7 +306,11 @@ function MemberRow({
         </div>
         <p className="text-xs text-muted">
           {member.email} · joined {formatRelativeTime(member.createdAt)}
-          {member.status === "INVITED" && " · no key access yet"}
+          {member.status === "INVITED"
+            ? " · hasn't enrolled yet"
+            : member.pinned
+              ? " · key pinned"
+              : " · key not pinned"}
         </p>
       </div>
 
@@ -333,21 +337,6 @@ function MemberRow({
           <span className="rounded-md bg-ink/[0.08] px-2 py-0.5 text-xs font-medium text-ink/80">
             {member.role.charAt(0) + member.role.slice(1).toLowerCase()}
           </span>
-        )}
-
-        {canGrant && (
-          <Button
-            variant="secondary"
-            loading={grant.isPending}
-            onClick={() =>
-              grant
-                .mutateAsync({ membershipId: member.id, publicKey: member.publicKey! })
-                .then(() => useToastStore.getState().push("success", "Key access granted"))
-                .catch((err) => toastError(err, "Failed to grant key access"))
-            }
-          >
-            Grant access
-          </Button>
         )}
 
         {self.role === "OWNER" && !isSelf && member.status === "ACTIVE" && (

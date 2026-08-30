@@ -25,7 +25,7 @@ export type AuditAction =
   | "org.member_invited"
   | "org.invite_revoked"
   | "org.member_joined"
-  | "org.member_key_granted"
+  | "org.member_enrolled"
   | "org.member_removed"
   | "org.member_role_changed"
   | "org.key_rotated"

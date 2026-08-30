@@ -46,67 +46,111 @@ transparently on the next unlock).
 ## Organizations (shared projects, still zero-knowledge)
 
 A project belongs to **either** one user **or** one organization. Personal
-projects are unchanged (key wrapped under the owner's master key). Org
-projects introduce two more layers, all client-side:
+projects (Free/Pro) are unchanged: the project key is wrapped under the
+owner's master key, which is derived from the owner's **user-chosen vault
+passphrase**. Organizations do **not** use a member's personal passphrase —
+each org has its own machine-generated secret, so a user in several orgs
+holds several independent keys and unlocking one org tells you nothing about
+another.
+
+Org projects introduce these layers, all client-side:
 
 ```
-Per-user RSA-OAEP-3072 keypair
-  · public key  — stored in cleartext (users.publicKey)
-  · private key — AES-256-GCM wrapped under the user's master key,
-                  AAD "user-privkey"  (opaque to the server)
-        │  RSA-OAEP unwrap
+(A) Organization Enrollment Secret (OES) — 128-bit, generated in the
+    creator's browser, shown once, shared with each invitee OUT-OF-BAND
+        │  PBKDF2-SHA256 → KEK,  AES-256-GCM unwrap, AAD "org-enrollment"
         ▼
 Organization Key (random 256 bits, one per org, per epoch)
-  · persisted ONLY as ciphertext: wrapped once per member to that member's
-    RSA public key  (organization_memberships.wrappedOrgKeyCiphertext)
+  · persisted as ciphertext TWO ways:
+      – wrapped under the OES KEK          (organizations.enrollmentWrappedOrgKey*)
+      – wrapped once per member to that member's RSA public key
+                                           (organization_memberships.wrappedOrgKeyCiphertext)
         │  AES-256-GCM wrap, AAD "project:<projectId>"
         ▼
 Org project data key  ──▶  file version ciphertext  (unchanged)
+
+(B) Per-user RSA-OAEP-3072 keypair — public key cleartext (users.publicKey),
+    private key AES-256-GCM wrapped under the user's master key (AAD
+    "user-privkey"). Used for the per-member Org Key copy and for rotation.
+
+(C) Encrypted member roster — {userId → SHA-256(their SPKI public key)},
+    AES-256-GCM under the Org Key (AAD "org-roster"), monotonic
+    `rosterVersion`. Each member writes their own entry, from their LOCAL
+    keypair, as they enroll.
 ```
 
 Consequences and deliberate decisions:
 
+- **The server is not in the key-delivery path.** A new member obtains the
+  Org Key by entering the OES — the server never sees the secret and supplies
+  no key material the client has to trust. There is no admin "grant" step and
+  no server-held public key that a malicious server could substitute at
+  enrollment.
 - **The server never holds an unwrapped Org Key or org project key.** No
-  endpoint returns one. `grant-key` and `rotate-key` payloads are opaque
-  ciphertext produced by an admin's browser.
-- **Joining is two-step.** Accepting an invite creates an `INVITED`
-  membership with no key. An existing admin's client then wraps the Org Key
-  to the new member's public key (`grant-key`), flipping them to `ACTIVE`.
-  Until then the member cannot decrypt anything — the API also hides org
-  projects from `INVITED` members.
+  endpoint returns one. `enroll` and `rotate-key` payloads are opaque
+  ciphertext produced in the browser.
+- **Joining is: invite → accept → enroll.** Accepting an invite creates an
+  `INVITED` membership with no key (and the API hides org projects from it).
+  The member then enters the OES; their client recovers the Org Key,
+  re-wraps it to their own public key, and pins their key fingerprint in the
+  roster — flipping them to `ACTIVE`. Concurrent enrollments are serialised by
+  `rosterVersion` (optimistic concurrency, enforced server-side).
+- **Rotation is pin-checked.** Before `rotate-key`, the admin's client
+  decrypts the roster and compares every active member's *served* public key
+  to its pinned fingerprint; a mismatch aborts the rotation
+  (`RosterKeyMismatch`) rather than wrapping the new Org Key to a substituted
+  key. Rotation issues a **new OES** (the old one can no longer unwrap
+  anything); existing members are re-keyed silently via their RSA copy and
+  need not re-enter anything.
+- **The client verifies its own keypair on unlock.** The wrapped private key
+  is authenticated under the master key (unforgeable by the server); the
+  client round-trips a nonce to confirm the served `publicKey` is its
+  counterpart, so a server that swapped only the public key is caught.
 - **Removal + rotation.** Deleting a membership cuts API access immediately
   (every project/file route re-derives access from `organization_memberships`
   on each request, 404 on no-access — never 403, so neither a project nor an
   org can be probed by id). To also revoke a removed member's ability to
   decrypt blobs they already downloaded or could re-download, an admin runs
   `rotate-key`: a fresh Org Key, every org project key and every remaining
-  member's Org Key re-wrapped under it, `currentKeyEpoch` bumped **last** so
-  a partial failure leaves clients on the old (working) epoch. The server
-  enforces that a rotation covers *exactly* the current project set and
-  active-membership set.
+  member's Org Key re-wrapped under it, a fresh OES, the roster re-encrypted,
+  `currentKeyEpoch` bumped **last** so a partial failure leaves clients on the
+  old (working) epoch. The server enforces that a rotation covers *exactly*
+  the current project set and active-membership set.
 - **Invite tokens** (`oiv_…`) are 256-bit, stored only as sha256, single-use,
   expire in 7 days, are bound to the invitee's exact account email (a leaked
   link can't be redeemed by another account), and are rate-limited per org
-  and per IP.
+  and per IP. The invite link alone grants nothing — enrollment also needs
+  the OES, which must travel a separate channel.
 - **Role hierarchy** `OWNER > ADMIN > MEMBER`: an actor can only assign or
   act on roles strictly below their own (OWNER excepted). The last OWNER
   cannot be demoted, removed, or leave. Ownership transfer promotes the
   target before demoting the outgoing owner (never zero owners).
 - **Residual risks (documented, not accidental):**
-  - A malicious/buggy admin can wrap a *garbage* Org Key to a member during
-    `grant-key`/`rotate-key`. The server cannot verify a blob decrypts
-    correctly without breaking zero-knowledge. Impact is a denial of service
-    for that one member — never disclosure. Fully audited.
+  - **OES distribution is the owner's responsibility.** If the owner sends
+    the enrollment secret over the same channel as the invite link, a passive
+    observer of that channel gets both. The UI keeps the two apart and warns,
+    but cannot enforce the out-of-band requirement.
   - A member removed *before* a key rotation keeps whatever plaintext they
-    had already decrypted locally. This is true of every cryptographic
-    access-revocation scheme; rotation limits it to "what they had already
-    seen", not "everything going forward".
+    had already decrypted locally, and also still knows the pre-rotation OES.
+    Rotation issues a new OES and new Org Key, limiting this to "what they had
+    already seen". This is true of every cryptographic access-revocation
+    scheme.
+  - A buggy/malicious member who has enrolled can submit a garbage roster edit
+    or `wrappedOrgKey`. The server cannot verify either without breaking
+    zero-knowledge. Impact is a denial of service (they lock themselves out,
+    or — for the roster — force an admin to rebuild it); never disclosure.
+    All enroll/rotate actions are audited.
   - A CLI Personal Access Token inherits all of the user's org access.
     Org-scoped tokens are a future addition.
   - `POST /auth/vault/keypair` is **write-once** — a stolen session cannot
     swap a user's keypair (which would lock them out of orgs / enable a
-    grant-key MITM). Rotating a keypair intentionally is a future, audited
+    rotation MITM). Rotating a keypair intentionally is a future, audited
     re-key flow.
+  - **The web app ships the crypto code from the server.** A server that
+    serves backdoored JavaScript defeats any client-side scheme. The published,
+    version-pinned CLI is the surface that can meaningfully resist an
+    untrusted server; the web app is best-effort. Compromised member devices
+    and malicious members are out of scope for the key design.
 
 ## Storage encryption (server-side, defense in depth)
 
@@ -136,9 +180,15 @@ See [src/server/storage.ts](src/server/storage.ts). Consequences:
   **Argon2id** (m = 46 MiB, t = 2, p = 1 — at/above OWASP 2024), checked
   server-side. Never used as key material. See
   [src/server/auth/password.ts](src/server/auth/password.ts).
-- **Vault passphrase** — the only way to derive the KEK and unlock content.
-  The server never sees it, never stores a hash of it, and cannot reset it.
-  If it is lost, the encrypted files are unrecoverable, by design.
+- **Vault passphrase** — the only way to derive the KEK and unlock a user's
+  own (personal / Free / Pro) content. The server never sees it, never stores
+  a hash of it, and cannot reset it. If it is lost, the encrypted files are
+  unrecoverable, by design.
+- **Organization Enrollment Secret** — one per organization, machine-generated
+  (128-bit), used only to hand the Org Key to new members. Not derived from
+  and not related to any user's vault passphrase. The server never sees it;
+  losing it (with no active member left to rotate) makes the org's files
+  unrecoverable.
 
 ## What the server actually stores
 
@@ -149,8 +199,10 @@ See [src/server/storage.ts](src/server/storage.ts). Consequences:
 - `users` (cont.): optional `publicKey` (cleartext SPKI) + `wrappedPrivateKey*` (ciphertext).
 - `organizations` / `organization_memberships` / `organization_invites` /
   `organization_key_epochs`: org metadata, roles, per-member **wrapped** Org
-  Key ciphertext, sha256 of invite tokens, key-rotation history. No plaintext
-  key material.
+  Key ciphertext, the OES-wrapped Org Key + its KDF params, the encrypted
+  member roster + `rosterVersion`, per-member pinned public key, sha256 of
+  invite tokens, key-rotation history. No plaintext key material, no
+  enrollment secret.
 - `project_files` / `file_versions`: filename, version number, storage key,
   iv, `contentId`, plaintext size + sha256 (integrity/dedup display only — a
   hash is not reversible and is not key material).

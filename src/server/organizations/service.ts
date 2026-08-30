@@ -19,6 +19,16 @@ export interface CreateOrganizationInput {
   slug: string;
   /** Org Key, RSA-wrapped to the creator's own public key. Opaque ciphertext. */
   wrappedOrgKeyCiphertext: string;
+  /** Same Org Key wrapped under the Enrollment Secret — how future members get it. */
+  enrollment: {
+    kdfSalt: string;
+    kdfIterations: number;
+    wrappedOrgKey: { iv: string; ciphertext: string };
+  };
+  /** Initial roster (creator's own entry), AES-GCM under the Org Key. */
+  roster: { iv: string; ciphertext: string };
+  /** The creator's own public key, pinned for later rotation checks. */
+  pinnedPublicKey: string;
   /** Team size tier chosen at creation. */
   tier: SubscriptionTier;
 }
@@ -55,7 +65,19 @@ export async function createOrganization(
   let org: Organization;
   try {
     org = await db.organization.create({
-      data: { name: input.name, slug: input.slug, currentKeyEpoch: 0 },
+      data: {
+        name: input.name,
+        slug: input.slug,
+        currentKeyEpoch: 0,
+        enrollmentKdfSalt: input.enrollment.kdfSalt,
+        enrollmentKdfIterations: input.enrollment.kdfIterations,
+        enrollmentWrappedOrgKeyIv: input.enrollment.wrappedOrgKey.iv,
+        enrollmentWrappedOrgKeyCiphertext: input.enrollment.wrappedOrgKey.ciphertext,
+        enrollmentKeyEpoch: 0,
+        rosterIv: input.roster.iv,
+        rosterCiphertext: input.roster.ciphertext,
+        rosterVersion: 1,
+      },
     });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
@@ -75,6 +97,7 @@ export async function createOrganization(
         role: "OWNER",
         status: "ACTIVE",
         wrappedOrgKeyCiphertext: input.wrappedOrgKeyCiphertext,
+        pinnedPublicKey: input.pinnedPublicKey,
         keyEpoch: 0,
         keyGrantedAt: new Date(),
         invitedById: userId,
@@ -203,6 +226,7 @@ export function membershipToDto(m: {
   keyEpoch: number | null;
   createdAt: Date;
   keyGrantedAt: Date | null;
+  pinnedPublicKey: string | null;
   user: { id: string; email: string; name: string | null; publicKey: string | null };
 }) {
   return {
@@ -216,5 +240,36 @@ export function membershipToDto(m: {
     keyEpoch: m.keyEpoch,
     createdAt: m.createdAt,
     keyGrantedAt: m.keyGrantedAt,
+    /** Whether this member's public key is pinned in the roster (enrolled). */
+    pinned: m.pinnedPublicKey !== null,
+  };
+}
+
+/** The OES-wrapped Org Key + roster ciphertext — opaque, safe for any member. */
+export function enrollmentToDto(org: {
+  enrollmentKdfSalt: string;
+  enrollmentKdfIterations: number;
+  enrollmentWrappedOrgKeyIv: string;
+  enrollmentWrappedOrgKeyCiphertext: string;
+  enrollmentKeyEpoch: number;
+  rosterIv: string;
+  rosterCiphertext: string;
+  rosterVersion: number;
+}) {
+  return {
+    enrollment: {
+      kdfSalt: org.enrollmentKdfSalt,
+      kdfIterations: org.enrollmentKdfIterations,
+      wrappedOrgKey: {
+        iv: org.enrollmentWrappedOrgKeyIv,
+        ciphertext: org.enrollmentWrappedOrgKeyCiphertext,
+      },
+      keyEpoch: org.enrollmentKeyEpoch,
+    },
+    roster: {
+      iv: org.rosterIv,
+      ciphertext: org.rosterCiphertext,
+      version: org.rosterVersion,
+    },
   };
 }
