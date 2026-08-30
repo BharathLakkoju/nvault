@@ -204,8 +204,6 @@ function Sidebar({
         </button>
       )}
 
-      <WorkspaceSwitcher collapsed={collapsed} />
-
       <nav className="dc-scroll flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-1">
         {NAV_ITEMS.map((item) => {
           const active =
@@ -233,26 +231,38 @@ function Sidebar({
         })}
       </nav>
 
-      <div className="flex flex-shrink-0 flex-col gap-2.5 border-t border-line p-3">
-        <span
+      <div className="flex flex-shrink-0 flex-col border-t border-line pt-2">
+        <div
           className={cn(
-            "inline-flex items-center gap-1 self-start rounded-md px-2 py-0.5 text-[11px]",
+            "px-3 pb-1 pt-1 text-[10px] font-medium uppercase tracking-[0.08em] text-muted",
             collapsed && "md:hidden",
-            masterKey
-              ? "bg-accent-500/15 text-accent-700 dark:text-accent-200"
-              : "bg-amber-500/15 text-amber-700 dark:text-amber-300",
           )}
         >
-          <ShieldCheck size={12} weight="fill" />
-          {masterKey ? "Unlocked" : "Locked"}
-        </span>
+          Account
+        </div>
+        <WorkspaceSwitcher collapsed={collapsed} />
+        <div className="flex flex-col gap-2.5 border-t border-line p-3">
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 self-start rounded-md px-2 py-0.5 text-[11px]",
+              collapsed && "md:hidden",
+              masterKey
+                ? "bg-accent-500/15 text-accent-700 dark:text-accent-200"
+                : "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+            )}
+          >
+            <ShieldCheck size={12} weight="fill" />
+            {masterKey ? "Unlocked" : "Locked"}
+          </span>
+        </div>
       </div>
     </aside>
   );
 }
 
 /**
- * The workspace ("scope") switcher at the top of the sidebar. Personal vault +
+ * The workspace ("scope") switcher in the sidebar's bottom "Account" section.
+ * Personal vault +
  * every ACTIVE org membership, each showing its plan and the caller's role.
  * Selecting a row only changes what the dashboard shows — the server always
  * re-derives access from membership (see org-context-store).

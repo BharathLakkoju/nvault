@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { isSafeFilename } from "./filename";
+import { isDotenvStyleFile, isSafeFilename } from "./filename";
 
 // ---------------------------------------------------------------------------
 // Auth
@@ -196,8 +196,15 @@ export const EncryptedPayloadSchema = z.object({
 // same limit works unmodified on every supported deployment target.
 export const MAX_FILE_SIZE_BYTES = 2.5 * 1024 * 1024;
 
+// Uploads are restricted to dotenv-style names (`.env`, `.env.local`,
+// `.env.production`, …). This is enforced server-side so the client check is
+// not the only gate.
+export const DotenvFilenameSchema = FilenameSchema.refine(isDotenvStyleFile, {
+  message: "Only .env files can be stored (.env, .env.local, .env.development, .env.production, …).",
+});
+
 export const UploadFileVersionRequestSchema = z.object({
-  filename: FilenameSchema,
+  filename: DotenvFilenameSchema,
   payload: EncryptedPayloadSchema,
   // Client-generated (crypto.randomUUID()), bound as AAD when encrypting
   // this version's content so the ciphertext cannot be replayed onto a

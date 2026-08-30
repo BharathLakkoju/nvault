@@ -29,29 +29,30 @@
    * Semantic surface tokens
    * -----------------------
    * "R G B" triples consumed by tailwind's `canvas` / `surface` / `line` /
-   * `ink` / `muted` colours. `:root` holds the light values (white + slate);
-   * `:root.dark` swaps in the dark values (slate-950 → slate-400). This is the
-   * same slate palette the marketing pages use, expressed once so the
-   * authenticated app and the site stay in step. The accent stays
-   * user-switchable through the `--accent-*` ramp above.
+   * `ink` / `muted` colours. These are a FIXED neutral greyscale — the accent
+   * ramp above never bleeds into them. `:root` holds the light values
+   * (off-white paper), `:root.dark` the dark values (a flat #111111 base).
+   * Only deliberately-highlighted elements (active nav, primary buttons,
+   * links, focus rings) may use the accent; every surface stays neutral in
+   * both themes so a dark accent can never "blend into" the background.
    */
-  --c-bg: 255 255 255;
+  --c-bg: 250 250 249;
   --c-surface: 255 255 255;
-  --c-surface-2: 248 250 252;
-  --c-surface-3: 241 245 249;
-  --c-line: 226 232 240;
-  --c-ink: 15 23 42;
-  --c-muted: 100 116 139;
+  --c-surface-2: 245 245 244;
+  --c-surface-3: 240 240 238;
+  --c-line: 226 226 223;
+  --c-ink: 23 23 23;
+  --c-muted: 113 113 110;
 }
 
 :root.dark {
-  --c-bg: 2 6 23;
-  --c-surface: 15 23 42;
-  --c-surface-2: 30 41 59;
-  --c-surface-3: 2 6 23;
-  --c-line: 30 41 59;
-  --c-ink: 241 245 249;
-  --c-muted: 148 163 184;
+  --c-bg: 17 17 17;
+  --c-surface: 26 26 26;
+  --c-surface-2: 34 34 34;
+  --c-surface-3: 20 20 20;
+  --c-line: 42 42 42;
+  --c-ink: 237 237 237;
+  --c-muted: 150 150 150;
 }
 
 :root[data-accent="violet"] {
@@ -110,7 +111,7 @@
 }
 
 body {
-  @apply bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100;
+  @apply bg-canvas text-ink;
 }
 
 .focus-ring {

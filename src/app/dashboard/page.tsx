@@ -92,8 +92,8 @@ function DashboardContent() {
         )}
       </div>
 
-      <div className="mb-6 flex items-center gap-3 rounded-lg border border-accent-500/25 bg-accent-500/10 px-4 py-3">
-        <ShieldCheck size={18} weight="fill" className="flex-shrink-0 text-accent-600 dark:text-accent-300" />
+      <div className="mb-6 flex items-center gap-3 rounded-lg border border-line bg-surface-2 px-4 py-3">
+        <ShieldCheck size={18} weight="fill" className="flex-shrink-0 text-accent-600 dark:text-accent-400" />
         <span className="text-[13px] text-ink/80">
           Every file is encrypted in your browser before it ever leaves your machine — nvault&apos;s servers only
           ever see ciphertext.

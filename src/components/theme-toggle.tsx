@@ -57,7 +57,7 @@ export function ThemeToggle({ className }: { className?: string }) {
           type="button"
           aria-label="Change theme"
           className={cn(
-            "focus-ring inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 dark:text-muted dark:hover:bg-ink/[0.06]",
+            "focus-ring inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted hover:bg-ink/[0.06]",
             className,
           )}
         >
@@ -68,9 +68,9 @@ export function ThemeToggle({ className }: { className?: string }) {
         <DropdownMenu.Content
           align="end"
           sideOffset={6}
-          className="z-[70] w-60 rounded-lg border border-slate-200 bg-white p-2 shadow-xl dark:border-line dark:bg-surface"
+          className="z-[70] w-60 rounded-lg border border-line bg-surface p-2 shadow-xl"
         >
-          <DropdownMenu.Label className="px-2 pb-1 pt-1 text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-muted">
+          <DropdownMenu.Label className="px-2 pb-1 pt-1 text-xs font-medium uppercase tracking-wide text-muted">
             Appearance
           </DropdownMenu.Label>
           <div className="mb-2 grid grid-cols-3 gap-1">
@@ -83,8 +83,8 @@ export function ThemeToggle({ className }: { className?: string }) {
                 className={cn(
                   "focus-ring flex flex-col items-center gap-1 rounded-md border px-1 py-2 text-xs font-medium",
                   mode === m
-                    ? "border-accent-500 bg-accent-50 text-accent-700 dark:bg-accent-500/15 dark:text-accent-200"
-                    : "border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-line dark:text-ink/70 dark:hover:bg-ink/[0.06]",
+                    ? "border-accent-500 bg-accent-500/10 text-accent-700 dark:bg-accent-500/15 dark:text-accent-200"
+                    : "border-line text-ink/70 hover:bg-ink/[0.06]",
                 )}
               >
                 <ModeIcon mode={m} />
@@ -93,9 +93,9 @@ export function ThemeToggle({ className }: { className?: string }) {
             ))}
           </div>
 
-          <DropdownMenu.Separator className="my-1 h-px bg-slate-200 dark:bg-line" />
+          <DropdownMenu.Separator className="my-1 h-px bg-line" />
 
-          <DropdownMenu.Label className="px-2 pb-1 pt-1 text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-muted">
+          <DropdownMenu.Label className="px-2 pb-1 pt-1 text-xs font-medium uppercase tracking-wide text-muted">
             Accent
           </DropdownMenu.Label>
           <div className="grid grid-cols-6 gap-1 px-1 py-1">
@@ -108,8 +108,8 @@ export function ThemeToggle({ className }: { className?: string }) {
                 aria-pressed={accent === a.id}
                 title={a.label}
                 className={cn(
-                  "focus-ring flex h-7 w-7 items-center justify-center rounded-full ring-offset-2 ring-offset-white dark:ring-offset-surface",
-                  accent === a.id && "ring-2 ring-slate-400 dark:ring-muted",
+                  "focus-ring flex h-7 w-7 items-center justify-center rounded-full ring-offset-2 ring-offset-surface",
+                  accent === a.id && "ring-2 ring-muted",
                 )}
               >
                 <span className="h-4 w-4 rounded-full" style={{ backgroundColor: a.swatch }} />

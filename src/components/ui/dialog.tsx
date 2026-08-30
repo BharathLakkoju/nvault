@@ -19,18 +19,18 @@ export function DialogContent({
 }) {
   return (
     <RadixDialog.Portal>
-      <RadixDialog.Overlay className="fixed inset-0 z-40 bg-black/40 data-[state=open]:animate-in data-[state=open]:fade-in" />
+      <RadixDialog.Overlay className="fixed inset-0 z-40 bg-black/50 data-[state=open]:animate-in data-[state=open]:fade-in" />
       <RadixDialog.Content
         className={cn(
-          "fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-slate-200 bg-white p-5 shadow-lg focus:outline-none dark:border-slate-800 dark:bg-slate-900 sm:p-6",
+          "fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-line bg-surface p-5 shadow-lg focus:outline-none sm:p-6",
           className,
         )}
       >
-        <RadixDialog.Title className="text-base font-semibold text-slate-900 dark:text-slate-100">
+        <RadixDialog.Title className="text-base font-semibold text-ink">
           {title}
         </RadixDialog.Title>
         {description && (
-          <RadixDialog.Description className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          <RadixDialog.Description className="mt-1 text-sm text-muted">
             {description}
           </RadixDialog.Description>
         )}
