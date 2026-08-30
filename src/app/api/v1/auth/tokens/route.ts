@@ -2,7 +2,7 @@ import { CreateApiTokenRequestSchema } from "@/lib/schemas";
 import { audit } from "@/server/audit";
 import { createApiToken, listApiTokens } from "@/server/auth/api-tokens";
 import { requireAuth } from "@/server/auth/require-auth";
-import { userHasActivePro } from "@/server/billing/service";
+import { userHasCliAccess } from "@/server/billing/service";
 import { clientIp, handler, json, readJson } from "@/server/http";
 
 export const runtime = "nodejs";
@@ -10,8 +10,14 @@ export const dynamic = "force-dynamic";
 
 export const GET = handler(async (req) => {
   const auth = await requireAuth(req);
-  const tokens = await listApiTokens(auth.userId);
+  const [tokens, cliAccess] = await Promise.all([
+    listApiTokens(auth.userId),
+    userHasCliAccess(auth.userId),
+  ]);
   return json({
+    // Whether this account may create new CLI tokens (Pro / Team). Already-issued
+    // tokens keep working regardless; this only gates creation.
+    cliAccess,
     tokens: tokens.map((t) => ({
       id: t.id,
       name: t.name,
@@ -27,8 +33,8 @@ export const GET = handler(async (req) => {
 export const POST = handler(async (req) => {
   const auth = await requireAuth(req);
   const dto = await readJson(req, CreateApiTokenRequestSchema);
-  const hasPro = await userHasActivePro(auth.userId);
-  const created = await createApiToken(auth.userId, dto, { hasPro });
+  const hasCliAccess = await userHasCliAccess(auth.userId);
+  const created = await createApiToken(auth.userId, dto, { hasCliAccess });
   await audit({
     userId: auth.userId,
     action: "apitoken.created",

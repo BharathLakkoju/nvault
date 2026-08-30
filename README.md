@@ -29,10 +29,11 @@ The API and the browser share the same `lib/schemas` validation and
 `lib/crypto` primitives, so request validation and encryption behaviour are
 identical by construction.
 
-**Plans.** Free — personal vault, up to 5 projects. **Pro** ($10/mo per user)
-— unlimited personal projects. **Team** — shared, zero-knowledge
-organizations, priced by size ($29 / $79 / $199 per org per month for up to
-10 / 25 / 100 members). Both paid plans are billed through
+**Plans.** Free — personal vault, up to 3 projects, web app only. **Pro**
+($10/mo per user) — unlimited personal projects plus terminal CLI access
+(CLI tokens). **Team** — shared, zero-knowledge organizations with CLI
+access for every member, priced by size ($29 / $79 / $199 per org per month
+for up to 10 / 25 / 100 members). Both paid plans are billed through
 [Polar](https://polar.sh) as Merchant of Record; no card data touches
 nvault. See [DEPLOYMENT.md](./DEPLOYMENT.md#billing-polar--required-in-production)
 for setup; the paywall is disabled automatically when `POLAR_*` is unset

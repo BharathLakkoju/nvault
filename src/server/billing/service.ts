@@ -7,6 +7,7 @@ import {
   type SubscriptionTier,
 } from "@/generated/prisma/client";
 import { db } from "../db";
+import { billingConfigured } from "../env";
 import { ApiError } from "../http";
 import { audit, type AuditAction } from "../audit";
 import { authorizeOrg } from "../authz/org-access";
@@ -273,6 +274,30 @@ export async function userHasActivePro(userId: string): Promise<boolean> {
 
 export function getUserProSubscription(userId: string): Promise<Subscription | null> {
   return db.subscription.findFirst({ where: { ownerUserId: userId, plan: "PRO" } });
+}
+
+/**
+ * CLI access (Personal Access Tokens, `envvault run`, push/pull from a
+ * terminal) is a paid capability. A user is entitled to it when they either
+ *   - hold an active Pro subscription, or
+ *   - are an ACTIVE member of at least one ACTIVE (paid) organization.
+ *
+ * When billing is not configured (local dev / self-host) the paywall is off
+ * and everyone qualifies — mirroring the org auto-activation shortcut in the
+ * organizations route.
+ *
+ * This gate is checked on token *creation* only; an already-issued token keeps
+ * working if the plan later lapses, consistent with the rest of the
+ * entitlement model (limits are never retroactive).
+ */
+export async function userHasCliAccess(userId: string): Promise<boolean> {
+  if (!billingConfigured()) return true;
+  if (await userHasActivePro(userId)) return true;
+  const activeOrgMembership = await db.organizationMembership.findFirst({
+    where: { userId, status: "ACTIVE", organization: { status: "ACTIVE" } },
+    select: { id: true },
+  });
+  return activeOrgMembership !== null;
 }
 
 // ---------------------------------------------------------------------------

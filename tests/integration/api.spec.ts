@@ -629,7 +629,27 @@ describeIf("nvault API (integration)", () => {
   });
 
   it("issues a CLI access token that authenticates the API and stops working once revoked", async () => {
-    const { token } = await registerUser("cli token vault passphrase");
+    const user = await registerUser("cli token vault passphrase");
+    const { token } = user;
+
+    // CLI access is a paid feature — a Free account is refused with 402.
+    const beforePro = await call(routes.tokens.POST, {
+      method: "POST",
+      path: "/api/v1/auth/tokens",
+      token,
+      body: { name: "free laptop" },
+    });
+    expect(beforePro.status).toBe(402);
+
+    const listBefore = await call(routes.tokens.GET, {
+      method: "GET",
+      path: "/api/v1/auth/tokens",
+      token,
+    });
+    expect(listBefore.body.cliAccess).toBe(false);
+
+    // Grant Pro, then creation succeeds.
+    await fireProWebhook(user.id, { status: "active" });
 
     const createRes = await call(routes.tokens.POST, {
       method: "POST",
@@ -642,16 +662,6 @@ describeIf("nvault API (integration)", () => {
     expect(pat).toMatch(/^evk_/);
     expect(createRes.body.apiToken.id).toBeTruthy();
 
-    // Free accounts get a single CLI token — a second is refused (409) until
-    // one is revoked.
-    const secondToken = await call(routes.tokens.POST, {
-      method: "POST",
-      path: "/api/v1/auth/tokens",
-      token,
-      body: { name: "second device" },
-    });
-    expect(secondToken.status).toBe(409);
-
     // The raw token is only ever in the create response — never in list.
     const listRes = await call(routes.tokens.GET, {
       method: "GET",
@@ -659,6 +669,7 @@ describeIf("nvault API (integration)", () => {
       token,
     });
     expect(JSON.stringify(listRes.body)).not.toContain(pat);
+    expect(listRes.body.cliAccess).toBe(true);
     expect(listRes.body.tokens[0].name).toBe("integration laptop");
 
     // CLI-token sessions are hidden from the browser Sessions list.
@@ -694,7 +705,7 @@ describeIf("nvault API (integration)", () => {
     });
     expect(afterRevoke.status).toBe(401);
 
-    // With the first token revoked, the free slot frees up.
+    // A revoked token frees up a slot; a new one can be created.
     const replacement = await call(routes.tokens.POST, {
       method: "POST",
       path: "/api/v1/auth/tokens",

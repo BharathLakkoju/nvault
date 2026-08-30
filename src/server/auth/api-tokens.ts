@@ -33,12 +33,12 @@ export interface CreatedApiToken {
 export async function createApiToken(
   userId: string,
   input: { name: string; expiresInDays?: number },
-  opts: { hasPro: boolean },
+  opts: { hasCliAccess: boolean },
 ): Promise<CreatedApiToken> {
   const activeCount = await db.session.count({
     where: { userId, apiTokenHash: { not: null }, revokedAt: null },
   });
-  assertCanCreateCliToken(activeCount, opts.hasPro);
+  assertCanCreateCliToken(activeCount, opts.hasCliAccess);
 
   const raw = generateApiToken();
   const ttlDays = input.expiresInDays ?? DEFAULT_TTL_DAYS;

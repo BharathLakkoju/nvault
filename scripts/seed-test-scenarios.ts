@@ -489,25 +489,41 @@ async function seed() {
     ],
   });
 
-  const freeCli = await makeUser("free-cli@nvault.test", { name: "Free CLI" });
-  const freeCliToken = await createApiToken(
-    freeCli.id,
-    { name: "seed laptop" },
-    { hasPro: false },
-  );
-  await addPersonalProject(freeCli, "api-service", [{ filename: ".env", versions: [ENV_V1] }]);
+  // CLI access is now a paid feature, so a Free account cannot hold a CLI
+  // token: creating one must 402 and the page shows the paywall card.
+  const freeNoCli = await makeUser("free-no-cli@nvault.test", { name: "Free No CLI" });
+  await addPersonalProject(freeNoCli, "api-service", [{ filename: ".env", versions: [ENV_V1] }]);
   record({
-    email: "free-cli@nvault.test",
-    label: "Free · CLI token in use",
+    email: "free-no-cli@nvault.test",
+    label: "Free · CLI access blocked",
     scenario:
-      "Free account that has issued its 1 allowed CLI Personal Access Token — a 2nd create must 409 until this one is revoked.",
+      "Free account with no CLI access. Creating a CLI token from Settings → CLI Tokens must 402 with an upgrade prompt; the page shows the paywall card instead of a “New token” button.",
     facts: [
-      "Free plan",
-      "1 / 1 active CLI token (FREE_LIMITS.maxCliTokens)",
+      "Free plan (FREE_LIMITS.maxCliTokens = 0)",
+      "0 CLI tokens; POST /api/v1/auth/tokens → 402",
+      "GET /api/v1/auth/tokens → { cliAccess: false }",
+      "1 personal project (only reachable from the web until the account upgrades)",
+    ],
+  });
+
+  // Formerly the Free `free-cli` persona — now Pro, since a CLI token requires
+  // a paid plan. One active token, room for more (Pro ceiling is 5).
+  const proCli = await makeUser("pro-cli@nvault.test", { name: "Pro CLI", keypair: true });
+  await grantProSubscription(proCli.id, "ACTIVE");
+  await addPersonalProject(proCli, "api-service", [{ filename: ".env", versions: [ENV_V1] }]);
+  const proCliToken = await createApiToken(proCli.id, { name: "seed laptop" }, { hasCliAccess: true });
+  record({
+    email: "pro-cli@nvault.test",
+    label: "Pro · CLI token in use",
+    scenario:
+      "Paid Pro account that has signed a terminal in with a CLI token. The token's value is shown once at creation only; the list shows its prefix + metadata. A 2nd token still creates (Pro allows 5).",
+    facts: [
+      "Subscription: plan PRO, status ACTIVE",
+      "1 / 5 active CLI tokens (PRO_LIMITS.maxCliTokens)",
       "1 personal project the CLI can pull",
     ],
     secrets: {
-      "CLI token (evk_…, shown once — real, works against the API)": freeCliToken.token,
+      "CLI token (evk_…, shown once — real, works against the API)": proCliToken.token,
     },
   });
 
@@ -523,8 +539,8 @@ async function seed() {
       { unlimited: true },
     );
   }
-  const proToken1 = await createApiToken(proActive.id, { name: "workstation" }, { hasPro: true });
-  await createApiToken(proActive.id, { name: "ci-runner" }, { hasPro: true });
+  const proToken1 = await createApiToken(proActive.id, { name: "workstation" }, { hasCliAccess: true });
+  await createApiToken(proActive.id, { name: "ci-runner" }, { hasCliAccess: true });
   record({
     email: "pro-active@nvault.test",
     label: "Pro · active subscription",

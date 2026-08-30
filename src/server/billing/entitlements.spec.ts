@@ -47,7 +47,7 @@ describe("billing entitlements", () => {
       expect(FREE_LIMITS.maxPersonalProjects).toBe(3);
       expect(FREE_LIMITS.maxVersionsPerFile).toBe(2);
       expect(FREE_LIMITS.maxBrowserSessions).toBe(2);
-      expect(FREE_LIMITS.maxCliTokens).toBe(1);
+      expect(FREE_LIMITS.maxCliTokens).toBe(0);
     });
   });
 
@@ -75,23 +75,32 @@ describe("billing entitlements", () => {
   });
 
   describe("device caps", () => {
-    it("browser + CLI limits switch on Pro", () => {
+    it("browser + CLI limits switch on Pro / CLI access", () => {
       expect(browserSessionLimit(false)).toBe(FREE_LIMITS.maxBrowserSessions);
       expect(browserSessionLimit(true)).toBe(PRO_LIMITS.maxBrowserSessions);
-      expect(cliTokenLimit(false)).toBe(FREE_LIMITS.maxCliTokens);
+      expect(cliTokenLimit(false)).toBe(0);
       expect(cliTokenLimit(true)).toBe(PRO_LIMITS.maxCliTokens);
     });
 
-    it("assertCanCreateCliToken throws 409 at the ceiling", () => {
-      expect(() => assertCanCreateCliToken(0, false)).not.toThrow();
+    it("assertCanCreateCliToken refuses accounts without CLI access with a 402", () => {
       try {
-        assertCanCreateCliToken(FREE_LIMITS.maxCliTokens, false);
+        assertCanCreateCliToken(0, false);
+        throw new Error("expected to throw");
+      } catch (err) {
+        expect((err as ApiError).status).toBe(402);
+        expect((err as ApiError).message).toMatch(/paid feature/i);
+      }
+    });
+
+    it("assertCanCreateCliToken allows CLI-access accounts up to the ceiling, then 409s", () => {
+      expect(() => assertCanCreateCliToken(0, true)).not.toThrow();
+      expect(() => assertCanCreateCliToken(PRO_LIMITS.maxCliTokens - 1, true)).not.toThrow();
+      try {
+        assertCanCreateCliToken(PRO_LIMITS.maxCliTokens, true);
         throw new Error("expected to throw");
       } catch (err) {
         expect((err as ApiError).status).toBe(409);
       }
-      expect(() => assertCanCreateCliToken(PRO_LIMITS.maxCliTokens - 1, true)).not.toThrow();
-      expect(() => assertCanCreateCliToken(PRO_LIMITS.maxCliTokens, true)).toThrow(ApiError);
     });
   });
 
