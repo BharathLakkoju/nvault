@@ -9,8 +9,8 @@ import { useAuthStore } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
 import { Input, Label, FieldError } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { AuroraBackground } from "@/components/aurora-background";
+import { SiteHeader } from "@/components/marketing/site-header";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -73,75 +73,75 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="relative isolate flex min-h-screen items-center justify-center px-4 py-10">
+    <div className="relative isolate flex min-h-screen flex-col">
       <AuroraBackground variant="auth" />
-      <div className="fixed right-3 top-3">
-        <ThemeToggle />
-      </div>
-      <Card className="w-full max-w-md bg-surface/80 p-6 backdrop-blur-sm">
-        <h1 className="text-lg font-semibold text-ink">Create your nvault account</h1>
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-          </div>
-          <div>
-            <Label htmlFor="name">Name (optional)</Label>
-            <Input id="name" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
-          <div>
-            <Label htmlFor="password">Account password</Label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              required
-              minLength={12}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <p className="mt-1 text-xs text-muted">Used to log in. At least 12 characters.</p>
-          </div>
+      <SiteHeader />
+      <main className="flex flex-1 items-center justify-center px-4 py-10">
+        <Card className="w-full max-w-md bg-surface/80 p-6 backdrop-blur-sm">
+          <h1 className="text-lg font-semibold text-ink">Create your nvault account</h1>
+          <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="name">Name (optional)</Label>
+              <Input id="name" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="password">Account password</Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="new-password"
+                required
+                minLength={12}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <p className="mt-1 text-xs text-muted">Used to log in. At least 12 characters.</p>
+            </div>
 
-          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950">
-            <Label htmlFor="vault-passphrase">Vault passphrase</Label>
-            <Input
-              id="vault-passphrase"
-              type="password"
-              autoComplete="new-password"
-              required
-              minLength={12}
-              value={vaultPassphrase}
-              onChange={(e) => setVaultPassphrase(e.target.value)}
-            />
-            <Label htmlFor="vault-passphrase-confirm">Confirm vault passphrase</Label>
-            <Input
-              id="vault-passphrase-confirm"
-              type="password"
-              autoComplete="new-password"
-              required
-              value={vaultPassphraseConfirm}
-              onChange={(e) => setVaultPassphraseConfirm(e.target.value)}
-            />
-            <p className="mt-2 text-xs text-amber-800 dark:text-amber-300">
-              This is <strong>separate from your account password</strong> and encrypts your files end-to-end.
-              nvault never has access to it — if you lose it, your encrypted files{" "}
-              <strong>cannot be recovered</strong>.
-            </p>
-          </div>
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950">
+              <Label htmlFor="vault-passphrase">Vault passphrase</Label>
+              <Input
+                id="vault-passphrase"
+                type="password"
+                autoComplete="new-password"
+                required
+                minLength={12}
+                value={vaultPassphrase}
+                onChange={(e) => setVaultPassphrase(e.target.value)}
+              />
+              <Label htmlFor="vault-passphrase-confirm">Confirm vault passphrase</Label>
+              <Input
+                id="vault-passphrase-confirm"
+                type="password"
+                autoComplete="new-password"
+                required
+                value={vaultPassphraseConfirm}
+                onChange={(e) => setVaultPassphraseConfirm(e.target.value)}
+              />
+              <p className="mt-2 text-xs text-amber-800 dark:text-amber-300">
+                This is <strong>separate from your account password</strong> and encrypts your files end-to-end.
+                nvault never has access to it — if you lose it, your encrypted files{" "}
+                <strong>cannot be recovered</strong>.
+              </p>
+            </div>
 
-          <FieldError>{error}</FieldError>
-          <Button type="submit" className="w-full" loading={loading}>
-            Create account
-          </Button>
-        </form>
-        <p className="mt-4 text-center text-sm text-muted">
-          Already have an account?{" "}
-          <Link href="/login" className="font-medium text-accent-600 hover:underline dark:text-accent-400">
-            Log in
-          </Link>
-        </p>
-      </Card>
+            <FieldError>{error}</FieldError>
+            <Button type="submit" className="w-full" loading={loading}>
+              Create account
+            </Button>
+          </form>
+          <p className="mt-4 text-center text-sm text-muted">
+            Already have an account?{" "}
+            <Link href="/login" className="font-medium text-accent-600 hover:underline dark:text-accent-400">
+              Log in
+            </Link>
+          </p>
+        </Card>
+      </main>
     </div>
   );
 }
