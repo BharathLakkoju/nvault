@@ -13,7 +13,9 @@ import {
   useStartProCheckout,
 } from "@/hooks/use-billing";
 import { usePlanInfo } from "@/hooks/use-plan-info";
+import { useOrganizations } from "@/hooks/use-organizations";
 import { formatDate } from "@/lib/format";
+import { teamPlanLabel, orgStatusPresentation } from "@/lib/plan";
 import { toastError, useToastStore } from "@/lib/toast-store";
 
 export default function BillingPage() {
@@ -36,6 +38,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 function BillingContent() {
   const { data: plan } = usePlanInfo();
+  const { data: orgs } = useOrganizations();
   const { data: billing, isLoading, refetch } = useProSubscription();
   const checkout = useStartProCheckout();
   const portal = usePersonalBillingPortal();
@@ -53,7 +56,9 @@ function BillingContent() {
 
   useEffect(() => {
     if (justPaid && isPro) {
-      useToastStore.getState().push("success", "You're on Pro now — unlimited personal projects.");
+      useToastStore
+        .getState()
+        .push("success", "You're on Pro now — unlimited projects and version history.");
     }
   }, [justPaid, isPro]);
 
@@ -77,23 +82,27 @@ function BillingContent() {
 
   if (isLoading) return <p className="text-sm text-muted">Loading…</p>;
 
+  const free = plan?.freeLimits;
+  const freeSummary = free
+    ? `Up to ${free.maxPersonalProjects} personal projects · last ${free.maxVersionsPerFile} versions of each file · ${free.maxBrowserSessions} devices`
+    : "Up to 3 personal projects · limited history · limited devices";
+  const proSummary = plan?.proLimits
+    ? `${billing?.priceLabel ?? plan.proPriceLabel} · unlimited projects & history · ${plan.proLimits.maxBrowserSessions} devices`
+    : `${billing?.priceLabel ?? ""} · unlimited personal projects`;
+
   return (
     <div>
-      <h1 className="text-2xl font-medium text-ink sm:text-[28px]">Billing</h1>
+      <h1 className="text-2xl font-medium text-ink sm:text-[28px]">Plans &amp; billing</h1>
       <p className="mt-0.5 text-muted">
-        Your personal plan. Organization billing is managed on each organization&apos;s own billing
-        page.
+        Manage your personal plan below. Each organization has its own subscription, managed by its
+        owner.
       </p>
 
       <Card className="mt-6">
         <CardHeader
-          kicker="Personal"
+          kicker="Your plan"
           title={isPro ? "Pro" : "Free"}
-          description={
-            isPro
-              ? `${billing?.priceLabel} · unlimited personal projects`
-              : `Up to ${plan?.freeMaxPersonalProjects ?? 5} personal projects, unlimited files & version history`
-          }
+          description={isPro ? proSummary : freeSummary}
         />
 
         {isPro && billing && (
@@ -134,15 +143,64 @@ function BillingContent() {
       </Card>
 
       <Card className="mt-4">
-        <CardHeader kicker="Teams" title="Shared vaults" description="End-to-end encrypted projects for a group." />
-        <div className="px-5 py-4 text-sm text-ink/70">
-          Need to share environment files with teammates? Create an{" "}
-          <Link href="/settings/organizations" className="text-accent-600 hover:underline dark:text-accent-300">
-            organization
-          </Link>{" "}
-          — from {plan?.teamTiers?.[0]?.priceLabel ?? "a monthly plan"} per organization, billed
-          separately.
-        </div>
+        <CardHeader
+          kicker="Organizations"
+          title="Team plans"
+          description="One subscription per organization. Only the owner can change an organization's plan."
+        />
+        {(orgs ?? []).length === 0 ? (
+          <div className="px-5 py-4 text-sm text-ink/70">
+            You&apos;re not in any organization yet. Create one to share encrypted projects with a
+            team —{" "}
+            <Link
+              href="/settings/organizations"
+              className="text-accent-600 hover:underline dark:text-accent-300"
+            >
+              from {plan?.teamTiers?.[0]?.priceLabel ?? "a monthly plan"} per organization
+            </Link>
+            .
+          </div>
+        ) : (
+          <ul className="divide-y divide-line">
+            {(orgs ?? []).map((org) => {
+              const pres = orgStatusPresentation(org.orgStatus);
+              const isOwner = org.role === "OWNER";
+              return (
+                <li
+                  key={org.id}
+                  className="flex flex-col gap-2 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-ink">{org.name}</p>
+                    <p className="text-xs text-muted">
+                      {teamPlanLabel(org.tier)} · {org.role?.toLowerCase()} ·{" "}
+                      <span
+                        className={
+                          pres.tone === "danger"
+                            ? "text-red-600 dark:text-red-400"
+                            : pres.tone === "warn"
+                              ? "text-amber-600 dark:text-amber-500"
+                              : "text-muted"
+                        }
+                      >
+                        {pres.label}
+                      </span>
+                    </p>
+                  </div>
+                  {isOwner ? (
+                    <Link href={`/organizations/${org.id}/billing`} className="shrink-0">
+                      <Button variant="secondary">Manage billing</Button>
+                    </Link>
+                  ) : (
+                    <span className="shrink-0 text-xs text-muted">
+                      Managed by the organization owner
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </Card>
     </div>
   );

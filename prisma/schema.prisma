@@ -148,6 +148,11 @@ model ProjectFile {
   currentVersionId String?      @unique
   currentVersion   FileVersion? @relation("CurrentVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
 
+  // Lifetime count of versions ever appended to this file. Monotonic: it is
+  // never decremented, so deleting an old version does not let a free account
+  // upload another one. Drives FREE_LIMITS.maxVersionsPerFile.
+  versionsCreated Int @default(0)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

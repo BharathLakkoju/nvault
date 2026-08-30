@@ -2,10 +2,16 @@ import { ApiError } from "../http";
 import {
   FREE_LIMITS,
   MAX_PROJECTS_PER_ORG,
+  PRO_LIMITS,
   TEAM_TIERS,
+  assertCanAddFileVersion,
   assertCanAddOrgMember,
+  assertCanCreateCliToken,
   assertCanCreateOrgProject,
   assertCanCreatePersonalProject,
+  browserSessionLimit,
+  cliTokenLimit,
+  fileVersionLimit,
   teamMemberLimit,
 } from "./entitlements";
 
@@ -33,6 +39,59 @@ describe("billing entitlements", () => {
       expect(() =>
         assertCanCreatePersonalProject(FREE_LIMITS.maxPersonalProjects + 500, true),
       ).not.toThrow();
+    });
+  });
+
+  describe("free-tier caps are the tighter values", () => {
+    it("keeps the personal-project limit at 3 and version limit at 2", () => {
+      expect(FREE_LIMITS.maxPersonalProjects).toBe(3);
+      expect(FREE_LIMITS.maxVersionsPerFile).toBe(2);
+      expect(FREE_LIMITS.maxBrowserSessions).toBe(2);
+      expect(FREE_LIMITS.maxCliTokens).toBe(1);
+    });
+  });
+
+  describe("fileVersionLimit / assertCanAddFileVersion", () => {
+    it("caps a free file at maxVersionsPerFile; unlimited is Infinity", () => {
+      expect(fileVersionLimit(false)).toBe(FREE_LIMITS.maxVersionsPerFile);
+      expect(fileVersionLimit(true)).toBe(Number.POSITIVE_INFINITY);
+    });
+
+    it("allows the first N versions then throws 402 (free)", () => {
+      expect(() => assertCanAddFileVersion(0, false)).not.toThrow();
+      expect(() => assertCanAddFileVersion(1, false)).not.toThrow();
+      try {
+        assertCanAddFileVersion(2, false);
+        throw new Error("expected to throw");
+      } catch (err) {
+        expect((err as ApiError).status).toBe(402);
+        expect((err as ApiError).message).toMatch(/deleting an old one does not free up room/i);
+      }
+    });
+
+    it("never throws for an unlimited (Pro / org) file, even far past the free cap", () => {
+      expect(() => assertCanAddFileVersion(999, true)).not.toThrow();
+    });
+  });
+
+  describe("device caps", () => {
+    it("browser + CLI limits switch on Pro", () => {
+      expect(browserSessionLimit(false)).toBe(FREE_LIMITS.maxBrowserSessions);
+      expect(browserSessionLimit(true)).toBe(PRO_LIMITS.maxBrowserSessions);
+      expect(cliTokenLimit(false)).toBe(FREE_LIMITS.maxCliTokens);
+      expect(cliTokenLimit(true)).toBe(PRO_LIMITS.maxCliTokens);
+    });
+
+    it("assertCanCreateCliToken throws 409 at the ceiling", () => {
+      expect(() => assertCanCreateCliToken(0, false)).not.toThrow();
+      try {
+        assertCanCreateCliToken(FREE_LIMITS.maxCliTokens, false);
+        throw new Error("expected to throw");
+      } catch (err) {
+        expect((err as ApiError).status).toBe(409);
+      }
+      expect(() => assertCanCreateCliToken(PRO_LIMITS.maxCliTokens - 1, true)).not.toThrow();
+      expect(() => assertCanCreateCliToken(PRO_LIMITS.maxCliTokens, true)).toThrow(ApiError);
     });
   });
 

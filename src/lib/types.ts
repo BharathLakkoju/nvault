@@ -45,6 +45,8 @@ export interface OrganizationDto {
   status?: OrgMembershipStatus;
   /** The subscription's status, or "NONE" for grandfathered orgs. */
   billingStatus?: SubscriptionStatus | "NONE";
+  /** Team size tier of the org's subscription, when known. */
+  tier?: TeamTier | null;
   memberCount?: number;
   projectCount?: number;
 }

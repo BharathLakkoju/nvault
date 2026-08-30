@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FolderSimple, LockKey, ShieldCheck, Plus } from "@phosphor-icons/react";
+import { FolderSimple, LockKey, ShieldCheck, Plus, Warning } from "@phosphor-icons/react";
 import { RequireAuth } from "@/components/require-auth";
 import { RequireVaultUnlocked } from "@/components/require-vault-unlocked";
 import { AppShell } from "@/components/app-shell";
@@ -17,6 +17,7 @@ import { useOrganizations } from "@/hooks/use-organizations";
 import { usePlanInfo } from "@/hooks/use-plan-info";
 import { useProSubscription } from "@/hooks/use-billing";
 import { useOrgContext } from "@/lib/org-context-store";
+import { teamPlanLabel } from "@/lib/plan";
 import { formatRelativeTime } from "@/lib/format";
 import { toastError, useToastStore } from "@/lib/toast-store";
 
@@ -44,15 +45,21 @@ function DashboardContent() {
 
   const currentOrg = orgs?.find((o) => o.id === currentOrgId) ?? null;
   const canCreateHere = !currentOrg || currentOrg.role === "ADMIN" || currentOrg.role === "OWNER";
+  const isOrgOwner = currentOrg?.role === "OWNER";
   const scoped = (projects ?? []).filter((p) =>
     currentOrgId ? p.organizationId === currentOrgId : p.scope === "personal",
   );
   const fileCount = scoped.reduce((n, p) => n + (p.fileCount ?? 0), 0);
 
-  // Free-tier personal-project cap (only relevant outside an org).
+  // Free-tier personal caps (only relevant outside an org — org projects follow
+  // the organization's own Team subscription, never the member's personal plan).
   const personalCount = (projects ?? []).filter((p) => p.scope === "personal").length;
-  const personalCap = plan?.freeMaxPersonalProjects ?? Infinity;
-  const atPersonalCap = !currentOrg && personalCount >= personalCap;
+  const personalCap = plan?.freeLimits?.maxPersonalProjects ?? Infinity;
+  const maxVersions = plan?.freeLimits?.maxVersionsPerFile ?? 2;
+  const atPersonalCap = !currentOrg && !isProPlan && personalCount >= personalCap;
+
+  const orgPending = currentOrg?.orgStatus === "PENDING_PAYMENT";
+  const orgSuspended = currentOrg?.orgStatus === "SUSPENDED";
 
   return (
     <div>
@@ -93,33 +100,102 @@ function DashboardContent() {
         </span>
       </div>
 
-      <div className="mb-8 grid grid-cols-2 gap-3.5 sm:grid-cols-3">
-        <StatCard kicker="Projects" value={scoped.length} />
+      <div
+        className={
+          "mb-8 grid grid-cols-2 gap-3.5 " + (currentOrg ? "sm:grid-cols-4" : "sm:grid-cols-3")
+        }
+      >
+        <StatCard
+          kicker="Projects"
+          value={
+            currentOrg || isProPlan || !Number.isFinite(personalCap) ? (
+              scoped.length
+            ) : (
+              <span>
+                {scoped.length}
+                <span className="text-base text-muted"> / {personalCap}</span>
+              </span>
+            )
+          }
+        />
         <StatCard kicker="Encrypted files" value={fileCount} />
+        {currentOrg && (
+          <StatCard kicker="Members" value={currentOrg.memberCount ?? scoped.length} />
+        )}
         <StatCard
           kicker="Plan"
-          value={<span className="text-lg">{isProPlan ? "Pro" : "Free — beta"}</span>}
+          value={
+            <span className="text-lg">
+              {currentOrg ? teamPlanLabel(currentOrg.tier) : isProPlan ? "Pro" : "Free"}
+            </span>
+          }
         />
       </div>
 
       {atPersonalCap && (
         <Card className="mb-4 flex flex-col gap-3 border-amber-500/40 p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-ink/70">
-            You&apos;ve reached the Free plan limit of {personalCap} personal projects.
+            You&apos;ve reached the Free plan limit of {personalCap} personal projects. Free also
+            keeps the last {maxVersions} versions of each file and {plan?.freeLimits?.maxBrowserSessions ?? 2}{" "}
+            signed-in devices.
             {plan?.billingEnabled
-              ? " Upgrade to Pro for unlimited, or "
+              ? " Upgrade to Pro for unlimited projects and history, or "
               : " Delete a project to free up a slot, or "}
             create an{" "}
             <Link href="/settings/organizations" className="text-accent-600 hover:underline dark:text-accent-300">
               organization
             </Link>{" "}
-            for your team.
+            for shared team projects.
           </p>
           {plan?.billingEnabled && (
             <Link href="/settings/billing" className="shrink-0">
               <Button variant="secondary">Upgrade to Pro</Button>
             </Link>
           )}
+        </Card>
+      )}
+
+      {orgPending && (
+        <Card className="mb-4 flex items-start gap-3 border-amber-500/40 p-4">
+          <Warning size={18} weight="fill" className="mt-0.5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+          <p className="text-sm text-ink/70">
+            <span className="font-medium text-ink">Finish setting up {currentOrg?.name}.</span>{" "}
+            {isOrgOwner ? (
+              <>
+                Projects and file uploads are locked until payment is complete.{" "}
+                <Link
+                  href={`/organizations/${currentOrg?.id}/billing`}
+                  className="text-accent-600 hover:underline dark:text-accent-300"
+                >
+                  Complete checkout
+                </Link>
+                .
+              </>
+            ) : (
+              "Ask the organization owner to complete checkout — the workspace is locked until then."
+            )}
+          </p>
+        </Card>
+      )}
+
+      {orgSuspended && (
+        <Card className="mb-4 flex items-start gap-3 border-red-500/40 p-4">
+          <Warning size={18} weight="fill" className="mt-0.5 flex-shrink-0 text-red-600 dark:text-red-400" />
+          <p className="text-sm text-ink/70">
+            <span className="font-medium text-ink">{currentOrg?.name} is read-only.</span> Its
+            subscription is inactive — you can still pull existing files, but not push new versions
+            or add projects.{" "}
+            {isOrgOwner ? (
+              <Link
+                href={`/organizations/${currentOrg?.id}/billing`}
+                className="text-accent-600 hover:underline dark:text-accent-300"
+              >
+                Renew the subscription
+              </Link>
+            ) : (
+              "Ask the organization owner to renew it."
+            )}
+          </p>
         </Card>
       )}
 

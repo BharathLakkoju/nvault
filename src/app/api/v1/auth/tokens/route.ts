@@ -2,6 +2,7 @@ import { CreateApiTokenRequestSchema } from "@/lib/schemas";
 import { audit } from "@/server/audit";
 import { createApiToken, listApiTokens } from "@/server/auth/api-tokens";
 import { requireAuth } from "@/server/auth/require-auth";
+import { userHasActivePro } from "@/server/billing/service";
 import { clientIp, handler, json, readJson } from "@/server/http";
 
 export const runtime = "nodejs";
@@ -26,7 +27,8 @@ export const GET = handler(async (req) => {
 export const POST = handler(async (req) => {
   const auth = await requireAuth(req);
   const dto = await readJson(req, CreateApiTokenRequestSchema);
-  const created = await createApiToken(auth.userId, dto);
+  const hasPro = await userHasActivePro(auth.userId);
+  const created = await createApiToken(auth.userId, dto, { hasPro });
   await audit({
     userId: auth.userId,
     action: "apitoken.created",

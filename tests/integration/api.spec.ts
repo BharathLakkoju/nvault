@@ -300,7 +300,10 @@ describeIf("nvault API (integration)", () => {
   });
 
   it("stores only ciphertext, preserves content exactly, versions non-destructively", async () => {
-    const { masterKey, token } = await registerUser("vault passphrase for lifecycle");
+    const { id: userId, masterKey, token } = await registerUser("vault passphrase for lifecycle");
+    // This scenario builds v1..v3 of one file — grant Pro so the free-tier
+    // 2-versions-per-file cap does not apply. (The cap itself is covered below.)
+    await fireProWebhook(userId, { status: "active" });
 
     const projectId = randomUUID();
     const { wrappedProjectKey, projectKey } = await vaultCrypto.createProjectKey(masterKey, projectId);
@@ -448,6 +451,121 @@ describeIf("nvault API (integration)", () => {
     expect(traversal.status).toBe(400);
   });
 
+  it("Free tier caps a file at 2 versions; restore is blocked and history is trimmed", async () => {
+    const { masterKey, token } = await registerUser("free tier history passphrase");
+    const projectId = randomUUID();
+    const { wrappedProjectKey, projectKey } = await vaultCrypto.createProjectKey(masterKey, projectId);
+    const created = await call(routes.projects.POST, {
+      method: "POST",
+      path: "/api/v1/projects",
+      token,
+      body: { id: projectId, name: `hist-${Date.now()}`, wrappedProjectKey },
+    });
+    expect(created.status).toBe(201);
+
+    async function upload(text: string) {
+      const contentId = randomUUID();
+      const payload = await vaultCrypto.encryptFileContent(
+        projectKey,
+        contentId,
+        vaultCrypto.utf8ToBytes(text),
+      );
+      return call(routes.files.POST, {
+        method: "POST",
+        path: `/api/v1/projects/${projectId}/files`,
+        params: { id: projectId },
+        token,
+        body: {
+          filename: ".env",
+          payload,
+          contentId,
+          plaintextSize: text.length,
+          plaintextSha256: await vaultCrypto.sha256Hex(vaultCrypto.utf8ToBytes(text)),
+        },
+      });
+    }
+
+    expect((await upload("A=1")).status).toBe(201); // v1
+    expect((await upload("A=2")).status).toBe(201); // v2
+    const third = await upload("A=3");
+    expect(third.status).toBe(402); // free cap reached
+
+    const files = await call(routes.files.GET, {
+      method: "GET",
+      path: `/api/v1/projects/${projectId}/files`,
+      params: { id: projectId },
+      token,
+    });
+    const fileId = files.body.files[0].id as string;
+
+    const versionsRes = await call(routes.fileVersions, {
+      method: "GET",
+      path: `/api/v1/projects/${projectId}/files/${fileId}/versions`,
+      params: { id: projectId, fileId },
+      token,
+    });
+    expect(versionsRes.body.versions).toHaveLength(2);
+    expect(versionsRes.body.capped).toBe(true);
+    expect(versionsRes.body.limit).toBe(2);
+
+    // Restore also mints a version, so it is refused once the cap is hit.
+    const oldest = versionsRes.body.versions.find(
+      (v: { isCurrent: boolean }) => !v.isCurrent,
+    );
+    const restoreRes = await call(routes.restore, {
+      method: "POST",
+      path: `/api/v1/projects/${projectId}/files/${fileId}/restore`,
+      params: { id: projectId, fileId },
+      token,
+      body: { versionId: oldest.id },
+    });
+    expect(restoreRes.status).toBe(402);
+  });
+
+  it("Free tier keeps only the 2 most-recently-used browser sessions on login", async () => {
+    const { email, password } = await registerUser("device cap passphrase");
+
+    async function login() {
+      const res = await call(routes.login, {
+        method: "POST",
+        path: "/api/v1/auth/login",
+        body: { email, password },
+      });
+      expect(res.status).toBe(200);
+      return res.body.accessToken as string;
+    }
+
+    const t1 = await login();
+    const t2 = await login();
+    const t3 = await login(); // 3rd sign-in — evicts the least-recently-used
+
+    // t1's access token is now rejected (its session was revoked).
+    const stale = await call(routes.projects.GET, {
+      method: "GET",
+      path: "/api/v1/projects",
+      token: t1,
+    });
+    expect(stale.status).toBe(401);
+
+    // The two newest sessions still work.
+    for (const t of [t2, t3]) {
+      const ok = await call(routes.projects.GET, {
+        method: "GET",
+        path: "/api/v1/projects",
+        token: t,
+      });
+      expect(ok.status).toBe(200);
+    }
+
+    const sessions = await call(routes.sessions, {
+      method: "GET",
+      path: "/api/v1/auth/sessions",
+      token: t3,
+    });
+    const live = sessions.body.sessions.filter((s: { revokedAt: string | null }) => !s.revokedAt);
+    expect(live).toHaveLength(2);
+  });
+
   it("issues a CLI access token that authenticates the API and stops working once revoked", async () => {
     const { token } = await registerUser("cli token vault passphrase");
 
@@ -461,6 +579,16 @@ describeIf("nvault API (integration)", () => {
     const pat = createRes.body.token as string;
     expect(pat).toMatch(/^evk_/);
     expect(createRes.body.apiToken.id).toBeTruthy();
+
+    // Free accounts get a single CLI token — a second is refused (409) until
+    // one is revoked.
+    const secondToken = await call(routes.tokens.POST, {
+      method: "POST",
+      path: "/api/v1/auth/tokens",
+      token,
+      body: { name: "second device" },
+    });
+    expect(secondToken.status).toBe(409);
 
     // The raw token is only ever in the create response — never in list.
     const listRes = await call(routes.tokens.GET, {
@@ -503,6 +631,15 @@ describeIf("nvault API (integration)", () => {
       token: pat,
     });
     expect(afterRevoke.status).toBe(401);
+
+    // With the first token revoked, the free slot frees up.
+    const replacement = await call(routes.tokens.POST, {
+      method: "POST",
+      path: "/api/v1/auth/tokens",
+      token,
+      body: { name: "replacement" },
+    });
+    expect(replacement.status).toBe(201);
   });
 
   it("provisions a user keypair once, stores only ciphertext, and refuses to replace it", async () => {

@@ -1,4 +1,5 @@
 import { db } from "../db";
+import { assertCanCreateCliToken } from "../billing/entitlements";
 import { ApiError } from "../http";
 import { generateApiToken, generateOpaqueToken, hashToken } from "./tokens";
 
@@ -18,7 +19,6 @@ import { generateApiToken, generateOpaqueToken, hashToken } from "./tokens";
  */
 
 const DEFAULT_TTL_DAYS = 365;
-const MAX_TOKENS_PER_USER = 20;
 
 export interface CreatedApiToken {
   id: string;
@@ -33,16 +33,12 @@ export interface CreatedApiToken {
 export async function createApiToken(
   userId: string,
   input: { name: string; expiresInDays?: number },
+  opts: { hasPro: boolean },
 ): Promise<CreatedApiToken> {
   const activeCount = await db.session.count({
     where: { userId, apiTokenHash: { not: null }, revokedAt: null },
   });
-  if (activeCount >= MAX_TOKENS_PER_USER) {
-    throw new ApiError(
-      409,
-      `You have reached the limit of ${MAX_TOKENS_PER_USER} active CLI tokens. Revoke one before creating another.`,
-    );
-  }
+  assertCanCreateCliToken(activeCount, opts.hasPro);
 
   const raw = generateApiToken();
   const ttlDays = input.expiresInDays ?? DEFAULT_TTL_DAYS;
