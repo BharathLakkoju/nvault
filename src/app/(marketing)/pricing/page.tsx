@@ -29,7 +29,7 @@ const tiers: ReadonlyArray<{
     features: [
       "Up to 3 personal projects",
       "The last 2 versions of each file",
-      "2 signed-in devices",
+      "2 browser sessions + 1 CLI token",
       "Zero-knowledge client-side encryption",
       "Web app + terminal CLI (push, pull, init, run)",
     ],
@@ -82,7 +82,7 @@ const pricingFaqs = [
   {
     question: "How does billing work?",
     answer:
-      "Pro is a per-user subscription. Team is one flat subscription per organization in one of three size tiers (Starter $29 / Growth $79 / Scale $199), and you can move between them any time — Polar prorates the difference. Both are billed through Polar (our Merchant of Record) on Polar-hosted pages; nvault never sees or stores your card details. Cancel any time.",
+      "Pro is a per-user subscription. Team is one flat subscription per organization in one of three size tiers (Starter $29 / Growth $79 / Scale $199), and you can move between them any time — Polar prorates the difference. Both are billed through Polar, our Merchant of Record, on Polar-hosted pages; nvault never sees or stores your card details, and Polar handles invoicing and tax. Cancel any time from Settings → Billing. See the Refunds & Cancellation Policy for how refunds work.",
   },
   {
     question: "What happens to an organization if its subscription lapses?",

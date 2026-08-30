@@ -116,6 +116,6 @@ export const faqs: ReadonlyArray<FaqItem> = [
   {
     question: "What does it cost?",
     answer:
-      "A personal vault is free — up to five projects with unlimited files and full version history. Pro ($10/month) makes personal projects unlimited. Team unlocks shared, zero-knowledge organizations, priced by size from $29/month per org. Billed through Polar. See the pricing page for details.",
+      "A personal vault is free — up to 3 projects, the last 2 versions of each file, and 2 signed-in devices. Pro ($10/month) removes every limit for one person: unlimited projects, unlimited version history, and more devices. Team unlocks shared, zero-knowledge organizations at one flat price per org, from $29/month. Paid plans are billed through Polar, our Merchant of Record. See the pricing page for details.",
   },
 ];

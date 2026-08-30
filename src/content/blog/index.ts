@@ -37,5 +37,13 @@ export function getPost(slug: string): BlogPost | undefined {
 
 /** The N posts nearest in date to `slug`, excluding it — for "related reading". */
 export function relatedPosts(slug: string, count = 3): BlogPost[] {
-  return posts.filter((p) => p.slug !== slug).slice(0, count);
+  const current = getPost(slug);
+  if (!current) return posts.slice(0, count);
+  const anchor = new Date(`${current.date}T00:00:00Z`).getTime();
+  return posts
+    .filter((p) => p.slug !== slug)
+    .map((p) => ({ p, gap: Math.abs(new Date(`${p.date}T00:00:00Z`).getTime() - anchor) }))
+    .sort((a, b) => a.gap - b.gap)
+    .slice(0, count)
+    .map((entry) => entry.p);
 }
