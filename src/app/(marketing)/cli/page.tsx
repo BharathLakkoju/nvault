@@ -48,7 +48,11 @@ export default function CliPage() {
             <Link href="/features" className="font-medium underline">
               web app
             </Link>{" "}
-            is available today.
+            is available today. CLI access — and the CLI tokens that authenticate it — requires a{" "}
+            <Link href="/pricing" className="font-medium underline">
+              Pro or Team plan
+            </Link>
+            .
           </div>
 
           <div className="mx-auto mt-12 max-w-2xl">
@@ -243,11 +247,14 @@ export default function CliPage() {
             <Prose>
               <h2>Credentials &amp; configuration</h2>
               <p>
-                After <code>nvault login</code>, the CLI stores a short-lived access token and a refresh token in
-                OS-appropriate secure storage — Keychain on macOS, Credential Manager on Windows, the Secret Service API
-                on Linux where available. It never writes tokens to a plaintext dotfile, and never prints them unless you
-                ask. Your <Link href="/blog/zero-knowledge-encryption-explained">vault passphrase</Link> is a separate
-                secret that unlocks encryption per session and is never stored.
+                A CLI token (Pro or Team, created under Settings &rarr; CLI Tokens) is shown to you exactly once and
+                used exactly once &mdash; you paste it into <code>nvault login</code> to sign in a single terminal. That
+                login then persists: the CLI stores the credential in OS-appropriate secure storage &mdash; Keychain on
+                macOS, Credential Manager on Windows, the Secret Service API on Linux where available &mdash; and stays
+                signed in, so you never handle the token again on that machine. It never writes tokens to a plaintext
+                dotfile, and never prints them unless you ask. Your{" "}
+                <Link href="/blog/zero-knowledge-encryption-explained">vault passphrase</Link> is a separate secret that
+                unlocks encryption per session and is never stored.
               </p>
 
               <h3>Non-interactive use</h3>
@@ -259,9 +266,10 @@ export default function CliPage() {
 
               <h2>Using it in CI</h2>
               <p>
-                For CI, create a scoped, revocable machine token in the web app and expose it as{" "}
-                <code>NVAULT_TOKEN</code>. Provide the vault passphrase as a masked secret. The runner fetches config
-                for exactly one step and nothing is persisted into the workspace.
+                CLI access requires a Pro or Team plan. For CI, create a scoped, revocable machine token in the web app
+                (Settings → CLI Tokens) and expose it as <code>NVAULT_TOKEN</code>. Provide the vault passphrase as a
+                masked secret. The runner fetches config for exactly one step and nothing is persisted into the
+                workspace.
               </p>
               <pre>
                 <code>{`# GitHub Actions

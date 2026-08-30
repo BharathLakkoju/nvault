@@ -17,8 +17,9 @@ Every account shares one login password and one vault passphrase. Those, plus ea
 | `free-projects-maxed@nvault.test` | Free · at personal-project cap | Free account holding exactly 3 personal projects — creating a 4th must 402. |
 | `free-versions-maxed@nvault.test` | Free · at file version-history cap | Free account with a file at its 2-version lifetime cap — next upload AND restore must 402; history list is trimmed + flagged `capped`. |
 | `free-devices-maxed@nvault.test` | Free · at device (browser-session) cap | Free account with 2 active browser sessions — a 3rd sign-in evicts the least-recently-used one (its access token then 401s). |
-| `free-cli@nvault.test` | Free · CLI token in use | Free account that has issued its 1 allowed CLI Personal Access Token — a 2nd create must 409 until this one is revoked. |
-| `pro-active@nvault.test` | Pro · active subscription | Paid Pro account — personal-project cap lifted, 5 devices / 5 CLI tokens, unlimited version history. |
+| `free-no-cli@nvault.test` | Free · CLI access blocked | Free account with no CLI access — `POST /api/v1/auth/tokens` must 402, and the CLI Tokens page shows the paywall card instead of a "New token" button. |
+| `pro-cli@nvault.test` | Pro · CLI token in use | Paid Pro account with 1 of its 5 allowed CLI tokens issued. Token value shown once at creation; list shows prefix + metadata only. |
+| `pro-active@nvault.test` | Pro · active subscription | Paid Pro account — personal-project cap lifted, 5 devices / 5 CLI tokens, unlimited version history. CLI access enabled; holds 2 active CLI tokens. |
 | `pro-past-due@nvault.test` | Pro · payment failed (dunning) | Pro subscription in PAST_DUE — Polar is retrying the charge; entitlement is still granted during the dunning window. |
 | `pro-canceled@nvault.test` | Pro · canceled (over cap, grandfathered) | Pro subscription CANCELED while holding 5 projects — nothing is deleted, but the Free cap is reinstated so no new personal project can be created. |
 | `pro-pending@nvault.test` | Pro · checkout started, never paid | A PENDING Pro subscription row (checkout opened, payment never completed) — no entitlement; behaves exactly like Free. Also the target of the pending-subscription purge cron. |
@@ -74,12 +75,21 @@ Free account with 2 active browser sessions — a 3rd sign-in evicts the least-r
 - 2 / 2 active browser sessions (FREE_LIMITS.maxBrowserSessions)
 - Expected: 3rd login succeeds but revokes the oldest session
 
-### `free-cli@nvault.test` — Free · CLI token in use
+### `free-no-cli@nvault.test` — Free · CLI access blocked
 
-Free account that has issued its 1 allowed CLI Personal Access Token — a 2nd create must 409 until this one is revoked.
+Free account with no CLI access. Creating a CLI token from Settings → CLI Tokens must 402 with an upgrade prompt; the page shows the paywall card instead of a "New token" button.
 
-- Free plan
-- 1 / 1 active CLI token (FREE_LIMITS.maxCliTokens)
+- Free plan (FREE_LIMITS.maxCliTokens = 0)
+- 0 CLI tokens; POST /api/v1/auth/tokens → 402
+- GET /api/v1/auth/tokens → { cliAccess: false }
+- 1 personal project (only reachable from the web until the account upgrades)
+
+### `pro-cli@nvault.test` — Pro · CLI token in use
+
+Paid Pro account that has signed a terminal in with a CLI token. The token's value is shown once at creation only; the list shows its prefix + metadata. A 2nd token still creates (Pro allows 5).
+
+- Subscription: plan PRO, status ACTIVE
+- 1 / 5 active CLI tokens (PRO_LIMITS.maxCliTokens)
 - 1 personal project the CLI can pull
 - Secrets (CLI token (evk_…, shown once — real, works against the API)): see `docs/test-scenarios.local.md`
 

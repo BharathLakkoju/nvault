@@ -29,9 +29,9 @@ const tiers: ReadonlyArray<{
     features: [
       "Up to 3 personal projects",
       "The last 2 versions of each file",
-      "2 browser sessions + 1 CLI token",
+      "2 browser sessions",
       "Zero-knowledge client-side encryption",
-      "Web app + terminal CLI (push, pull, init, run)",
+      "Web app (terminal CLI requires Pro or Team)",
     ],
     cta: { label: "Get started", href: "/register" },
   },
@@ -43,6 +43,7 @@ const tiers: ReadonlyArray<{
     features: [
       "Unlimited personal projects",
       "Unlimited version history",
+      "Terminal CLI — push, pull, init, run",
       "More devices — 5 browser sessions + 5 CLI tokens",
       "Advanced features as they ship",
       "Priority support",
@@ -58,6 +59,7 @@ const tiers: ReadonlyArray<{
     description: "Collaboration and organization control for a whole team.",
     features: [
       "Shared, zero-knowledge projects across the org",
+      "Terminal CLI for every member",
       "Owner / admin / member roles",
       "Per-organization key with member rotation",
       "Organization activity log",
@@ -72,12 +74,17 @@ const pricingFaqs = [
   {
     question: "Is nvault free for personal use?",
     answer:
-      "Yes. The Free plan gives you a personal vault with up to 3 projects, the last 2 versions of each file, and 2 signed-in devices — no card required. It is meant for trying nvault and light personal use. Everything is end-to-end encrypted in your browser on every tier.",
+      "Yes. The Free plan gives you a personal vault with up to 3 projects, the last 2 versions of each file, and 2 signed-in browser sessions — no card required. It is meant for trying nvault and light personal use through the web app. Everything is end-to-end encrypted in your browser on every tier.",
+  },
+  {
+    question: "Can I use the terminal CLI on the Free plan?",
+    answer:
+      "No. CLI access — pushing and pulling environment files from a terminal, and creating the CLI tokens that authenticate it — requires Pro or a Team plan. Pro includes up to 5 CLI tokens; every member of a Team organization gets CLI access. On Free you manage everything through the web app.",
   },
   {
     question: "What does “limited history” mean on Free?",
     answer:
-      "Free keeps the two most recent versions of each file, and that ceiling counts every version ever uploaded — deleting an old one does not free up room. Pro ($10/month) removes the cap entirely: unlimited version history, plus unlimited projects and more devices.",
+      "Free keeps the two most recent versions of each file, and that ceiling counts every version ever uploaded — deleting an old one does not free up room. Pro ($10/month) removes the cap entirely: unlimited version history, plus unlimited projects, terminal CLI access, and more devices.",
   },
   {
     question: "How does billing work?",

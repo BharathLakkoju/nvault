@@ -233,17 +233,13 @@ export async function createAccount(passphrase = "harness vault passphrase 2026"
   const jwt = reg.body.accessToken as string;
   createdUserIds.push(userId);
 
-  const tok = await directCall(() => require("@/app/api/v1/auth/tokens/route").POST, {
-    method: "POST",
-    path: "/api/v1/auth/tokens",
-    token: jwt,
-    body: { name: "cli harness" },
-  });
-  if (tok.status !== 201) {
-    throw new Error(`harness: token mint failed ${tok.status} ${JSON.stringify(tok.body)}`);
-  }
+  // CLI access is a paid feature, but the plan a given test wants to exercise
+  // varies (some assert Free-tier caps). Mint the harness PAT directly so setup
+  // stays plan-agnostic — the paywall itself is covered in the API suite.
+  const { createApiToken } = require("@/server/auth/api-tokens") as typeof import("@/server/auth/api-tokens");
+  const minted = await createApiToken(userId, { name: "cli harness" }, { hasCliAccess: true });
 
-  return { email, userId, passphrase, pat: tok.body.token as string, jwt };
+  return { email, userId, passphrase, pat: minted.token, jwt };
 }
 
 export async function cleanupAccounts(): Promise<void> {

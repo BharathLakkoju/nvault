@@ -155,34 +155,29 @@ describeIf("test-scenarios.md persona checklist", () => {
     }
   });
 
-  it("free-cli: 1 PAT allowed — a 2nd create → 409, revoking the first frees the slot", async () => {
+  it("free-no-cli: CLI access is paid — PAT creation is refused with 402 until the account has Pro", async () => {
     const u = await registerUser("free cli passphrase");
-    const first = await mintPat(u.token, "laptop");
-    const second = await call(routes.tokens.POST, {
+
+    const blocked = await call(routes.tokens.POST, {
       method: "POST",
       path: "/api/v1/auth/tokens",
       token: u.token,
-      body: { name: "desktop" },
+      body: { name: "laptop" },
     });
-    expect(second.status).toBe(409);
+    expect(blocked.status).toBe(402);
 
-    const revoke = await call(routes.revokeToken, {
-      method: "DELETE",
-      path: `/api/v1/auth/tokens/${first.id}`,
-      params: { id: first.id },
+    const list = await call(routes.tokens.GET, {
+      method: "GET",
+      path: "/api/v1/auth/tokens",
       token: u.token,
     });
-    expect(revoke.status).toBe(204);
-    expect(
-      (
-        await call(routes.tokens.POST, {
-          method: "POST",
-          path: "/api/v1/auth/tokens",
-          token: u.token,
-          body: { name: "desktop" },
-        })
-      ).status,
-    ).toBe(201);
+    expect(list.body.cliAccess).toBe(false);
+    expect(list.body.tokens).toHaveLength(0);
+
+    // Grant Pro -> creation now works, up to the Pro ceiling.
+    await grantPro(u.id, "ACTIVE");
+    const ok = await mintPat(u.token, "laptop");
+    expect(ok.pat).toMatch(/^evk_/);
   });
 
   // --- Pro tier ---------------------------------------------------------------

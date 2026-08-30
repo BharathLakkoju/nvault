@@ -30,8 +30,11 @@ export const FREE_LIMITS = {
   maxVersionsPerFile: 2,
   /** Concurrent browser sessions ("devices"); the oldest is evicted past this. */
   maxBrowserSessions: 2,
-  /** Active CLI Personal Access Tokens. */
-  maxCliTokens: 1,
+  /**
+   * Active CLI Personal Access Tokens. CLI access is a paid capability, so a
+   * Free account gets none — see {@link assertCanCreateCliToken}.
+   */
+  maxCliTokens: 0,
 } as const;
 
 /**
@@ -132,18 +135,27 @@ export function browserSessionLimit(hasPro: boolean): number {
   return hasPro ? PRO_LIMITS.maxBrowserSessions : FREE_LIMITS.maxBrowserSessions;
 }
 
-export function cliTokenLimit(hasPro: boolean): number {
-  return hasPro ? PRO_LIMITS.maxCliTokens : FREE_LIMITS.maxCliTokens;
+/**
+ * How many active CLI tokens the caller may hold. `hasCliAccess` is true for
+ * Pro users and members of a paid organization (see
+ * {@link import("./service").userHasCliAccess}); a Free account gets none.
+ */
+export function cliTokenLimit(hasCliAccess: boolean): number {
+  return hasCliAccess ? PRO_LIMITS.maxCliTokens : FREE_LIMITS.maxCliTokens;
 }
 
-export function assertCanCreateCliToken(activeCount: number, hasPro: boolean): void {
-  const limit = cliTokenLimit(hasPro);
+export function assertCanCreateCliToken(activeCount: number, hasCliAccess: boolean): void {
+  if (!hasCliAccess) {
+    throw new ApiError(
+      402,
+      "CLI access is a paid feature. Upgrade to Pro, or join a Team organization, to create CLI tokens.",
+    );
+  }
+  const limit = cliTokenLimit(hasCliAccess);
   if (activeCount >= limit) {
     throw new ApiError(
       409,
-      hasPro
-        ? `You have reached the limit of ${limit} active CLI tokens. Revoke one before creating another.`
-        : `Free accounts can have ${limit} active CLI token. Revoke it first, or upgrade to Pro for up to ${PRO_LIMITS.maxCliTokens}.`,
+      `You have reached the limit of ${limit} active CLI tokens. Revoke one before creating another.`,
     );
   }
 }
