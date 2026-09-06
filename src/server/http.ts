@@ -18,8 +18,14 @@ export class ApiError extends Error {
   }
 }
 
-export function json(data: unknown, status = 200): Response {
-  return Response.json(data as Record<string, unknown>, { status });
+export function json(
+  data: unknown,
+  status = 200,
+  opts?: { cache?: "no-store" },
+): Response {
+  const headers =
+    opts?.cache === "no-store" ? { "Cache-Control": "no-store, private" } : undefined;
+  return Response.json(data as Record<string, unknown>, { status, headers });
 }
 
 export function noContent(): Response {
@@ -65,14 +71,54 @@ export function handler(fn: RouteHandler) {
   };
 }
 
+async function readBodyText(req: Request, maxBytes?: number): Promise<string> {
+  if (!maxBytes) return await req.text();
+  const declaredHeader = req.headers.get("content-length");
+  let declared: number | null = null;
+  if (declaredHeader !== null) {
+    const length = Number(declaredHeader);
+    if (!Number.isSafeInteger(length) || length < 0 || length > maxBytes) {
+      throw new ApiError(413, "Request body is too large.");
+    }
+    declared = length;
+  }
+  if (!req.body) return "";
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) throw new ApiError(413, "Request body is too large.");
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  if (declared !== null && total !== declared) {
+    throw new ApiError(400, "Request body length does not match Content-Length.");
+  }
+  const body = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(body);
+}
+
 export async function readJson<S extends ZodTypeAny>(
   req: Request,
   schema: S,
+  maxBytes?: number,
 ): Promise<ZodInfer<S>> {
   let body: unknown;
   try {
-    body = await req.json();
-  } catch {
+    body = JSON.parse(await readBodyText(req, maxBytes));
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
     throw new ApiError(400, "Request body must be valid JSON");
   }
   const result = schema.safeParse(body);
@@ -121,9 +167,35 @@ export async function readJsonOptional<S extends ZodTypeAny>(
   return result.data;
 }
 
-/** Best-effort client IP for audit logging and rate limiting (Vercel sets XFF). */
+/** Best-effort client IP for audit logging and rate limiting. */
 export function clientIp(req: Request): string | undefined {
+  // Prefer platform-injected headers that the edge overwrites (not client-spoofable).
+  const vercelIp = req.headers.get("x-vercel-forwarded-for");
+  if (vercelIp) return vercelIp.split(",")[0]?.trim() || undefined;
+  const cfIp = req.headers.get("cf-connecting-ip");
+  if (cfIp) return cfIp.trim() || undefined;
+  const flyIp = req.headers.get("fly-client-ip");
+  if (flyIp) return flyIp.trim() || undefined;
   const xff = req.headers.get("x-forwarded-for");
   if (xff) return xff.split(",")[0]?.trim() || undefined;
   return req.headers.get("x-real-ip") ?? undefined;
+}
+
+/**
+ * Validates that a cookie-authenticated request originated from this app.
+ * Blocks obvious cross-site posts while allowing same-origin navigations that
+ * omit `Origin` (checked via Fetch Metadata when present).
+ */
+export function assertSameOriginCookieAuth(req: Request, allowedOrigin: string): void {
+  const origin = req.headers.get("origin");
+  if (origin) {
+    if (origin !== allowedOrigin) {
+      throw new ApiError(403, "Cross-origin request blocked.");
+    }
+    return;
+  }
+  const site = req.headers.get("sec-fetch-site");
+  if (site === "cross-site") {
+    throw new ApiError(403, "Cross-site request blocked.");
+  }
 }

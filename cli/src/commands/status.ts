@@ -2,7 +2,9 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { apiRequest } from "../lib/api-client";
 import { detectGitRemote } from "../lib/git";
-import { sha256Hex } from "../lib/vault-client";
+import { fileFingerprintHex } from "../lib/vault-client";
+import { resolveProjectKey } from "../lib/project-key";
+import { unlockVaultForThisCommand } from "../lib/vault-session";
 import { symbols } from "../lib/colors";
 import type { FileDto, ProjectDto } from "../lib/types";
 
@@ -31,6 +33,9 @@ export async function statusCommand(): Promise<void> {
     return;
   }
 
+  const session = await unlockVaultForThisCommand();
+  const projectKey = await resolveProjectKey(project, session);
+
   for (const file of files) {
     const localPath = join(cwd, file.filename);
     if (!existsSync(localPath)) {
@@ -38,8 +43,11 @@ export async function statusCommand(): Promise<void> {
       continue;
     }
     if (!file.currentVersion) continue;
-    const localHash = await sha256Hex(new Uint8Array(readFileSync(localPath)));
-    if (localHash === file.currentVersion.plaintextSha256) {
+    const localFingerprint = await fileFingerprintHex(
+      projectKey,
+      new Uint8Array(readFileSync(localPath)),
+    );
+    if (localFingerprint === file.currentVersion.plaintextFingerprint) {
       console.log(`  ${symbols.check} ${file.filename}  up to date`);
     } else {
       console.log(`  ${symbols.warn} ${file.filename}  differs from the latest stored version`);

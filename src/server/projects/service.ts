@@ -115,15 +115,47 @@ export async function findProjectByGitRemote(userId: string, gitRemoteUrl: strin
 
 /** Renames an already-authorized project, enforcing name uniqueness in its namespace. */
 export async function renameProject(project: Project, name: string): Promise<Project> {
-  const conflict = project.organizationId
-    ? await db.project.findFirst({
-        where: { organizationId: project.organizationId, name, id: { not: project.id } },
-      })
-    : await db.project.findFirst({
-        where: { ownerId: project.ownerId, organizationId: null, name, id: { not: project.id } },
-      });
-  if (conflict) throw new ApiError(409, "A project with this name already exists");
-  return db.project.update({ where: { id: project.id }, data: { name } });
+  return updateProject(project.ownerId, project, { name });
+}
+
+/** Updates mutable project fields (name, linked git remote). */
+export async function updateProject(
+  userId: string,
+  project: Project,
+  dto: { name?: string; gitRemoteUrl?: string | null },
+): Promise<Project> {
+  const data: { name?: string; gitRemoteUrl?: string | null } = {};
+
+  if (dto.name !== undefined && dto.name !== project.name) {
+    const conflict = project.organizationId
+      ? await db.project.findFirst({
+          where: { organizationId: project.organizationId, name: dto.name, id: { not: project.id } },
+        })
+      : await db.project.findFirst({
+          where: { ownerId: project.ownerId, organizationId: null, name: dto.name, id: { not: project.id } },
+        });
+    if (conflict) throw new ApiError(409, "A project with this name already exists");
+    data.name = dto.name;
+  }
+
+  if (dto.gitRemoteUrl !== undefined) {
+    const normalized =
+      dto.gitRemoteUrl === null || dto.gitRemoteUrl.trim() === ""
+        ? null
+        : (normalizeGitRemote(dto.gitRemoteUrl) ?? null);
+    if (normalized !== project.gitRemoteUrl) {
+      if (normalized) {
+        const existing = await findProjectByGitRemote(userId, normalized);
+        if (existing && existing.id !== project.id) {
+          throw new ApiError(409, "Another project is already linked to this repository");
+        }
+      }
+      data.gitRemoteUrl = normalized;
+    }
+  }
+
+  if (Object.keys(data).length === 0) return project;
+  return db.project.update({ where: { id: project.id }, data });
 }
 
 export async function deleteProject(projectId: string): Promise<void> {

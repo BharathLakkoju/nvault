@@ -1,6 +1,7 @@
 import { ProvisionKeyPairRequestSchema } from "@/lib/schemas";
 import { audit } from "@/server/audit";
 import { requireAuth } from "@/server/auth/require-auth";
+import { requireStepUp } from "@/server/auth/webauthn";
 import { ApiError, clientIp, handler, json, readJson } from "@/server/http";
 import { findUserById, setUserKeyPair, toKeyPairMaterial } from "@/server/users";
 
@@ -29,6 +30,7 @@ export const GET = handler(async (req) => {
  */
 export const POST = handler(async (req) => {
   const auth = await requireAuth(req);
+  await requireStepUp(auth.userId, auth.sessionId);
   const dto = await readJson(req, ProvisionKeyPairRequestSchema);
 
   const stored = await setUserKeyPair(auth.userId, {

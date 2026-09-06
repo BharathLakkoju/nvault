@@ -30,6 +30,6 @@ export const GET = handler(async (req, { params }) => {
     filename: file.filename,
     payload,
     plaintextSize: version.plaintextSize,
-    plaintextSha256: version.plaintextSha256,
+    plaintextFingerprint: version.plaintextFingerprint,
   });
 });

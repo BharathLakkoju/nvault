@@ -23,6 +23,9 @@ export async function initCommand(): Promise<void> {
 
   if (!project) {
     console.log("No matching nvault project found for this repository.");
+    console.log(
+      "Link this repository to a project in the web app (Projects → open your project → Git repository).",
+    );
     return;
   }
 
@@ -31,7 +34,7 @@ export async function initCommand(): Promise<void> {
   const restore = await promptConfirm("Restore its environment files here?", true);
   if (!restore) return;
 
-  await pullCommand(project.name, undefined, {});
+  await pullCommand(project, undefined, {});
 
   if (!isEnvIgnored(cwd)) {
     console.log(`\n${symbols.warn} .env is not listed in .gitignore.`);

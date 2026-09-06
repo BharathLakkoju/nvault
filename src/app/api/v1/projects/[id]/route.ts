@@ -1,9 +1,9 @@
-import { RenameProjectRequestSchema } from "@/lib/schemas";
+import { UpdateProjectRequestSchema } from "@/lib/schemas";
 import { audit } from "@/server/audit";
 import { requireAuth } from "@/server/auth/require-auth";
 import { authorizeProject } from "@/server/authz/project-access";
 import { clientIp, handler, json, noContent, readJson } from "@/server/http";
-import { deleteProject, projectToDto, renameProject } from "@/server/projects/service";
+import { deleteProject, projectToDto, updateProject } from "@/server/projects/service";
 import { db } from "@/server/db";
 
 export const runtime = "nodejs";
@@ -26,18 +26,31 @@ export const GET = handler(async (req, { params }) => {
 export const PATCH = handler(async (req, { params }) => {
   const auth = await requireAuth(req);
   const { project } = await authorizeProject(auth.userId, params.id, "manage");
-  const dto = await readJson(req, RenameProjectRequestSchema);
-  const renamed = await renameProject(project, dto.name);
-  await audit({
-    userId: auth.userId,
-    organizationId: renamed.organizationId,
-    action: "project.renamed",
-    targetType: "project",
-    targetId: renamed.id,
-    metadata: { name: renamed.name },
-    ipAddress: clientIp(req),
-  });
-  return json({ project: projectToDto(renamed, await withOrg(renamed)) });
+  const dto = await readJson(req, UpdateProjectRequestSchema);
+  const updated = await updateProject(auth.userId, project, dto);
+  if (dto.name !== undefined && updated.name !== project.name) {
+    await audit({
+      userId: auth.userId,
+      organizationId: updated.organizationId,
+      action: "project.renamed",
+      targetType: "project",
+      targetId: updated.id,
+      metadata: { name: updated.name },
+      ipAddress: clientIp(req),
+    });
+  }
+  if (dto.gitRemoteUrl !== undefined && updated.gitRemoteUrl !== project.gitRemoteUrl) {
+    await audit({
+      userId: auth.userId,
+      organizationId: updated.organizationId,
+      action: "project.git_remote_updated",
+      targetType: "project",
+      targetId: updated.id,
+      metadata: { gitRemoteUrl: updated.gitRemoteUrl ?? "" },
+      ipAddress: clientIp(req),
+    });
+  }
+  return json({ project: projectToDto(updated, await withOrg(updated)) });
 });
 
 export const DELETE = handler(async (req, { params }) => {

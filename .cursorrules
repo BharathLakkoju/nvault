@@ -1,0 +1,41 @@
+# nvault — Cursor context rules
+
+## Stack
+
+- **Framework:** Next.js 16 App Router (Route Handlers under `src/app/api/v1/`)
+- **Language:** TypeScript (strict)
+- **Database:** PostgreSQL via Prisma 7 (`prisma/schema.prisma`, driver adapter + pooled `DATABASE_URL`)
+- **Styling:** Tailwind CSS 4 + shadcn/ui-style components
+- **Auth:** JWT access tokens + httpOnly refresh cookies + CLI Personal Access Tokens (`evk_`)
+- **Billing:** Polar (webhooks, checkout, customer portal)
+- **Crypto:** Client-side zero-knowledge vault (`src/lib/crypto/`); server never sees plaintext secrets
+- **CLI:** Separate package in `cli/` (published as `nvault` on npm)
+
+There is **no tRPC** in this repo — API routes call server modules in `src/server/`.
+
+## Architecture conventions
+
+- Route handlers are thin: validate input (Zod in `src/lib/schemas/`), call `src/server/*` services, return via `handler()` + `json()` from `src/server/http.ts`.
+- Throw `ApiError` for expected failures; `handler()` maps them to JSON responses.
+- Authorization lives in `src/server/authz/` — never rely on frontend checks alone.
+- Sensitive file blobs: client-encrypted, then server storage-encrypted; preserve exact bytes.
+- Prefer small, focused modules over large files.
+
+## When editing
+
+- Read the specific file(s) involved before changing behavior — do not guess patterns.
+- Match existing naming, imports (`@/…` alias), and error-message tone.
+- Security-sensitive paths: auth, billing webhooks, org key rotation, file upload limits, rate limits.
+- Do not log plaintext secrets, tokens, or environment variable values.
+- Do not commit `.env` files or hardcode credentials.
+
+## Tests
+
+- Unit tests: `src/**/*.spec.ts` (`pnpm test`)
+- Integration tests: `tests/integration/**/*.spec.ts` (`pnpm test:integration`)
+- CLI integration: `tests/cli-integration/**/*.spec.ts`
+
+## Ignore (also listed in `.cursorignore`)
+
+- `node_modules/`, `.next/`, `dist/`, generated Prisma client churn
+- Large fixtures and build artifacts

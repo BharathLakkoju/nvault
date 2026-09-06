@@ -157,17 +157,13 @@ describeIf("nvault CLI ⇄ API (integration)", () => {
       expect(row).toBeTruthy();
     });
 
-    it("enforces the Free personal-project cap (4th create → 402)", async () => {
-      const acct = await createAccount();
+    it("Free account: CLI commands are refused without Pro", async () => {
+      const acct = await createAccount(undefined, { pro: false });
       useAccountEnv(acct);
 
-      await projectCreateCommand("p1");
-      await projectCreateCommand("p2");
-      await projectCreateCommand("p3");
-
-      await expect(projectCreateCommand("p4")).rejects.toMatchObject({
+      await expect(projectCreateCommand("p1")).rejects.toMatchObject({
         name: "ApiError",
-        status: 402,
+        status: 403,
       });
     });
 
@@ -285,34 +281,18 @@ describeIf("nvault CLI ⇄ API (integration)", () => {
   // ---------------------------------------------------------------------------
 
   describe("history / restore", () => {
-    it("Free tier: history lists 2 versions + a cap notice, and a 3rd push is 402", async () => {
-      const acct = await createAccount();
+    it("Free account: PAT-authenticated vault unlock is refused without Pro", async () => {
+      const acct = await createAccount(undefined, { pro: false });
       useAccountEnv(acct);
-      await projectCreateCommand("verproj");
 
-      const dir = mkTmp();
-      chdir(dir);
-      writeFileSync(join(dir, ".env"), "N=1\n");
-      await pushCommand("verproj", ".env", { yes: true });
-      writeFileSync(join(dir, ".env"), "N=2\n");
-      await pushCommand("verproj", ".env", { yes: true });
-      writeFileSync(join(dir, ".env"), "N=3\n");
-      await expect(pushCommand("verproj", ".env", { yes: true })).rejects.toMatchObject({
-        status: 402,
+      await expect(filesCommand("verproj")).rejects.toMatchObject({
+        name: "ApiError",
+        status: 403,
       });
-
-      cc.lines.length = 0;
-      await historyCommand(".env", { project: "verproj" });
-      const out = cc.text();
-      expect(out).toMatch(/v1/);
-      expect(out).toMatch(/v2/);
-      expect(out).not.toMatch(/v3/);
-      expect(out).toMatch(/Free keeps the last 2 versions/);
     });
 
     it("Pro: `restore .env 1` re-publishes v1's bytes as a new version", async () => {
       const acct = await createAccount();
-      await grantPro(acct.userId);
       useAccountEnv(acct);
       await projectCreateCommand("proproj");
 

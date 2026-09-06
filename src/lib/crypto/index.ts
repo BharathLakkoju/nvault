@@ -4,6 +4,7 @@ export * from "./kdf";
 export * from "./aead";
 export * from "./envelope";
 export * from "./hash";
+export * from "./file-fingerprint";
 export * from "./vault";
 export * from "./asymmetric";
 export * from "./org-enrollment";

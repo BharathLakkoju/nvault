@@ -19,7 +19,7 @@ export interface ProjectDto {
 }
 
 export type OrgRole = "OWNER" | "ADMIN" | "MEMBER";
-export type OrgMembershipStatus = "INVITED" | "ACTIVE";
+export type OrgMembershipStatus = "INVITED" | "ACTIVE" | "EXPIRED";
 /** Billing lifecycle of the organization itself. */
 export type OrgBillingStatus = "PENDING_PAYMENT" | "ACTIVE" | "SUSPENDED";
 export type SubscriptionStatus = "PENDING" | "ACTIVE" | "PAST_DUE" | "CANCELED";
@@ -131,7 +131,7 @@ export interface FileVersionSummaryDto {
   id: string;
   versionNumber: number;
   plaintextSize: number;
-  plaintextSha256: string;
+  plaintextFingerprint: string;
   createdAt: string;
   isCurrent?: boolean;
 }
@@ -148,7 +148,7 @@ export interface DownloadedFileDto {
   filename: string;
   payload: { iv: string; ciphertext: string; contentId: string };
   plaintextSize: number;
-  plaintextSha256: string;
+  plaintextFingerprint: string;
 }
 
 export interface SessionDto {

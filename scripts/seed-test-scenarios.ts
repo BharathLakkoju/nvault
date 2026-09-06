@@ -163,7 +163,7 @@ async function uploadFile(
       payload,
       contentId,
       plaintextSize: bytes.length,
-      plaintextSha256: await vc.sha256Hex(bytes),
+      plaintextFingerprint: await vc.fileFingerprintHex(projectKey, bytes),
     },
     sessionId,
     { unlimited },

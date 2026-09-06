@@ -11,6 +11,7 @@ import { Input, Label } from "@/components/ui/input";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { apiRequest } from "@/lib/api-client";
 import { formatRelativeTime } from "@/lib/format";
+import { isPasskeyStepUpRequired, verifyPasskeyStepUp } from "@/lib/webauthn-client";
 import { toastError, useToastStore } from "@/lib/toast-store";
 import type { ApiTokenDto } from "@/lib/types";
 
@@ -87,8 +88,23 @@ function TokensContent() {
   const revoked = allTokens.filter((t) => t.revokedAt);
 
   const create = useMutation({
-    mutationFn: (tokenName: string) =>
-      apiRequest<CreateResponse>("/auth/tokens", { method: "POST", body: { name: tokenName } }),
+    mutationFn: async (tokenName: string) => {
+      try {
+        return await apiRequest<CreateResponse>("/auth/tokens", {
+          method: "POST",
+          body: { name: tokenName },
+        });
+      } catch (err) {
+        if (isPasskeyStepUpRequired(err)) {
+          await verifyPasskeyStepUp();
+          return apiRequest<CreateResponse>("/auth/tokens", {
+            method: "POST",
+            body: { name: tokenName },
+          });
+        }
+        throw err;
+      }
+    },
     onSuccess: (res) => {
       stashFreshToken(res.token);
       setName("");
@@ -118,7 +134,7 @@ function TokensContent() {
             </DialogTrigger>
             <DialogContent
               title="Create a CLI access token"
-              description="You'll see the token once — copy it and run `nvault login --token <token>` on the machine you want to sign in. That one login persists (the CLI stores it in your OS keychain), so you won't need the token again on that machine. Treat it like a password: it grants full access to your vault's encrypted data over the API."
+              description="You'll see the token once — copy it and run `nvault login --token <token>` on the machine you want to sign in. New tokens expire after 90 days by default (extended on use, up to one year). If you've registered a passkey, you'll be asked to confirm with it."
             >
               <form
                 onSubmit={(e) => {

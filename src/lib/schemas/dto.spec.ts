@@ -23,7 +23,7 @@ describe("UploadFileVersionRequestSchema", () => {
     payload: { iv: "aXY=", ciphertext: "Y3Q=" },
     contentId: "00000000-0000-4000-8000-000000000000",
     plaintextSize: 12,
-    plaintextSha256: "a".repeat(64),
+    plaintextFingerprint: "a".repeat(64),
   };
 
   it("accepts a dotenv-style upload", () => {

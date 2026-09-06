@@ -33,7 +33,7 @@ export const POST = handler(async (req, { params }) => {
         id: version.id,
         versionNumber: version.versionNumber,
         plaintextSize: version.plaintextSize,
-        plaintextSha256: version.plaintextSha256,
+        plaintextFingerprint: version.plaintextFingerprint,
         createdAt: version.createdAt,
       },
     },

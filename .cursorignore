@@ -1,0 +1,22 @@
+node_modules/
+.next/
+dist/
+coverage/
+.turbo/
+.vercel/
+
+# Generated / vendor churn
+src/generated/
+
+# CLI package has its own toolchain
+cli/node_modules/
+cli/dist/
+
+# Logs and local env
+*.log
+.env
+.env.*
+
+# Lockfiles and binaries (large, low signal for AI)
+pnpm-lock.yaml
+package-lock.json

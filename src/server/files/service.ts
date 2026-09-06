@@ -29,7 +29,7 @@ interface NewVersionData {
   ivBase64: string;
   contentId: string;
   plaintextSize: number;
-  plaintextSha256: string;
+  plaintextFingerprint: string;
   createdBySessionId: string;
 }
 
@@ -129,7 +129,7 @@ export async function uploadVersion(
       ivBase64: dto.payload.iv,
       contentId: dto.contentId,
       plaintextSize: dto.plaintextSize,
-      plaintextSha256: dto.plaintextSha256,
+      plaintextFingerprint: dto.plaintextFingerprint,
       createdBySessionId: sessionId,
     });
     return { file, version };
@@ -181,7 +181,7 @@ export async function restoreVersion(
       ivBase64: target.ivBase64,
       contentId: target.contentId,
       plaintextSize: target.plaintextSize,
-      plaintextSha256: target.plaintextSha256,
+      plaintextFingerprint: target.plaintextFingerprint,
       createdBySessionId: sessionId,
     });
   } catch (err) {
@@ -220,7 +220,7 @@ export async function exportProjectFiles(projectId: string) {
       filename: file.filename,
       payload,
       plaintextSize: file.currentVersion.plaintextSize,
-      plaintextSha256: file.currentVersion.plaintextSha256,
+      plaintextFingerprint: file.currentVersion.plaintextFingerprint,
     });
   }
   return results;

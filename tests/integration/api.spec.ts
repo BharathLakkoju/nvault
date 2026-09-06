@@ -41,10 +41,14 @@ interface CallOpts {
 async function call(fn: Handler, opts: CallOpts) {
   const headers: Record<string, string> = { "content-type": "application/json" };
   if (opts.token) headers.authorization = `Bearer ${opts.token}`;
+  const body = opts.body !== undefined ? JSON.stringify(opts.body) : undefined;
+  if (body !== undefined) {
+    headers["content-length"] = String(Buffer.byteLength(body, "utf8"));
+  }
   const req = new NextRequest(`http://localhost${opts.path}`, {
     method: opts.method,
     headers,
-    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+    body,
   });
   const res = await fn(req, { params: opts.params ?? {} });
   const text = await res.text();
@@ -61,6 +65,7 @@ describeIf("nvault API (integration)", () => {
     revokeSession: require("@/app/api/v1/auth/sessions/[id]/route").DELETE as Handler,
     projects: require("@/app/api/v1/projects/route"),
     project: require("@/app/api/v1/projects/[id]/route"),
+    byGitRemote: require("@/app/api/v1/projects/by-git-remote/route").GET as Handler,
     files: require("@/app/api/v1/projects/[id]/files/route"),
     fileVersions: require("@/app/api/v1/projects/[id]/files/[fileId]/versions/route")
       .GET as Handler,
@@ -117,6 +122,7 @@ describeIf("nvault API (integration)", () => {
       currentPeriodEnd?: string;
       subscriptionId?: string;
       tier?: "STARTER" | "GROWTH" | "SCALE";
+      modifiedAt?: string;
     } = {},
   ) {
     const eventId = opts.eventId ?? `evt_${randomUUID()}`;
@@ -131,6 +137,7 @@ describeIf("nvault API (integration)", () => {
         cancel_at_period_end: opts.cancelAtPeriodEnd ?? false,
         current_period_end:
           opts.currentPeriodEnd ?? new Date(Date.now() + 30 * 864e5).toISOString(),
+        modified_at: opts.modifiedAt ?? new Date().toISOString(),
         metadata: { organizationId: orgId, tier },
       },
     });
@@ -397,7 +404,7 @@ describeIf("nvault API (integration)", () => {
         payload: payload1,
         contentId: contentId1,
         plaintextSize: original.length,
-        plaintextSha256: await vaultCrypto.sha256Hex(vaultCrypto.utf8ToBytes(original)),
+        plaintextFingerprint: await vaultCrypto.fileFingerprintHex(projectKey, vaultCrypto.utf8ToBytes(original)),
       },
     });
     expect(uploadRes.status).toBe(201);
@@ -450,7 +457,7 @@ describeIf("nvault API (integration)", () => {
         payload: payload2,
         contentId: contentId2,
         plaintextSize: original2.length,
-        plaintextSha256: await vaultCrypto.sha256Hex(vaultCrypto.utf8ToBytes(original2)),
+        plaintextFingerprint: await vaultCrypto.fileFingerprintHex(projectKey, vaultCrypto.utf8ToBytes(original2)),
       },
     });
 
@@ -507,7 +514,7 @@ describeIf("nvault API (integration)", () => {
         payload: payload1,
         contentId: randomUUID(),
         plaintextSize: 10,
-        plaintextSha256: "0".repeat(64),
+        plaintextFingerprint: "0".repeat(64),
       },
     });
     expect(traversal.status).toBe(400);
@@ -542,7 +549,7 @@ describeIf("nvault API (integration)", () => {
           payload,
           contentId,
           plaintextSize: text.length,
-          plaintextSha256: await vaultCrypto.sha256Hex(vaultCrypto.utf8ToBytes(text)),
+          plaintextFingerprint: await vaultCrypto.fileFingerprintHex(projectKey, vaultCrypto.utf8ToBytes(text)),
         },
       });
     }
@@ -842,7 +849,7 @@ describeIf("nvault API (integration)", () => {
         payload,
         contentId,
         plaintextSize: secret.length,
-        plaintextSha256: await vaultCrypto.sha256Hex(vaultCrypto.utf8ToBytes(secret)),
+        plaintextFingerprint: await vaultCrypto.fileFingerprintHex(projectKey, vaultCrypto.utf8ToBytes(secret)),
       },
     });
     expect(upRes.status).toBe(201);
@@ -985,7 +992,7 @@ describeIf("nvault API (integration)", () => {
         payload,
         contentId,
         plaintextSize: secret.length,
-        plaintextSha256: await vaultCrypto.sha256Hex(vaultCrypto.utf8ToBytes(secret)),
+        plaintextFingerprint: await vaultCrypto.fileFingerprintHex(projectKey, vaultCrypto.utf8ToBytes(secret)),
       },
     });
 
@@ -1193,7 +1200,7 @@ describeIf("nvault API (integration)", () => {
         payload: await vaultCrypto.encryptFileContent(projectKey, contentId, vaultCrypto.utf8ToBytes(secret)),
         contentId,
         plaintextSize: secret.length,
-        plaintextSha256: await vaultCrypto.sha256Hex(vaultCrypto.utf8ToBytes(secret)),
+        plaintextFingerprint: await vaultCrypto.fileFingerprintHex(projectKey, vaultCrypto.utf8ToBytes(secret)),
       },
     });
 
@@ -1222,6 +1229,21 @@ describeIf("nvault API (integration)", () => {
       },
     });
     expect(partial.status).toBe(400);
+
+    // Duplicate member id masking a missing member → 400.
+    const duplicateMember = await call(routes.rotateKey, {
+      method: "POST",
+      path: `/api/v1/organizations/${orgId}/rotate-key`,
+      params: { id: orgId },
+      token: owner.token,
+      body: {
+        newEpoch: 1,
+        projectKeys: [{ projectId, wrappedProjectKey: newWrappedProjectKey }],
+        memberKeys: [memberKeysFull[0], memberKeysFull[0]],
+        ...extras,
+      },
+    });
+    expect(duplicateMember.status).toBe(400);
 
     // Wrong epoch → 409.
     const wrongEpoch = await call(routes.rotateKey, {
@@ -1563,6 +1585,34 @@ describeIf("nvault API (integration)", () => {
     expect(list.body.projects.length).toBe(cap + 3); // nothing deleted
   });
 
+  it("ignores stale Polar subscription events that arrive out of order", async () => {
+    const owner = await registerUserWithKeypair("stale webhook passphrase");
+    const { orgId } = await createRawOrg(owner);
+    const newer = "2026-03-01T00:00:00.000Z";
+    const older = "2026-01-01T00:00:00.000Z";
+
+    const active = await fireSubscriptionWebhook(orgId, {
+      status: "active",
+      modifiedAt: newer,
+    });
+    expect(active.status).toBe(202);
+    expect(active.body.outcome).toBe("applied");
+
+    const staleCancel = await fireSubscriptionWebhook(orgId, {
+      type: "subscription.canceled",
+      status: "canceled",
+      modifiedAt: older,
+      eventId: `evt_stale_${randomUUID()}`,
+    });
+    expect(staleCancel.status).toBe(202);
+    expect(staleCancel.body.outcome).toBe("ignored");
+
+    const org = await db.organization.findUniqueOrThrow({ where: { id: orgId } });
+    expect(org.status).toBe("ACTIVE");
+    const sub = await db.subscription.findUniqueOrThrow({ where: { organizationId: orgId } });
+    expect(sub.status).toBe("ACTIVE");
+  });
+
   it("Team tier caps members; upgrading raises the cap, downgrading is guarded", async () => {
     const owner = await registerUserWithKeypair("tier owner passphrase");
     const { orgId } = await createRawOrg(owner);
@@ -1627,6 +1677,42 @@ describeIf("nvault API (integration)", () => {
       token: owner.token,
     });
     expect(billing.body.subscription.tier).toBe("GROWTH");
+  });
+
+  it("links a git remote to an existing project for CLI auto-detection", async () => {
+    const user = await registerUser("git remote link vault passphrase");
+    const createRes = await makePersonalProject(user.token, "nvault-app");
+    expect(createRes.status).toBe(201);
+    const projectId = createRes.body.project.id as string;
+    const remote = "https://github.com/BharathLakkoju/nvault.git";
+
+    const linkRes = await call(routes.project.PATCH, {
+      method: "PATCH",
+      path: `/api/v1/projects/${projectId}`,
+      params: { id: projectId },
+      token: user.token,
+      body: { gitRemoteUrl: remote },
+    });
+    expect(linkRes.status).toBe(200);
+    expect(linkRes.body.project.gitRemoteUrl).toBe("github.com/bharathlakkoju/nvault");
+
+    const lookupRes = await call(routes.byGitRemote, {
+      method: "GET",
+      path: `/api/v1/projects/by-git-remote?url=${encodeURIComponent("git@github.com:BharathLakkoju/nvault.git")}`,
+      token: user.token,
+    });
+    expect(lookupRes.status).toBe(200);
+    expect(lookupRes.body.project?.id).toBe(projectId);
+
+    const unlinkRes = await call(routes.project.PATCH, {
+      method: "PATCH",
+      path: `/api/v1/projects/${projectId}`,
+      params: { id: projectId },
+      token: user.token,
+      body: { gitRemoteUrl: null },
+    });
+    expect(unlinkRes.status).toBe(200);
+    expect(unlinkRes.body.project.gitRemoteUrl).toBeNull();
   });
 
   it("purge-pending-orgs requires the CRON_SECRET", async () => {

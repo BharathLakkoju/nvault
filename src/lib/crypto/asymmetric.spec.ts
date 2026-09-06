@@ -1,4 +1,4 @@
-import { bytesToBase64 } from "./encoding";
+import { bytesToBase64, base64ToBytes } from "./encoding";
 import { DecryptionError } from "./aead";
 import { provisionVault } from "./vault";
 import {
@@ -67,7 +67,9 @@ describe("wrapToPublicKey / unwrapFromPrivateKey", () => {
     const kp = await provisionUserKeyPair(masterKey);
     const secret = new Uint8Array(32).fill(5);
     const wrapped = await wrapToPublicKey(kp.material.publicKey, secret);
-    const tampered = wrapped.slice(0, -4) + (wrapped.endsWith("A") ? "B" : "A") + wrapped.slice(-3);
+    const bytes = base64ToBytes(wrapped);
+    bytes[Math.floor(bytes.length / 2)] ^= 0xff;
+    const tampered = bytesToBase64(bytes);
     const priv = await unwrapUserPrivateKey(masterKey, kp.material);
     await expect(unwrapFromPrivateKey(priv, tampered)).rejects.toThrow(DecryptionError);
   });

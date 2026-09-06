@@ -45,7 +45,8 @@ export const ProvisionKeyPairRequestSchema = z.object({
 export type ProvisionKeyPairRequest = z.infer<typeof ProvisionKeyPairRequestSchema>;
 
 // CLI Personal Access Tokens. `name` is a user-facing label only ("work
-// laptop", "ci"); it is never secret. `expiresInDays` defaults server-side.
+// laptop", "ci"); it is never secret. `expiresInDays` defaults to 90 days
+// server-side and may be extended up to 365 days explicitly.
 export const CreateApiTokenRequestSchema = z.object({
   name: z.string().trim().min(1).max(100),
   expiresInDays: z.number().int().min(1).max(365).optional(),
@@ -65,7 +66,7 @@ export const CreateProjectRequestSchema = z.object({
   id: z.string().uuid(),
   name: ProjectNameSchema,
   gitRemoteUrl: z.string().trim().max(500).optional(),
-  wrappedProjectKey: z.object({ iv: z.string().min(1), ciphertext: z.string().min(1) }),
+  wrappedProjectKey: WrappedKeySchema,
   // When set, this is an organization project: the caller must be an
   // ADMIN/OWNER of the org, and `wrappedProjectKey` is wrapped under the
   // Organization Key (not a user master key). Omit for a personal project.
@@ -185,7 +186,7 @@ export const RotateKeyRequestSchema = z.object({
     .array(
       z.object({
         projectId: z.string().uuid(),
-        wrappedProjectKey: z.object({ iv: z.string().min(1), ciphertext: z.string().min(1) }),
+        wrappedProjectKey: WrappedKeySchema,
       }),
     )
     .max(2_000),
@@ -208,6 +209,16 @@ export const RenameProjectRequestSchema = z.object({
 });
 export type RenameProjectRequest = z.infer<typeof RenameProjectRequestSchema>;
 
+export const UpdateProjectRequestSchema = z
+  .object({
+    name: ProjectNameSchema.optional(),
+    gitRemoteUrl: z.union([z.string().trim().max(500), z.null()]).optional(),
+  })
+  .refine((data) => data.name !== undefined || data.gitRemoteUrl !== undefined, {
+    message: "At least one field must be provided",
+  });
+export type UpdateProjectRequest = z.infer<typeof UpdateProjectRequestSchema>;
+
 // ---------------------------------------------------------------------------
 // Files
 // ---------------------------------------------------------------------------
@@ -222,8 +233,8 @@ export const FilenameSchema = z
   });
 
 export const EncryptedPayloadSchema = z.object({
-  iv: z.string().min(1),
-  ciphertext: z.string().min(1),
+  iv: z.string().min(1).max(256),
+  ciphertext: z.string().min(1).max(4_000_000),
 });
 
 // 2.5 MiB plaintext ceiling for config files. Kept well under Vercel's fixed
@@ -248,7 +259,7 @@ export const UploadFileVersionRequestSchema = z.object({
   // back unchanged on download so the client can reproduce decryption.
   contentId: z.string().uuid(),
   plaintextSize: z.number().int().min(0).max(MAX_FILE_SIZE_BYTES),
-  plaintextSha256: z.string().length(64),
+  plaintextFingerprint: z.string().length(64),
 });
 export type UploadFileVersionRequest = z.infer<typeof UploadFileVersionRequestSchema>;
 

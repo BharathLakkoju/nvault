@@ -6,16 +6,17 @@ import Link from "next/link";
 import {
   FileLock,
   Eye,
-  EyeSlash,
+  EyeOff,
   Copy,
   Check,
-  DownloadSimple,
-  UploadSimple,
-  CaretDown,
-  CaretUp,
-  Trash,
-} from "@phosphor-icons/react";
+  Download,
+  Upload,
+  ChevronDown,
+  ChevronUp,
+  Trash2,
+} from "lucide-react";
 import { isDotenvStyleFile } from "@/lib/schemas";
+import { GitRemoteCard } from "@/components/git-remote-card";
 import { RequireAuth } from "@/components/require-auth";
 import { RequireVaultUnlocked } from "@/components/require-vault-unlocked";
 import { AppShell } from "@/components/app-shell";
@@ -98,6 +99,8 @@ function ProjectDetail({ projectId }: { projectId: string }) {
         )}
       </div>
 
+      <GitRemoteCard project={project} />
+
       {keyError && (
         <Card className="border-red-500/40 p-4 text-sm text-red-700 dark:text-red-300">
           Couldn&apos;t decrypt this project&apos;s key with your current vault passphrase.
@@ -160,7 +163,7 @@ function UploadDialog({ projectId, projectKey }: { projectId: string; projectKey
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          <UploadSimple size={15} />
+          <Upload size={15} />
           Upload file
         </Button>
       </DialogTrigger>
@@ -235,11 +238,13 @@ function DownloadAllButton({
 
   return (
     <Button variant="secondary" loading={busy} onClick={handleDownloadAll}>
-      <DownloadSimple size={15} />
+      <Download size={15} />
       Download all (.zip)
     </Button>
   );
 }
+
+const REVEAL_AUTO_HIDE_MS = 10_000;
 
 function FileRow({
   projectId,
@@ -258,6 +263,7 @@ function FileRow({
   const [downloadState, setDownloadState] = useState<"idle" | "busy" | "done">("idle");
   const [expanded, setExpanded] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(false);
+  const [revealSecondsLeft, setRevealSecondsLeft] = useState<number | null>(null);
 
   // Which version's plaintext currently sits in `content`. Lets us notice when
   // a newer version arrives (e.g. right after an upload) and drop the stale
@@ -321,6 +327,30 @@ function FileRow({
     }
   }
 
+  // Auto-hide decrypted contents after a short window to reduce shoulder-surfing risk.
+  useEffect(() => {
+    if (!revealed || contentLoading || content === null) {
+      setRevealSecondsLeft(null);
+      return;
+    }
+
+    const deadline = Date.now() + REVEAL_AUTO_HIDE_MS;
+    setRevealSecondsLeft(Math.ceil(REVEAL_AUTO_HIDE_MS / 1000));
+
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setRevealSecondsLeft(remaining);
+    };
+
+    const interval = window.setInterval(tick, 250);
+    const timeout = window.setTimeout(() => setRevealed(false), REVEAL_AUTO_HIDE_MS);
+
+    return () => {
+      window.clearInterval(interval);
+      window.clearTimeout(timeout);
+    };
+  }, [revealed, contentLoading, content, currentVersionId]);
+
   async function handleCopy() {
     if (copyState === "busy") return;
     setCopyState("busy");
@@ -369,75 +399,98 @@ function FileRow({
 
   return (
     <Card className="overflow-hidden">
-      <div className="flex items-center gap-3.5 px-4 py-3.5">
-        <FileLock size={18} className="flex-shrink-0 text-muted" />
+      <div className="flex items-start gap-3 px-4 py-3.5 sm:items-center">
+        <FileLock size={18} className="mt-0.5 shrink-0 text-muted sm:mt-0" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="truncate text-sm font-medium text-ink">{file.filename}</span>
           </div>
           {v && (
-            <div className="text-xs text-muted">
-              {formatBytes(v.plaintextSize)} · updated {formatRelativeTime(v.createdAt)} · v{v.versionNumber}
+            <div className="mt-0.5 text-xs leading-relaxed text-muted">
+              <span className="block sm:inline">
+                <span className="tabular-nums">{formatBytes(v.plaintextSize)}</span>
+                <span className="mx-1.5 hidden sm:inline">·</span>
+                <span className="font-mono sm:hidden">v{v.versionNumber}</span>
+              </span>
+              <span className="block sm:inline">
+                Updated {formatRelativeTime(v.createdAt)}
+              </span>
+              <span className="hidden sm:inline">
+                <span className="mx-1.5">·</span>
+                <span className="font-mono">v{v.versionNumber}</span>
+              </span>
             </div>
           )}
         </div>
-        <RowIcon
-          label={contentLoading ? "Decrypting…" : revealed ? "Hide" : "Reveal"}
-          onClick={toggleReveal}
-          disabled={contentLoading}
-        >
-          {contentLoading ? (
-            <Spinner className="h-4 w-4" />
-          ) : revealed ? (
-            <EyeSlash size={16} />
-          ) : (
-            <Eye size={16} />
-          )}
-        </RowIcon>
-        <RowIcon
-          label={copyState === "done" ? "Copied" : "Copy"}
-          onClick={handleCopy}
-          disabled={copyState === "busy"}
-        >
-          {copyState === "busy" ? (
-            <Spinner className="h-4 w-4" />
-          ) : copyState === "done" ? (
-            <Check size={16} className="text-green-600 dark:text-green-400" />
-          ) : (
-            <Copy size={16} />
-          )}
-        </RowIcon>
-        <RowIcon
-          label={downloadState === "done" ? "Downloaded" : "Download"}
-          onClick={handleDownload}
-          disabled={downloadState === "busy"}
-        >
-          {downloadState === "busy" ? (
-            <Spinner className="h-4 w-4" />
-          ) : downloadState === "done" ? (
-            <Check size={16} className="text-green-600 dark:text-green-400" />
-          ) : (
-            <DownloadSimple size={16} />
-          )}
-        </RowIcon>
-        <RowIcon label="Version history" onClick={() => setExpanded((e) => !e)}>
-          {expanded ? <CaretUp size={16} /> : <CaretDown size={16} />}
-        </RowIcon>
-        <RowIcon label="Delete" onClick={() => setPendingDelete(true)}>
-          <Trash size={16} className="text-red-600 dark:text-red-400" />
-        </RowIcon>
+        <div className="flex shrink-0 items-center gap-0.5">
+          <RowIcon
+            label={contentLoading ? "Decrypting…" : revealed ? "Hide" : "Reveal"}
+            onClick={toggleReveal}
+            disabled={contentLoading}
+          >
+            {contentLoading ? (
+              <Spinner className="h-4 w-4" />
+            ) : revealed ? (
+              <EyeOff size={16} />
+            ) : (
+              <Eye size={16} />
+            )}
+          </RowIcon>
+          <RowIcon
+            label={copyState === "done" ? "Copied" : "Copy"}
+            onClick={handleCopy}
+            disabled={copyState === "busy"}
+          >
+            {copyState === "busy" ? (
+              <Spinner className="h-4 w-4" />
+            ) : copyState === "done" ? (
+              <Check size={16} className="text-green-600 dark:text-green-400" />
+            ) : (
+              <Copy size={16} />
+            )}
+          </RowIcon>
+          <RowIcon
+            label={downloadState === "done" ? "Downloaded" : "Download"}
+            onClick={handleDownload}
+            disabled={downloadState === "busy"}
+          >
+            {downloadState === "busy" ? (
+              <Spinner className="h-4 w-4" />
+            ) : downloadState === "done" ? (
+              <Check size={16} className="text-green-600 dark:text-green-400" />
+            ) : (
+              <Download size={16} />
+            )}
+          </RowIcon>
+          <RowIcon label="Version history" onClick={() => setExpanded((e) => !e)}>
+            {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </RowIcon>
+          <RowIcon label="Delete" onClick={() => setPendingDelete(true)}>
+            <Trash2 size={16} className="text-red-600 dark:text-red-400" />
+          </RowIcon>
+        </div>
       </div>
 
       {revealed && (
-        <div className="px-4 pb-4 pl-12">
+        <div className="px-4 pb-4 sm:pl-12">
           {contentLoading || content === null ? (
             <div className="flex items-center gap-2 rounded-md border border-line bg-surface-3 px-3.5 py-3 text-xs text-muted">
               <Spinner className="h-3.5 w-3.5" /> Decrypting in your browser…
             </div>
           ) : (
-            <pre className="dc-scroll m-0 overflow-x-auto rounded-md border border-line bg-surface-3 px-3.5 py-3 font-mono text-[12.5px] leading-relaxed text-ink">
-              {content}
-            </pre>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3 text-xs text-muted">
+                <span>Decrypted locally — never sent to the server</span>
+                {revealSecondsLeft !== null && (
+                  <span className="tabular-nums text-amber-700 dark:text-amber-300">
+                    Hiding in {revealSecondsLeft}s
+                  </span>
+                )}
+              </div>
+              <pre className="dc-scroll m-0 overflow-x-auto rounded-md border border-line bg-surface-3 px-3.5 py-3 font-mono text-[12.5px] leading-relaxed text-ink">
+                {content}
+              </pre>
+            </div>
           )}
         </div>
       )}
@@ -480,7 +533,7 @@ function RowIcon({
       aria-label={label}
       onClick={onClick}
       disabled={disabled}
-      className="focus-ring inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-muted hover:bg-ink/[0.06] hover:text-ink disabled:cursor-default disabled:opacity-100 disabled:hover:bg-transparent"
+      className="focus-ring inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-ink/[0.06] hover:text-ink disabled:cursor-default disabled:opacity-100 disabled:hover:bg-transparent"
     >
       {children}
     </button>
@@ -534,7 +587,7 @@ function VersionHistory({
   }
 
   return (
-    <div className="border-t border-line px-4 py-3 pl-12">
+    <div className="border-t border-line px-4 py-3 sm:pl-12">
       <div className="mb-2 text-[11px] uppercase tracking-[0.06em] text-muted">Version history</div>
       {isLoading && (
         <div className="flex items-center gap-2 py-1.5 text-xs text-muted">

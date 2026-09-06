@@ -24,8 +24,8 @@ export async function openProjectKey(
 export async function encryptFile(projectKey: Uint8Array, plaintext: Uint8Array) {
   const contentId = randomUUID();
   const payload = await vaultCrypto.encryptFileContent(projectKey, contentId, plaintext);
-  const plaintextSha256 = await vaultCrypto.sha256Hex(plaintext);
-  return { contentId, payload, plaintextSize: plaintext.length, plaintextSha256 };
+  const plaintextFingerprint = await vaultCrypto.fileFingerprintHex(projectKey, plaintext);
+  return { contentId, payload, plaintextSize: plaintext.length, plaintextFingerprint };
 }
 
 export async function decryptFile(
@@ -51,5 +51,5 @@ export async function openOrgKey(privateKey: Uint8Array, wrappedOrgKeyCiphertext
   return vaultCrypto.unwrapFromPrivateKey(privateKey, wrappedOrgKeyCiphertext);
 }
 
-export const { bytesToUtf8, utf8ToBytes, sha256Hex } = vaultCrypto;
+export const { bytesToUtf8, utf8ToBytes, sha256Hex, fileFingerprintHex } = vaultCrypto;
 export const newId = randomUUID;

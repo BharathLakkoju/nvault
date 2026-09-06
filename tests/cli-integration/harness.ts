@@ -157,10 +157,19 @@ export function installFetchShim(): void {
       params[k] = decodeURIComponent(match[i + 1]);
     });
 
+    const headers = new Headers((init.headers as HeadersInit) ?? {});
+    let body: BodyInit | undefined;
+    if (init.body != null && method !== "GET") {
+      body = init.body as BodyInit;
+      if (typeof init.body === "string" && !headers.has("content-length")) {
+        headers.set("content-length", String(Buffer.byteLength(init.body, "utf8")));
+      }
+    }
+
     const req = new NextRequest(`http://localhost${url.pathname}${url.search}`, {
       method,
-      headers: new Headers((init.headers as HeadersInit) ?? {}),
-      body: init.body != null && method !== "GET" ? (init.body as BodyInit) : undefined,
+      headers,
+      body,
     });
 
     const res = await route.load()(req, { params });
@@ -186,10 +195,14 @@ async function directCall(
 ) {
   const headers: Record<string, string> = { "content-type": "application/json" };
   if (opts.token) headers.authorization = `Bearer ${opts.token}`;
+  const body = opts.body !== undefined ? JSON.stringify(opts.body) : undefined;
+  if (body !== undefined) {
+    headers["content-length"] = String(Buffer.byteLength(body, "utf8"));
+  }
   const req = new NextRequest(`http://localhost${opts.path}`, {
     method: opts.method,
     headers,
-    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+    body,
   });
   const res = await load()(req, { params: opts.params ?? {} });
   const text = await res.text();
@@ -210,7 +223,10 @@ const db = require("@/server/db").db as import("@/generated/prisma/client").Pris
 const createdUserIds: string[] = [];
 
 /** Registers a fresh account and mints a CLI Personal Access Token for it. */
-export async function createAccount(passphrase = "harness vault passphrase 2026"): Promise<TestAccount> {
+export async function createAccount(
+  passphrase = "harness vault passphrase 2026",
+  opts: { pro?: boolean } = {},
+): Promise<TestAccount> {
   const email = `cli_it_${randomUUID()}@example.com`;
   const password = "cli integration account password 123";
   const provisioned = await crypto.provisionVault(passphrase);
@@ -238,6 +254,10 @@ export async function createAccount(passphrase = "harness vault passphrase 2026"
   // stays plan-agnostic — the paywall itself is covered in the API suite.
   const { createApiToken } = require("@/server/auth/api-tokens") as typeof import("@/server/auth/api-tokens");
   const minted = await createApiToken(userId, { name: "cli harness" }, { hasCliAccess: true });
+
+  if (opts.pro !== false) {
+    await grantPro(userId);
+  }
 
   return { email, userId, passphrase, pat: minted.token, jwt };
 }
@@ -285,13 +305,18 @@ export function clearAccountEnv(): void {
  * tests). Cascades away when the user is deleted in cleanup.
  */
 export async function grantPro(userId: string): Promise<void> {
+  const polarSubscriptionId = `sub_cli_it_${userId}`;
+  const existing = await db.subscription.findFirst({
+    where: { ownerUserId: userId, plan: "PRO" },
+  });
+  if (existing) return;
   await db.subscription.create({
     data: {
       plan: "PRO",
       ownerUserId: userId,
       status: "ACTIVE",
       polarCustomerId: `cus_cli_it_${userId.slice(0, 8)}`,
-      polarSubscriptionId: `sub_cli_it_${userId.slice(0, 8)}`,
+      polarSubscriptionId,
       polarProductId: process.env.POLAR_PRO_PRODUCT_ID ?? "prod_pro_cli_it",
       currentPeriodEnd: new Date(Date.now() + 28 * 864e5),
       cancelAtPeriodEnd: false,

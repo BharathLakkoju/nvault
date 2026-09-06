@@ -22,6 +22,7 @@ const ACTION_LABELS: Record<string, string> = {
   "org.ownership_transferred": "transferred ownership",
   "project.created": "created a project",
   "project.renamed": "renamed a project",
+  "project.git_remote_updated": "updated a project's git repository link",
   "project.deleted": "deleted a project",
   "project.moved_to_org": "moved a project into the organization",
   "file.uploaded": "uploaded a file version",

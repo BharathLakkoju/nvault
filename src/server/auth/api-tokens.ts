@@ -1,5 +1,7 @@
 import { db } from "../db";
 import { assertCanCreateCliToken } from "../billing/entitlements";
+import { userHasCliAccess } from "../billing/service";
+import { billingConfigured } from "../env";
 import { ApiError } from "../http";
 import { generateApiToken, generateOpaqueToken, hashToken } from "./tokens";
 
@@ -18,7 +20,9 @@ import { generateApiToken, generateOpaqueToken, hashToken } from "./tokens";
  * a PAT authenticates API calls; it does not decrypt anything.
  */
 
-const DEFAULT_TTL_DAYS = 365;
+export const DEFAULT_PAT_TTL_DAYS = 90;
+export const MAX_PAT_TTL_DAYS = 365;
+const IDLE_REVOKE_DAYS = 60;
 
 export interface CreatedApiToken {
   id: string;
@@ -41,15 +45,13 @@ export async function createApiToken(
   assertCanCreateCliToken(activeCount, opts.hasCliAccess);
 
   const raw = generateApiToken();
-  const ttlDays = input.expiresInDays ?? DEFAULT_TTL_DAYS;
+  const ttlDays = Math.min(input.expiresInDays ?? DEFAULT_PAT_TTL_DAYS, MAX_PAT_TTL_DAYS);
   const expiresAt = new Date(Date.now() + ttlDays * 86_400_000);
 
   const session = await db.session.create({
     data: {
       userId,
       userAgent: "nvault CLI",
-      // PATs never use the refresh flow; this satisfies the NOT NULL + UNIQUE
-      // constraint with a value nobody holds.
       refreshTokenHash: hashToken(generateOpaqueToken()),
       apiTokenHash: hashToken(raw),
       apiTokenPrefix: raw.slice(0, 12),
@@ -111,6 +113,12 @@ export async function revokeApiToken(userId: string, id: string): Promise<void> 
   await db.session.update({ where: { id }, data: { revokedAt: new Date() } });
 }
 
+function slidingPatExpiry(session: { createdAt: Date }): Date {
+  const absoluteCap = session.createdAt.getTime() + MAX_PAT_TTL_DAYS * 86_400_000;
+  const sliding = Date.now() + DEFAULT_PAT_TTL_DAYS * 86_400_000;
+  return new Date(Math.min(absoluteCap, sliding));
+}
+
 /**
  * Resolves an `evk_` bearer token to its session. Throws 401 on any
  * problem (unknown / revoked / expired) with a single generic message.
@@ -124,9 +132,26 @@ export async function requireApiToken(
   if (!session || session.revokedAt || session.expiresAt < new Date()) {
     throw new ApiError(401, "Invalid or expired API token");
   }
-  // Best-effort last-used bump — never block the request path on it.
-  void db.session
-    .update({ where: { id: session.id }, data: { lastUsedAt: new Date() } })
-    .catch(() => undefined);
+
+  const idleCutoff = Date.now() - IDLE_REVOKE_DAYS * 86_400_000;
+  if (session.lastUsedAt.getTime() < idleCutoff) {
+    await db.session.update({ where: { id: session.id }, data: { revokedAt: new Date() } }).catch(() => undefined);
+    throw new ApiError(401, "Invalid or expired API token");
+  }
+
+  if (billingConfigured() && !(await userHasCliAccess(session.userId))) {
+    throw new ApiError(403, "CLI access requires an active Pro or Team subscription.");
+  }
+
+  const now = new Date();
+  const nextExpiry = slidingPatExpiry(session);
+  await db.session.update({
+    where: { id: session.id },
+    data: {
+      lastUsedAt: now,
+      ...(nextExpiry.getTime() > session.expiresAt.getTime() ? { expiresAt: nextExpiry } : {}),
+    },
+  });
+
   return { userId: session.userId, sessionId: session.id };
 }

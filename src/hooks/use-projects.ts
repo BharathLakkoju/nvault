@@ -60,12 +60,38 @@ export function useCreateProject() {
   });
 }
 
+export function useUpdateProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      name,
+      gitRemoteUrl,
+    }: {
+      id: string;
+      name?: string;
+      gitRemoteUrl?: string | null;
+    }) =>
+      apiRequest<{ project: ProjectDto }>(`/projects/${id}`, {
+        method: "PATCH",
+        body: { ...(name !== undefined ? { name } : {}), ...(gitRemoteUrl !== undefined ? { gitRemoteUrl } : {}) },
+      }),
+    onSuccess: (_data, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["projects", id] });
+    },
+  });
+}
+
 export function useRenameProject() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) =>
       apiRequest<{ project: ProjectDto }>(`/projects/${id}`, { method: "PATCH", body: { name } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["projects"] }),
+    onSuccess: (_data, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["projects", id] });
+    },
   });
 }
 
