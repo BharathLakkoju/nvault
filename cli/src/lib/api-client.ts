@@ -79,9 +79,10 @@ async function rawRequest<T>(
 
   if (!res.ok) {
     const message = (data?.message as string) ?? `${res.status} ${res.statusText}`;
+    const method = options.method ?? "GET";
     throw new ApiError(
       res.status,
-      message,
+      `${message} (${method} ${path})`,
       data?.issues as Array<{ path: string; message: string }> | undefined,
     );
   }

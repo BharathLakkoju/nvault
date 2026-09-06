@@ -34,7 +34,7 @@ export async function initCommand(): Promise<void> {
   const restore = await promptConfirm("Restore its environment files here?", true);
   if (!restore) return;
 
-  await pullCommand(project.name, undefined, {});
+  await pullCommand(project, undefined, {});
 
   if (!isEnvIgnored(cwd)) {
     console.log(`\n${symbols.warn} .env is not listed in .gitignore.`);

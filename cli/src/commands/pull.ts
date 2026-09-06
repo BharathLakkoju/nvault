@@ -7,7 +7,7 @@ import { resolveProjectKey } from "../lib/project-key";
 import { decryptFile } from "../lib/vault-client";
 import { promptConfirm } from "../lib/prompt";
 import { symbols } from "../lib/colors";
-import type { DownloadedFileDto, FileDto } from "../lib/types";
+import type { DownloadedFileDto, FileDto, ProjectDto } from "../lib/types";
 
 export interface PullOptions {
   yes?: boolean;
@@ -33,12 +33,15 @@ async function writeWithBackup(cwd: string, filename: string, content: Uint8Arra
 }
 
 export async function pullCommand(
-  projectName: string | undefined,
+  projectNameOrProject: string | ProjectDto | undefined,
   filename: string | undefined,
   options: PullOptions,
 ): Promise<void> {
   const cwd = process.cwd();
-  const project = await resolveProject(projectName);
+  const project =
+    typeof projectNameOrProject === "object" && projectNameOrProject !== null
+      ? projectNameOrProject
+      : await resolveProject(projectNameOrProject);
   const session = await unlockVaultForThisCommand();
   const projectKey = await resolveProjectKey(project, session);
 
