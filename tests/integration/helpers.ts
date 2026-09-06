@@ -235,7 +235,10 @@ export async function uploadFile(
       payload,
       contentId,
       plaintextSize: plaintext.length,
-      plaintextSha256: await vaultCrypto.sha256Hex(vaultCrypto.utf8ToBytes(plaintext)),
+      plaintextFingerprint: await vaultCrypto.fileFingerprintHex(
+        projectKey,
+        vaultCrypto.utf8ToBytes(plaintext),
+      ),
     },
   });
 }

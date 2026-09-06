@@ -132,8 +132,8 @@ export async function assertKeyPairConsistent(privateKey: Uint8Array, publicKey:
 export async function encryptFile(projectKey: Uint8Array, plaintext: Uint8Array) {
   const contentId = newId();
   const payload = await vaultCrypto.encryptFileContent(projectKey, contentId, plaintext);
-  const plaintextSha256 = await vaultCrypto.sha256Hex(plaintext);
-  return { contentId, payload, plaintextSize: plaintext.length, plaintextSha256 };
+  const plaintextFingerprint = await vaultCrypto.fileFingerprintHex(projectKey, plaintext);
+  return { contentId, payload, plaintextSize: plaintext.length, plaintextFingerprint };
 }
 
 export async function decryptFile(

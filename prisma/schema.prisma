@@ -56,8 +56,31 @@ model User {
   invitesSent        OrganizationInvite[]     @relation("InviteInvitedBy")
   keyEpochsRotated   OrganizationKeyEpoch[]   @relation("KeyEpochRotatedBy")
   subscriptionsOwned Subscription[]           @relation("SubscriptionOwner")
+  webauthnCredentials WebAuthnCredential[]
 
   @@map("users")
+}
+
+/// WebAuthn passkey registered to a user account.
+model WebAuthnCredential {
+  id           String @id @default(cuid())
+  userId       String
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Base64url credential id from the authenticator.
+  credentialId String @unique
+  /// Base64url COSE public key.
+  publicKey    String
+  counter      BigInt
+  deviceType   String?
+  backedUp     Boolean @default(false)
+  transports   String?
+
+  createdAt DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("webauthn_credentials")
 }
 
 /// An authenticated browser session — the unit of session revocation.
@@ -84,6 +107,10 @@ model Session {
   lastUsedAt DateTime  @default(now())
   expiresAt  DateTime
   revokedAt  DateTime?
+
+  /// Set when the holder recently verified a passkey for step-up auth on
+  /// sensitive actions (key rotation, PAT creation, keypair changes).
+  stepUpVerifiedAt DateTime?
 
   createdVersions FileVersion[]
 
@@ -178,8 +205,10 @@ model FileVersion {
   // content (see UploadFileVersionRequestSchema) — opaque to the server.
   contentId  String
 
-  plaintextSize   Int
-  plaintextSha256 String // integrity/dedup metadata only — never used as key material
+  plaintextSize        Int
+  /// HMAC-SHA256 fingerprint keyed under the project data key (client-side).
+  /// Not a public hash — verifying it requires the same key material as decrypt.
+  plaintextFingerprint String
 
   createdAt DateTime @default(now())
 
@@ -261,6 +290,7 @@ enum OrgRole {
 enum OrgMembershipStatus {
   INVITED // invite accepted, account linked, but the Org Key has not been granted yet
   ACTIVE // holds the wrapped Org Key — full access to org projects
+  EXPIRED // invite/enrollment window elapsed without completing enrollment
 }
 
 /// Billing lifecycle of an organization. An org is unusable until a Team
@@ -483,6 +513,10 @@ model Subscription {
   /// ACTIVE until this instant, then the webhook drops it to SUSPENDED.
   currentPeriodEnd  DateTime?
   cancelAtPeriodEnd Boolean   @default(false)
+
+  /// Last Polar `modified_at` applied from a webhook. Older/out-of-order events
+  /// are ignored so a delayed cancellation cannot clobber a newer active state.
+  polarModifiedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

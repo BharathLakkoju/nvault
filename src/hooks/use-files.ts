@@ -25,10 +25,10 @@ export function useUploadFile(projectId: string) {
       plaintext: Uint8Array;
       projectKey: Uint8Array;
     }) => {
-      const { contentId, payload, plaintextSize, plaintextSha256 } = await encryptFile(projectKey, plaintext);
+      const { contentId, payload, plaintextSize, plaintextFingerprint } = await encryptFile(projectKey, plaintext);
       return apiRequest(`/projects/${projectId}/files`, {
         method: "POST",
-        body: { filename, payload, contentId, plaintextSize, plaintextSha256 },
+        body: { filename, payload, contentId, plaintextSize, plaintextFingerprint },
       });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["projects", projectId, "files"] }),

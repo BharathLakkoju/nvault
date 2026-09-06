@@ -117,6 +117,7 @@ describeIf("nvault API (integration)", () => {
       currentPeriodEnd?: string;
       subscriptionId?: string;
       tier?: "STARTER" | "GROWTH" | "SCALE";
+      modifiedAt?: string;
     } = {},
   ) {
     const eventId = opts.eventId ?? `evt_${randomUUID()}`;
@@ -131,6 +132,7 @@ describeIf("nvault API (integration)", () => {
         cancel_at_period_end: opts.cancelAtPeriodEnd ?? false,
         current_period_end:
           opts.currentPeriodEnd ?? new Date(Date.now() + 30 * 864e5).toISOString(),
+        modified_at: opts.modifiedAt ?? new Date().toISOString(),
         metadata: { organizationId: orgId, tier },
       },
     });
@@ -397,7 +399,7 @@ describeIf("nvault API (integration)", () => {
         payload: payload1,
         contentId: contentId1,
         plaintextSize: original.length,
-        plaintextSha256: await vaultCrypto.sha256Hex(vaultCrypto.utf8ToBytes(original)),
+        plaintextFingerprint: await vaultCrypto.fileFingerprintHex(projectKey, vaultCrypto.utf8ToBytes(original)),
       },
     });
     expect(uploadRes.status).toBe(201);
@@ -450,7 +452,7 @@ describeIf("nvault API (integration)", () => {
         payload: payload2,
         contentId: contentId2,
         plaintextSize: original2.length,
-        plaintextSha256: await vaultCrypto.sha256Hex(vaultCrypto.utf8ToBytes(original2)),
+        plaintextFingerprint: await vaultCrypto.fileFingerprintHex(projectKey, vaultCrypto.utf8ToBytes(original2)),
       },
     });
 
@@ -507,7 +509,7 @@ describeIf("nvault API (integration)", () => {
         payload: payload1,
         contentId: randomUUID(),
         plaintextSize: 10,
-        plaintextSha256: "0".repeat(64),
+        plaintextFingerprint: "0".repeat(64),
       },
     });
     expect(traversal.status).toBe(400);
@@ -542,7 +544,7 @@ describeIf("nvault API (integration)", () => {
           payload,
           contentId,
           plaintextSize: text.length,
-          plaintextSha256: await vaultCrypto.sha256Hex(vaultCrypto.utf8ToBytes(text)),
+          plaintextFingerprint: await vaultCrypto.fileFingerprintHex(projectKey, vaultCrypto.utf8ToBytes(text)),
         },
       });
     }
@@ -842,7 +844,7 @@ describeIf("nvault API (integration)", () => {
         payload,
         contentId,
         plaintextSize: secret.length,
-        plaintextSha256: await vaultCrypto.sha256Hex(vaultCrypto.utf8ToBytes(secret)),
+        plaintextFingerprint: await vaultCrypto.fileFingerprintHex(projectKey, vaultCrypto.utf8ToBytes(secret)),
       },
     });
     expect(upRes.status).toBe(201);
@@ -985,7 +987,7 @@ describeIf("nvault API (integration)", () => {
         payload,
         contentId,
         plaintextSize: secret.length,
-        plaintextSha256: await vaultCrypto.sha256Hex(vaultCrypto.utf8ToBytes(secret)),
+        plaintextFingerprint: await vaultCrypto.fileFingerprintHex(projectKey, vaultCrypto.utf8ToBytes(secret)),
       },
     });
 
@@ -1193,7 +1195,7 @@ describeIf("nvault API (integration)", () => {
         payload: await vaultCrypto.encryptFileContent(projectKey, contentId, vaultCrypto.utf8ToBytes(secret)),
         contentId,
         plaintextSize: secret.length,
-        plaintextSha256: await vaultCrypto.sha256Hex(vaultCrypto.utf8ToBytes(secret)),
+        plaintextFingerprint: await vaultCrypto.fileFingerprintHex(projectKey, vaultCrypto.utf8ToBytes(secret)),
       },
     });
 
@@ -1222,6 +1224,21 @@ describeIf("nvault API (integration)", () => {
       },
     });
     expect(partial.status).toBe(400);
+
+    // Duplicate member id masking a missing member → 400.
+    const duplicateMember = await call(routes.rotateKey, {
+      method: "POST",
+      path: `/api/v1/organizations/${orgId}/rotate-key`,
+      params: { id: orgId },
+      token: owner.token,
+      body: {
+        newEpoch: 1,
+        projectKeys: [{ projectId, wrappedProjectKey: newWrappedProjectKey }],
+        memberKeys: [memberKeysFull[0], memberKeysFull[0]],
+        ...extras,
+      },
+    });
+    expect(duplicateMember.status).toBe(400);
 
     // Wrong epoch → 409.
     const wrongEpoch = await call(routes.rotateKey, {
@@ -1561,6 +1578,34 @@ describeIf("nvault API (integration)", () => {
       token: user.token,
     });
     expect(list.body.projects.length).toBe(cap + 3); // nothing deleted
+  });
+
+  it("ignores stale Polar subscription events that arrive out of order", async () => {
+    const owner = await registerUserWithKeypair("stale webhook passphrase");
+    const { orgId } = await createRawOrg(owner);
+    const newer = "2026-03-01T00:00:00.000Z";
+    const older = "2026-01-01T00:00:00.000Z";
+
+    const active = await fireSubscriptionWebhook(orgId, {
+      status: "active",
+      modifiedAt: newer,
+    });
+    expect(active.status).toBe(202);
+    expect(active.body.outcome).toBe("applied");
+
+    const staleCancel = await fireSubscriptionWebhook(orgId, {
+      type: "subscription.canceled",
+      status: "canceled",
+      modifiedAt: older,
+      eventId: `evt_stale_${randomUUID()}`,
+    });
+    expect(staleCancel.status).toBe(202);
+    expect(staleCancel.body.outcome).toBe("ignored");
+
+    const org = await db.organization.findUniqueOrThrow({ where: { id: orgId } });
+    expect(org.status).toBe("ACTIVE");
+    const sub = await db.subscription.findUniqueOrThrow({ where: { organizationId: orgId } });
+    expect(sub.status).toBe("ACTIVE");
   });
 
   it("Team tier caps members; upgrading raises the cap, downgrading is guarded", async () => {

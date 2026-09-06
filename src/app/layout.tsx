@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Providers } from "./providers";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
+import { cspNonce } from "@/lib/nonce";
 import { siteConfig, SITE_URL } from "@/lib/site";
 import { OG_IMAGE } from "@/lib/seo";
 import "./globals.css";
@@ -59,12 +60,13 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const nonce = await cspNonce();
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         {/* Applies the persisted theme before first paint to avoid a flash. */}
-        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body>
         <Providers>{children}</Providers>

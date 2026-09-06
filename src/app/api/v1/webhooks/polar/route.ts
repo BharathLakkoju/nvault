@@ -49,6 +49,10 @@ export const POST = handler(async (req) => {
     customerId: (d.customer_id as string | null | undefined) ?? null,
     productId: (d.product_id as string | null | undefined) ?? null,
     metadata: (d.metadata as Record<string, unknown> | null | undefined) ?? null,
+    modifiedAt:
+      (d.modified_at as string | null | undefined) ??
+      (d.updated_at as string | null | undefined) ??
+      null,
   };
 
   try {

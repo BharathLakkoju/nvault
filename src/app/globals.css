@@ -14,7 +14,7 @@
  * Keep these in sync with the ACCENTS list in src/lib/theme.ts.
  */
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
 
   --accent-50: 238 242 255;
   --accent-100: 224 231 255;
@@ -46,6 +46,8 @@
 }
 
 :root.dark {
+  color-scheme: dark;
+
   --c-bg: 17 17 17;
   --c-surface: 26 26 26;
   --c-surface-2: 34 34 34;
@@ -208,4 +210,12 @@ body {
   50% {
     transform: translate(10%, -8%) scale(1.12);
   }
+}
+
+/* Applied briefly while toggling theme/accent to avoid mid-transition flicker. */
+html.nv-suppress-transitions *,
+html.nv-suppress-transitions *::before,
+html.nv-suppress-transitions *::after {
+  transition: none !important;
+  animation: none !important;
 }

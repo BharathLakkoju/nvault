@@ -7,6 +7,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { apiRequest } from "@/lib/api-client";
 import { formatRelativeTime } from "@/lib/format";
 import type { AuditLogDto } from "@/lib/types";
+import { PasskeysCard } from "@/components/passkeys-card";
 
 const ACTION_LABELS: Record<string, string> = {
   "auth.register": "Account created",
@@ -17,6 +18,9 @@ const ACTION_LABELS: Record<string, string> = {
   "session.revoked_all": "Revoked all other sessions",
   "apitoken.created": "Created a CLI access token",
   "apitoken.revoked": "Revoked a CLI access token",
+  "passkey.registered": "Registered a passkey",
+  "passkey.step_up": "Confirmed action with passkey",
+  "passkey.revoked": "Removed a passkey",
   "project.created": "Created project",
   "project.renamed": "Renamed project",
   "project.git_remote_updated": "Updated project git repository link",
@@ -46,6 +50,7 @@ function SecurityContent() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-medium text-ink sm:text-[28px]">Security activity</h1>
+      <PasskeysCard />
       <Card>
         <CardHeader
           title="Recent activity"

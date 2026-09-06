@@ -204,8 +204,8 @@ See [src/server/storage.ts](src/server/storage.ts). Consequences:
   invite tokens, key-rotation history. No plaintext key material, no
   enrollment secret.
 - `project_files` / `file_versions`: filename, version number, storage key,
-  iv, `contentId`, plaintext size + sha256 (integrity/dedup display only — a
-  hash is not reversible and is not key material).
+  iv, `contentId`, plaintext size + project-keyed HMAC fingerprint (integrity/
+  dedup display — verifying it requires the Project Data Key, not just DB access).
 - `storage_objects`: doubly-encrypted file bytes (client ciphertext wrapped
   again under the server key), keyed by server-generated storage keys.
 - `sessions`: SHA-256 hash of the refresh token (never the raw token),
@@ -290,7 +290,10 @@ Security-relevant properties:
   has no bearer auth by design; a bad or missing signature is `400`.
   Deliveries are de-duplicated by `webhook-id` (`ProcessedWebhookEvent`), and
   the id is recorded only after the effect succeeds, so a transient failure
-  stays replayable.
+  stays replayable. Each subscription also stores Polar's `modified_at`; events
+  with an older timestamp are ignored so a delayed cancellation cannot override
+  a newer active state. Stored Polar subscription/customer ids must match the
+  event payload or the delivery is dropped.
 - **Non-payment never destroys data.** A lapsed subscription drops the org
   to `SUSPENDED` (read-only) and keeps every blob. The only automatic
   deletion is the 7-day purge of orgs that were *never* paid for
@@ -303,15 +306,64 @@ Security-relevant properties:
 
 ## Transport & headers
 
-Same-origin API (no CORS). Security headers (CSP `default-src 'self'`, HSTS,
-`X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, COOP) are set for
-every route in [next.config.mjs](next.config.mjs).
+Same-origin API (no CORS). Base security headers (HSTS, `X-Frame-Options:
+DENY`, `Referrer-Policy: no-referrer`, COOP) apply to every route via
+[next.config.mjs](next.config.mjs).
+
+**CSP is split by surface:**
+- Marketing/legal pages keep a static `default-src 'self'` policy (still
+  allowing `'unsafe-inline'` for Next.js bootstrap on those static routes).
+- Authenticated app routes and `/api/v1/*` receive a per-request nonce policy
+  from [src/proxy.ts](src/proxy.ts): `script-src 'nonce-…' 'strict-dynamic'`
+  (the XSS boundary), plus `style-src 'self' 'unsafe-inline'` so React, Radix,
+  and Next can inject runtime styles. The nonce is forwarded on `x-nonce` and
+  applied to the root layout's theme bootstrap script.
+
+Auth responses that carry vault key material include `Cache-Control: no-store,
+private`. Cookie-authenticated refresh validates `Origin` (and
+`Sec-Fetch-Site` when `Origin` is absent) against the configured app origin.
+
+Rate limiting and audit logging prefer platform-injected client IP headers
+(`x-vercel-forwarded-for`, `cf-connecting-ip`, `fly-client-ip`) before falling
+back to `X-Forwarded-For`. Auth endpoints also rate-limit by email/account in
+addition to IP.
+
+## Metadata the server can see
+
+Filenames and **project-keyed HMAC fingerprints** of encrypted file contents
+are stored as metadata (`file_versions.plaintextFingerprint`). Unlike a raw
+SHA-256, verifying or guessing a fingerprint requires the Project Data Key —
+the same trust boundary as decryption — so a database dump alone cannot run a
+public hash-oracle attack against stored files.
+
+## Passkeys (WebAuthn)
+
+Users may register device passkeys under Settings → Security. When at least one
+passkey exists, sensitive actions require a recent step-up verification
+(~5 minutes): org key rotation, keypair provisioning, and CLI token creation.
+Registration and step-up ceremonies use `@simplewebauthn/server` with
+`userVerification: required`. TOTP is not implemented; passkeys are the primary
+second factor because they are phishing-resistant and align with the product's
+existing public-key architecture.
+
+## CLI token lifetime
+
+Personal Access Tokens default to **90 days**, slide forward on active use up to
+a **365-day absolute cap**, and are revoked automatically after **60 days**
+without use. Users may explicitly request a longer TTL up to the cap at
+creation time.
+
+## Enrollment reconciliation
+
+A daily cron job (same endpoint as pending-org purge) expires `INVITED`
+memberships whose enrollment window elapsed, and writes audit rows for partial
+enrollment artifacts the server cannot repair cryptographically (e.g. ACTIVE
+without a wrapped Org Key). Roster ciphertext is never mutated server-side.
 
 ## Known limitations (tracked, not accidental)
 
-- **No MFA / passkeys / OAuth identity providers yet** — the auth service is
-  structured so an additional identity provider doesn't require touching
-  session, project, file, or encryption code.
+- **No TOTP fallback / OAuth identity providers yet** — passkeys cover step-up
+  auth; OAuth remains a future addition without touching session/crypto code.
 - **No session cache** — revocation checks hit Postgres directly. Fine at
   this scale.
 - **Vault passphrase changes** exist in the crypto layer (`rewrapMasterKey`,

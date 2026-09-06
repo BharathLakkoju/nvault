@@ -19,6 +19,11 @@ import {
   tierForProductId,
   updateSubscriptionProduct,
 } from "./polar";
+import {
+  isStalePolarEvent,
+  parsePolarModifiedAt,
+  subscriptionIdentityMatches,
+} from "./polar-webhook-guards";
 
 const PENDING_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -76,6 +81,8 @@ export interface PolarSubscriptionData {
   customerId?: string | null;
   productId?: string | null;
   metadata?: Record<string, unknown> | null;
+  /** Polar subscription `modified_at` — used to ignore stale/out-of-order events. */
+  modifiedAt?: Date | string | null;
 }
 
 export interface ApplyResult {
@@ -151,6 +158,21 @@ async function applyTeamSubscription(data: PolarSubscriptionData): Promise<Apply
   const ownerUserId = org.subscription?.ownerUserId ?? org.memberships[0]?.userId;
   if (!ownerUserId) return { outcome: "ignored" };
 
+  if (!subscriptionIdentityMatches(org.subscription, data)) {
+    console.warn(
+      `[billing] TEAM event for org ${organizationId} does not match stored Polar ids — ignored`,
+    );
+    return { outcome: "ignored" };
+  }
+
+  const eventModifiedAt = parsePolarModifiedAt(data.modifiedAt);
+  if (isStalePolarEvent(org.subscription?.polarModifiedAt, eventModifiedAt)) {
+    console.warn(
+      `[billing] stale TEAM event for org ${organizationId} (${eventModifiedAt?.toISOString()}) — ignored`,
+    );
+    return { outcome: "ignored" };
+  }
+
   const mapped = mapPolarStatus(data.status);
   const currentPeriodEnd = data.currentPeriodEnd ? new Date(data.currentPeriodEnd) : null;
   // Tier: prefer the product the subscription is now on (survives Polar-side
@@ -175,6 +197,7 @@ async function applyTeamSubscription(data: PolarSubscriptionData): Promise<Apply
       polarProductId: data.productId ?? null,
       currentPeriodEnd,
       cancelAtPeriodEnd: Boolean(data.cancelAtPeriodEnd),
+      polarModifiedAt: eventModifiedAt,
     },
     update: {
       tier,
@@ -184,6 +207,7 @@ async function applyTeamSubscription(data: PolarSubscriptionData): Promise<Apply
       polarProductId: data.productId ?? undefined,
       currentPeriodEnd,
       cancelAtPeriodEnd: Boolean(data.cancelAtPeriodEnd),
+      ...(eventModifiedAt ? { polarModifiedAt: eventModifiedAt } : {}),
     },
   });
 
@@ -216,8 +240,26 @@ async function applyProSubscription(data: PolarSubscriptionData): Promise<ApplyR
   const currentPeriodEnd = data.currentPeriodEnd ? new Date(data.currentPeriodEnd) : null;
   const existing = await db.subscription.findFirst({
     where: { ownerUserId: userId, plan: "PRO" },
-    select: { id: true },
+    select: {
+      id: true,
+      polarSubscriptionId: true,
+      polarCustomerId: true,
+      polarModifiedAt: true,
+    },
   });
+
+  if (!subscriptionIdentityMatches(existing, data)) {
+    console.warn(`[billing] PRO event for user ${userId} does not match stored Polar ids — ignored`);
+    return { outcome: "ignored" };
+  }
+
+  const eventModifiedAt = parsePolarModifiedAt(data.modifiedAt);
+  if (isStalePolarEvent(existing?.polarModifiedAt, eventModifiedAt)) {
+    console.warn(
+      `[billing] stale PRO event for user ${userId} (${eventModifiedAt?.toISOString()}) — ignored`,
+    );
+    return { outcome: "ignored" };
+  }
 
   const fields = {
     status: mapped.subscription,
@@ -226,6 +268,7 @@ async function applyProSubscription(data: PolarSubscriptionData): Promise<ApplyR
     polarProductId: data.productId ?? null,
     currentPeriodEnd,
     cancelAtPeriodEnd: Boolean(data.cancelAtPeriodEnd),
+    ...(eventModifiedAt ? { polarModifiedAt: eventModifiedAt } : {}),
   };
 
   if (existing) {
@@ -286,9 +329,8 @@ export function getUserProSubscription(userId: string): Promise<Subscription | n
  * and everyone qualifies — mirroring the org auto-activation shortcut in the
  * organizations route.
  *
- * This gate is checked on token *creation* only; an already-issued token keeps
- * working if the plan later lapses, consistent with the rest of the
- * entitlement model (limits are never retroactive).
+ * Checked on token creation and on every PAT-authenticated API request so
+ * lapsed subscriptions cannot keep using long-lived CLI credentials.
  */
 export async function userHasCliAccess(userId: string): Promise<boolean> {
   if (!billingConfigured()) return true;

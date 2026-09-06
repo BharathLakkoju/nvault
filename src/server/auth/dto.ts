@@ -4,3 +4,13 @@ import { z } from "zod";
 export const RefreshRequestSchema = z.object({
   refreshToken: z.string().min(1).optional(),
 });
+
+export const WebAuthnChallengeTokenSchema = z.object({
+  challengeToken: z.string().min(1),
+});
+
+export const WebAuthnRegistrationVerifySchema = WebAuthnChallengeTokenSchema.extend({
+  response: z.unknown(),
+});
+
+export const WebAuthnStepUpVerifySchema = WebAuthnRegistrationVerifySchema;

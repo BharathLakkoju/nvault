@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FolderSimple, LockKey, ShieldCheck, Plus, Warning } from "@phosphor-icons/react";
+import { Folder, KeyRound, ShieldCheck, Plus, TriangleAlert } from "lucide-react";
 import { RequireAuth } from "@/components/require-auth";
 import { RequireVaultUnlocked } from "@/components/require-vault-unlocked";
 import { AppShell } from "@/components/app-shell";
@@ -93,7 +93,7 @@ function DashboardContent() {
       </div>
 
       <div className="mb-6 flex items-center gap-3 rounded-lg border border-line bg-surface-2 px-4 py-3">
-        <ShieldCheck size={18} weight="fill" className="flex-shrink-0 text-accent-600 dark:text-accent-400" />
+        <ShieldCheck size={18} className="flex-shrink-0 fill-current text-accent-600 dark:text-accent-400" />
         <span className="text-[13px] text-ink/80">
           Every file is encrypted in your browser before it ever leaves your machine — nvault&apos;s servers only
           ever see ciphertext.
@@ -157,7 +157,7 @@ function DashboardContent() {
 
       {orgPending && (
         <Card className="mb-4 flex items-start gap-3 border-amber-500/40 p-4">
-          <Warning size={18} weight="fill" className="mt-0.5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+          <TriangleAlert size={18} className="mt-0.5 flex-shrink-0 fill-current text-amber-600 dark:text-amber-400" />
           <p className="text-sm text-ink/70">
             <span className="font-medium text-ink">Finish setting up {currentOrg?.name}.</span>{" "}
             {isOrgOwner ? (
@@ -180,7 +180,7 @@ function DashboardContent() {
 
       {orgSuspended && (
         <Card className="mb-4 flex items-start gap-3 border-red-500/40 p-4">
-          <Warning size={18} weight="fill" className="mt-0.5 flex-shrink-0 text-red-600 dark:text-red-400" />
+          <TriangleAlert size={18} className="mt-0.5 flex-shrink-0 fill-current text-red-600 dark:text-red-400" />
           <p className="text-sm text-ink/70">
             <span className="font-medium text-ink">{currentOrg?.name} is read-only.</span> Its
             subscription is inactive — you can still pull existing files, but not push new versions
@@ -306,9 +306,9 @@ function ProjectCard({ project }: { project: import("@/lib/types").ProjectDto })
         className="flex flex-col gap-2"
       >
         <div className="flex items-center justify-between">
-          <FolderSimple size={20} className="text-accent-600 dark:text-accent-300" />
+          <Folder size={20} className="text-accent-600 dark:text-accent-300" />
           <Tag variant="outline">
-            <LockKey size={11} />
+            <KeyRound size={11} />
             encrypted
           </Tag>
         </div>

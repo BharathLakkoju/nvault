@@ -28,7 +28,7 @@ export const GET = handler(async (req, { params }) => {
             id: f.currentVersion.id,
             versionNumber: f.currentVersion.versionNumber,
             plaintextSize: f.currentVersion.plaintextSize,
-            plaintextSha256: f.currentVersion.plaintextSha256,
+            plaintextFingerprint: f.currentVersion.plaintextFingerprint,
             createdAt: f.currentVersion.createdAt,
           }
         : null,
@@ -39,13 +39,8 @@ export const GET = handler(async (req, { params }) => {
 export const POST = handler(async (req, { params }) => {
   const auth = await requireAuth(req);
 
-  const contentLength = Number(req.headers.get("content-length") ?? 0);
-  if (contentLength > MAX_BODY_BYTES) {
-    throw new ApiError(413, "File is too large. The maximum config file size is 2.5 MiB.");
-  }
-
   const { project, scope } = await authorizeProject(auth.userId, params.id, "write");
-  const dto = await readJson(req, UploadFileVersionRequestSchema);
+  const dto = await readJson(req, UploadFileVersionRequestSchema, MAX_BODY_BYTES);
 
   if (Buffer.byteLength(dto.payload.ciphertext, "base64") > MAX_FILE_SIZE_BYTES + 4096) {
     throw new ApiError(413, "File is too large. The maximum config file size is 2.5 MiB.");
@@ -71,7 +66,7 @@ export const POST = handler(async (req, { params }) => {
         id: version.id,
         versionNumber: version.versionNumber,
         plaintextSize: version.plaintextSize,
-        plaintextSha256: version.plaintextSha256,
+        plaintextFingerprint: version.plaintextFingerprint,
         createdAt: version.createdAt,
       },
     },

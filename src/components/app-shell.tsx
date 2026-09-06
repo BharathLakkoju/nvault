@@ -6,25 +6,25 @@ import { usePathname, useRouter } from "next/navigation";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
   ShieldCheck,
-  FolderSimple,
-  Buildings,
+  Command,
+  Folder,
+  Building2,
   CreditCard,
-  Devices,
-  TerminalWindow,
-  ClockCounterClockwise,
-  MagnifyingGlass,
-  Bell,
-  CaretLeft,
-  CaretRight,
-  CaretUpDown,
-  List as ListIcon,
+  Laptop,
+  Terminal,
+  History,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsUpDown,
+  Menu,
   User,
   Check,
   Plus,
-  SignOut,
+  LogOut,
   Lock,
-  type Icon,
-} from "@phosphor-icons/react";
+  type LucideIcon,
+} from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
 import { useOrganizations } from "@/hooks/use-organizations";
 import { useProSubscription } from "@/hooks/use-billing";
@@ -39,16 +39,16 @@ import { cn } from "@/lib/cn";
 interface NavItem {
   href: string;
   label: string;
-  icon: Icon;
+  icon: LucideIcon;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard", label: "Projects", icon: FolderSimple },
-  { href: "/settings/organizations", label: "Organizations", icon: Buildings },
+  { href: "/dashboard", label: "Projects", icon: Folder },
+  { href: "/settings/organizations", label: "Organizations", icon: Building2 },
   { href: "/settings/billing", label: "Plans & billing", icon: CreditCard },
-  { href: "/settings/sessions", label: "Sessions", icon: Devices },
-  { href: "/settings/tokens", label: "CLI Tokens", icon: TerminalWindow },
-  { href: "/settings/security", label: "Activity", icon: ClockCounterClockwise },
+  { href: "/settings/sessions", label: "Sessions", icon: Laptop },
+  { href: "/settings/tokens", label: "CLI Tokens", icon: Terminal },
+  { href: "/settings/security", label: "Activity", icon: History },
 ];
 
 const SIDEBAR_STORAGE_KEY = "nvault.sidebar.collapsed";
@@ -115,35 +115,42 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex flex-shrink-0 items-center gap-3 border-b border-line px-4 py-3 sm:px-7">
+        <header className="relative flex flex-shrink-0 items-center gap-3 border-b border-line px-4 py-3 sm:px-7">
           <button
             aria-label="Open menu"
-            className="focus-ring -ml-1 inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted hover:bg-ink/[0.06] md:hidden"
+            className="focus-ring -ml-1 inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-muted hover:bg-ink/[0.06] md:hidden"
             onClick={() => setMobileOpen(true)}
           >
-            <ListIcon size={18} />
+            <Menu size={18} />
           </button>
 
+          {/* Mobile: search stays in the header flow */}
           <button
             onClick={() => setPaletteOpen(true)}
-            className="focus-ring flex items-center gap-2.5 rounded-lg border border-line bg-surface px-3 py-2 text-[13px] text-muted sm:w-72"
+            className="focus-ring flex min-w-0 flex-1 items-center gap-2.5 rounded-lg border border-line bg-surface px-3 py-2 text-[13px] text-muted md:hidden"
           >
-            <MagnifyingGlass size={15} />
+            <Search size={15} className="flex-shrink-0" />
             <span className="flex-1 truncate text-left">Search projects, files, people…</span>
-            <span className="hidden rounded border border-line px-1.5 py-px text-[11px] sm:inline">⌘K</span>
           </button>
 
-          <div className="flex-1" />
-
-          <ThemeToggle />
+          {/* Desktop: search centered in the header */}
           <button
-            aria-label="Notifications"
-            className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted hover:bg-ink/[0.06]"
+            onClick={() => setPaletteOpen(true)}
+            className="focus-ring absolute left-1/2 hidden w-full max-w-md -translate-x-1/2 items-center gap-3 rounded-lg border border-line bg-surface px-3.5 py-2 text-[13px] text-muted md:flex lg:max-w-lg"
           >
-            <Bell size={17} />
+            <Search size={15} className="flex-shrink-0" />
+            <span className="flex-1 truncate text-left">Search projects, files, people…</span>
+            <kbd className="inline-flex flex-shrink-0 items-center gap-1 rounded-md border border-line bg-surface-2 px-2 py-1 font-mono text-[11px] leading-none text-muted">
+              <Command size={12} />
+              <span className="text-xs">K</span>
+            </kbd>
           </button>
-          <div className="h-5 w-px bg-line" />
-          <AccountBadge />
+
+          <div className="ml-auto flex items-center gap-3">
+            <ThemeToggle />
+            <div className="hidden h-5 w-px bg-line sm:block" />
+            <AccountBadge />
+          </div>
         </header>
 
         <main className="dc-scroll flex-1 overflow-y-auto px-4 py-7 sm:px-10 sm:pb-16">
@@ -191,7 +198,7 @@ function Sidebar({
             collapsed && "md:hidden",
           )}
         >
-          <CaretLeft size={14} />
+          <ChevronLeft size={14} />
         </button>
       </div>
       {collapsed && (
@@ -200,7 +207,7 @@ function Sidebar({
           title="Expand sidebar"
           className="focus-ring mx-auto mb-1 hidden h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-ink/[0.06] md:inline-flex"
         >
-          <CaretRight size={14} />
+          <ChevronRight size={14} />
         </button>
       )}
 
@@ -224,7 +231,10 @@ function Sidebar({
                 collapsed && "md:justify-center",
               )}
             >
-              <Icon size={17} weight={active ? "fill" : "regular"} className="flex-shrink-0" />
+              <Icon
+                size={17}
+                className={cn("flex-shrink-0", active && "stroke-[2.25]")}
+              />
               <span className={cn("truncate", collapsed && "md:hidden")}>{item.label}</span>
             </Link>
           );
@@ -251,7 +261,7 @@ function Sidebar({
                 : "bg-amber-500/15 text-amber-700 dark:text-amber-300",
             )}
           >
-            <ShieldCheck size={12} weight="fill" />
+            <ShieldCheck size={12} className="fill-current" />
             {masterKey ? "Unlocked" : "Locked"}
           </span>
         </div>
@@ -290,7 +300,7 @@ function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
   const hasPendingInvite = (orgs ?? []).some((o) => o.status === "INVITED");
   const currentOrg = activeOrgs.find((o) => o.id === currentOrgId) ?? null;
 
-  const CurrentIcon = currentOrg ? Buildings : User;
+  const CurrentIcon = currentOrg ? Building2 : User;
   const currentName = currentOrg ? currentOrg.name : "Personal";
   const currentPlan = currentOrg
     ? teamPlanLabel(currentOrg.tier)
@@ -310,13 +320,13 @@ function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
             )}
           >
             <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-accent-500/15 text-accent-700 dark:text-accent-200">
-              <CurrentIcon size={15} weight="fill" />
+              <CurrentIcon size={15} />
             </span>
             <span className={cn("min-w-0 flex-1", collapsed && "md:hidden")}>
               <span className="block truncate text-[13px] font-medium text-ink">{currentName}</span>
               <span className="block truncate text-[11px] text-muted">{currentPlan}</span>
             </span>
-            <CaretUpDown
+            <ChevronsUpDown
               size={14}
               className={cn("flex-shrink-0 text-muted", collapsed && "md:hidden")}
             />
@@ -342,7 +352,7 @@ function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
             {activeOrgs.map((o) => (
               <WorkspaceRow
                 key={o.id}
-                icon={Buildings}
+                icon={Building2}
                 name={o.name}
                 detail={`${teamPlanLabel(o.tier)} · ${o.role?.toLowerCase() ?? "member"}`}
                 status={o.orgStatus}
@@ -389,7 +399,7 @@ function WorkspaceRow({
   active,
   onSelect,
 }: {
-  icon: Icon;
+  icon: LucideIcon;
   name: string;
   detail: string;
   status?: OrgBillingStatus;
@@ -407,7 +417,7 @@ function WorkspaceRow({
       onSelect={onSelect}
       className="focus-ring flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 outline-none hover:bg-ink/[0.06]"
     >
-      <Icon size={15} weight="fill" className="flex-shrink-0 text-muted" />
+      <Icon size={15} className="flex-shrink-0 text-muted" />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
           <span className="truncate text-[13px] text-ink">{name}</span>
@@ -464,7 +474,7 @@ function AccountBadge() {
             onSelect={() => void logout().then(() => router.replace("/login"))}
             className="focus-ring flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-red-600 outline-none hover:bg-red-500/10 dark:text-red-400"
           >
-            <SignOut size={14} />
+            <LogOut size={14} />
             Log out
           </DropdownMenu.Item>
         </DropdownMenu.Content>

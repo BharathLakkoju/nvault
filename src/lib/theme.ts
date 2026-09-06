@@ -65,7 +65,6 @@ export function applyTheme(mode: ThemeMode, accent: string): void {
   const dark = resolveDark(mode);
   root.classList.toggle("dark", dark);
   root.dataset.accent = accent;
-  root.style.colorScheme = dark ? "dark" : "light";
 }
 
 /**
@@ -79,15 +78,12 @@ export function withTransitionsDisabled(fn: () => void): void {
     fn();
     return;
   }
-  const style = document.createElement("style");
-  style.appendChild(
-    document.createTextNode("*,*::before,*::after{transition:none !important;animation:none !important}"),
-  );
-  document.head.appendChild(style);
+  const root = document.documentElement;
+  root.classList.add("nv-suppress-transitions");
   fn();
-  // Force a style flush so the "no transition" rule takes effect for this change.
+  // Force a style flush so the suppression class takes effect for this change.
   window.getComputedStyle(document.body).opacity;
-  window.requestAnimationFrame(() => style.remove());
+  window.requestAnimationFrame(() => root.classList.remove("nv-suppress-transitions"));
 }
 
 export function readStoredMode(): ThemeMode {
@@ -124,5 +120,4 @@ var dark=m==="dark"||(m==="system"&&window.matchMedia&&window.matchMedia("(prefe
 var r=document.documentElement;
 r.classList.toggle("dark",dark);
 r.setAttribute("data-accent",a);
-r.style.colorScheme=dark?"dark":"light";
 }catch(e){}})();`;

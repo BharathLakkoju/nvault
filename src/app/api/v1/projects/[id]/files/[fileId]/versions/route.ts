@@ -23,7 +23,7 @@ export const GET = handler(async (req, { params }) => {
       id: v.id,
       versionNumber: v.versionNumber,
       plaintextSize: v.plaintextSize,
-      plaintextSha256: v.plaintextSha256,
+      plaintextFingerprint: v.plaintextFingerprint,
       createdAt: v.createdAt,
       isCurrent: v.id === file.currentVersionId,
     })),

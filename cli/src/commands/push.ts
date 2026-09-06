@@ -68,10 +68,10 @@ export async function pushCommand(
   console.log();
   for (const f of targets) {
     const plaintext = new Uint8Array(readFileSync(join(cwd, f)));
-    const { contentId, payload, plaintextSize, plaintextSha256 } = await encryptFile(projectKey, plaintext);
+    const { contentId, payload, plaintextSize, plaintextFingerprint } = await encryptFile(projectKey, plaintext);
     await apiRequest(`/projects/${project.id}/files`, {
       method: "POST",
-      body: { filename: f, payload, contentId, plaintextSize, plaintextSha256 },
+      body: { filename: f, payload, contentId, plaintextSize, plaintextFingerprint },
     });
     console.log(`${symbols.check} ${f}`);
   }

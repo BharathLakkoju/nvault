@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { env } from "@/server/env";
 import { ApiError, handler, json } from "@/server/http";
 import { purgeExpiredPending, pruneProcessedWebhookEvents } from "@/server/billing/service";
+import { reconcileOrganizationEnrollment } from "@/server/organizations/reconcile";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,5 +26,6 @@ export const GET = handler(async (req) => {
   if (!authorized(req)) throw new ApiError(401, "Unauthorized");
   const purged = await purgeExpiredPending();
   await pruneProcessedWebhookEvents();
-  return json({ purged });
+  const enrollment = await reconcileOrganizationEnrollment();
+  return json({ purged, enrollment });
 });

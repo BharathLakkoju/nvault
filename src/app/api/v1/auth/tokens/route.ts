@@ -2,6 +2,7 @@ import { CreateApiTokenRequestSchema } from "@/lib/schemas";
 import { audit } from "@/server/audit";
 import { createApiToken, listApiTokens } from "@/server/auth/api-tokens";
 import { requireAuth } from "@/server/auth/require-auth";
+import { requireStepUp } from "@/server/auth/webauthn";
 import { userHasCliAccess } from "@/server/billing/service";
 import { clientIp, handler, json, readJson } from "@/server/http";
 
@@ -32,6 +33,7 @@ export const GET = handler(async (req) => {
 
 export const POST = handler(async (req) => {
   const auth = await requireAuth(req);
+  await requireStepUp(auth.userId, auth.sessionId);
   const dto = await readJson(req, CreateApiTokenRequestSchema);
   const hasCliAccess = await userHasCliAccess(auth.userId);
   const created = await createApiToken(auth.userId, dto, { hasCliAccess });

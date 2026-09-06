@@ -47,7 +47,7 @@ export interface FileVersionSummaryDto {
   id: string;
   versionNumber: number;
   plaintextSize: number;
-  plaintextSha256: string;
+  plaintextFingerprint: string;
   createdAt: string;
   isCurrent?: boolean;
 }
@@ -64,5 +64,5 @@ export interface DownloadedFileDto {
   filename: string;
   payload: { iv: string; ciphertext: string; contentId: string };
   plaintextSize: number;
-  plaintextSha256: string;
+  plaintextFingerprint: string;
 }

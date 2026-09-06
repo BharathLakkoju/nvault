@@ -6,7 +6,7 @@ import { canActOnRole } from "../authz/roles";
 import { assertCanAddOrgMember } from "../billing/entitlements";
 import { MAX_PENDING_INVITES_PER_ORG } from "./service";
 
-const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+export const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export interface CreatedInvite {
   id: string;

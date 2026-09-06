@@ -3,14 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  MagnifyingGlass,
-  FolderSimple,
-  Buildings,
+  Search,
+  Folder,
+  Building2,
   CreditCard,
-  Devices,
-  TerminalWindow,
-  ClockCounterClockwise,
-} from "@phosphor-icons/react";
+  Laptop,
+  Terminal,
+  History,
+} from "lucide-react";
 import { useProjects } from "@/hooks/use-projects";
 import { useOrganizations } from "@/hooks/use-organizations";
 import { useOrgContext } from "@/lib/org-context-store";
@@ -23,6 +23,8 @@ interface Entry {
   icon: React.ReactNode;
   run: () => void;
 }
+
+const ICON_CLASS = "h-4 w-4";
 
 /**
  * The ⌘K / Ctrl-K command palette. Jumps to a project, switches org scope, or
@@ -46,7 +48,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
         id: `project:${p.id}`,
         label: p.name,
         group: "Project",
-        icon: <FolderSimple weight="regular" />,
+        icon: <Folder className={ICON_CLASS} />,
         run: () => {
           router.push(`/projects/${p.id}`);
           close();
@@ -57,7 +59,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
       id: "scope:personal",
       label: "Personal projects",
       group: "Scope",
-      icon: <FolderSimple weight="regular" />,
+      icon: <Folder className={ICON_CLASS} />,
       run: () => {
         setCurrentOrg(null);
         router.push("/dashboard");
@@ -69,7 +71,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
         id: `scope:${o.id}`,
         label: `${o.name} projects`,
         group: "Scope",
-        icon: <Buildings weight="regular" />,
+        icon: <Building2 className={ICON_CLASS} />,
         run: () => {
           setCurrentOrg(o.id);
           router.push("/dashboard");
@@ -78,11 +80,11 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
       });
     }
     const pages: [string, string, React.ReactNode][] = [
-      ["/settings/organizations", "Organizations", <Buildings key="o" weight="regular" />],
-      ["/settings/billing", "Billing", <CreditCard key="b" weight="regular" />],
-      ["/settings/sessions", "Sessions", <Devices key="s" weight="regular" />],
-      ["/settings/tokens", "CLI tokens", <TerminalWindow key="t" weight="regular" />],
-      ["/settings/security", "Activity", <ClockCounterClockwise key="a" weight="regular" />],
+      ["/settings/organizations", "Organizations", <Building2 key="o" className={ICON_CLASS} />],
+      ["/settings/billing", "Billing", <CreditCard key="b" className={ICON_CLASS} />],
+      ["/settings/sessions", "Sessions", <Laptop key="s" className={ICON_CLASS} />],
+      ["/settings/tokens", "CLI tokens", <Terminal key="t" className={ICON_CLASS} />],
+      ["/settings/security", "Activity", <History key="a" className={ICON_CLASS} />],
     ];
     for (const [href, label, icon] of pages) {
       list.push({
@@ -134,7 +136,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2.5 border-b border-line px-4 py-3">
-          <MagnifyingGlass className="text-muted" weight="regular" />
+          <Search className="h-4 w-4 text-muted" />
           <input
             ref={inputRef}
             value={query}

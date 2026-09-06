@@ -37,6 +37,9 @@ export async function enrollMember(
   if (!membership) {
     throw new ApiError(404, "Organization not found");
   }
+  if (membership.status === "EXPIRED") {
+    throw new ApiError(409, "Your enrollment window expired. Ask an admin to send a new invite.");
+  }
   if (membership.status === "ACTIVE") {
     throw new ApiError(409, "You have already enrolled in this organization.");
   }
@@ -53,31 +56,29 @@ export async function enrollMember(
     throw new ApiError(409, "Someone else just joined. Reload and try again.");
   }
 
-  // Ordered writes (transaction-mode pooler — no interactive transaction).
-  // Bump the roster with an optimistic guard: if another enrollment landed
-  // between our read and this write, `rosterVersion` no longer matches and
-  // the update touches zero rows.
-  const bumped = await db.organization.updateMany({
-    where: { id: orgId, rosterVersion: input.expectedRosterVersion },
-    data: {
-      rosterIv: input.roster.iv,
-      rosterCiphertext: input.roster.ciphertext,
-      rosterVersion: input.expectedRosterVersion + 1,
-    },
-  });
-  if (bumped.count === 0) {
-    throw new ApiError(409, "Someone else just joined. Reload and try again.");
-  }
+  const updated = await db.$transaction(async (tx) => {
+    const bumped = await tx.organization.updateMany({
+      where: { id: orgId, rosterVersion: input.expectedRosterVersion },
+      data: {
+        rosterIv: input.roster.iv,
+        rosterCiphertext: input.roster.ciphertext,
+        rosterVersion: input.expectedRosterVersion + 1,
+      },
+    });
+    if (bumped.count === 0) {
+      throw new ApiError(409, "Someone else just joined. Reload and try again.");
+    }
 
-  const updated = await db.organizationMembership.update({
-    where: { id: membership.id },
-    data: {
-      wrappedOrgKeyCiphertext: input.wrappedOrgKey,
-      pinnedPublicKey: input.pinnedPublicKey,
-      keyEpoch: input.keyEpoch,
-      status: "ACTIVE",
-      keyGrantedAt: new Date(),
-    },
+    return tx.organizationMembership.update({
+      where: { id: membership.id },
+      data: {
+        wrappedOrgKeyCiphertext: input.wrappedOrgKey,
+        pinnedPublicKey: input.pinnedPublicKey,
+        keyEpoch: input.keyEpoch,
+        status: "ACTIVE",
+        keyGrantedAt: new Date(),
+      },
+    });
   });
 
   return {
