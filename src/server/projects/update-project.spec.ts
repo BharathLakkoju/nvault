@@ -11,14 +11,6 @@ jest.mock("../db", () => ({
   },
 }));
 
-jest.mock("./service", () => {
-  const actual = jest.requireActual("./service");
-  return {
-    ...actual,
-    findProjectByGitRemote: jest.fn(),
-  };
-});
-
 const { db } = jest.requireMock("../db") as {
   db: {
     project: {
@@ -26,10 +18,6 @@ const { db } = jest.requireMock("../db") as {
       update: jest.Mock;
     };
   };
-};
-
-const { findProjectByGitRemote } = jest.requireMock("./service") as {
-  findProjectByGitRemote: jest.Mock;
 };
 
 const baseProject = {
@@ -43,7 +31,7 @@ const baseProject = {
 describe("updateProject git remote linking", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    findProjectByGitRemote.mockResolvedValue(null);
+    db.project.findFirst.mockResolvedValue(null);
     db.project.update.mockImplementation(async ({ data }: { data: Partial<Project> }) => ({
       ...baseProject,
       ...data,
@@ -62,7 +50,7 @@ describe("updateProject git remote linking", () => {
   });
 
   it("rejects linking a remote already used by another project", async () => {
-    findProjectByGitRemote.mockResolvedValue({ id: "other-project" });
+    db.project.findFirst.mockResolvedValue({ id: "other-project" });
     await expect(
       updateProject("user_1", baseProject, {
         gitRemoteUrl: "git@github.com:you/repo.git",
