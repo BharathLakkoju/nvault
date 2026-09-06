@@ -19,6 +19,7 @@ const ACTION_LABELS: Record<string, string> = {
   "apitoken.revoked": "Revoked a CLI access token",
   "project.created": "Created project",
   "project.renamed": "Renamed project",
+  "project.git_remote_updated": "Updated project git repository link",
   "project.deleted": "Deleted project",
   "file.uploaded": "Uploaded file version",
   "file.downloaded": "Downloaded file",

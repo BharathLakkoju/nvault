@@ -23,6 +23,9 @@ export async function initCommand(): Promise<void> {
 
   if (!project) {
     console.log("No matching nvault project found for this repository.");
+    console.log(
+      "Link this repository to a project in the web app (Projects → open your project → Git repository).",
+    );
     return;
   }
 

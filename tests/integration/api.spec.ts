@@ -1629,6 +1629,40 @@ describeIf("nvault API (integration)", () => {
     expect(billing.body.subscription.tier).toBe("GROWTH");
   });
 
+  it("links a git remote to an existing project for CLI auto-detection", async () => {
+    const user = await registerUser("git remote link vault passphrase");
+    const { id: projectId } = await createPersonalProject(user, "nvault-app");
+    const remote = "https://github.com/BharathLakkoju/nvault.git";
+
+    const linkRes = await call(routes.project.PATCH, {
+      method: "PATCH",
+      path: `/api/v1/projects/${projectId}`,
+      params: { id: projectId },
+      token: user.token,
+      body: { gitRemoteUrl: remote },
+    });
+    expect(linkRes.status).toBe(200);
+    expect(linkRes.body.project.gitRemoteUrl).toBe("github.com/bharathlakkoju/nvault");
+
+    const lookupRes = await call(routes.byGitRemote, {
+      method: "GET",
+      path: `/api/v1/projects/by-git-remote?url=${encodeURIComponent("git@github.com:BharathLakkoju/nvault.git")}`,
+      token: user.token,
+    });
+    expect(lookupRes.status).toBe(200);
+    expect(lookupRes.body.project?.id).toBe(projectId);
+
+    const unlinkRes = await call(routes.project.PATCH, {
+      method: "PATCH",
+      path: `/api/v1/projects/${projectId}`,
+      params: { id: projectId },
+      token: user.token,
+      body: { gitRemoteUrl: null },
+    });
+    expect(unlinkRes.status).toBe(200);
+    expect(unlinkRes.body.project.gitRemoteUrl).toBeNull();
+  });
+
   it("purge-pending-orgs requires the CRON_SECRET", async () => {
     const unauth = new NextRequest("http://localhost/api/v1/internal/purge-pending-orgs", {
       method: "GET",

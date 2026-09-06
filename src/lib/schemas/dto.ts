@@ -208,6 +208,16 @@ export const RenameProjectRequestSchema = z.object({
 });
 export type RenameProjectRequest = z.infer<typeof RenameProjectRequestSchema>;
 
+export const UpdateProjectRequestSchema = z
+  .object({
+    name: ProjectNameSchema.optional(),
+    gitRemoteUrl: z.union([z.string().trim().max(500), z.null()]).optional(),
+  })
+  .refine((data) => data.name !== undefined || data.gitRemoteUrl !== undefined, {
+    message: "At least one field must be provided",
+  });
+export type UpdateProjectRequest = z.infer<typeof UpdateProjectRequestSchema>;
+
 // ---------------------------------------------------------------------------
 // Files
 // ---------------------------------------------------------------------------

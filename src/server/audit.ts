@@ -13,6 +13,7 @@ export type AuditAction =
   | "vaultkeypair.provisioned"
   | "project.created"
   | "project.renamed"
+  | "project.git_remote_updated"
   | "project.deleted"
   | "project.moved_to_org"
   | "file.uploaded"

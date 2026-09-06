@@ -230,6 +230,7 @@ function CreateProjectForm({
   organizationId?: string | null;
 }) {
   const [name, setName] = useState("");
+  const [gitRemoteUrl, setGitRemoteUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const createProject = useCreateProject();
 
@@ -237,7 +238,11 @@ function CreateProjectForm({
     e.preventDefault();
     setError(null);
     try {
-      await createProject.mutateAsync({ name, organizationId });
+      await createProject.mutateAsync({
+        name,
+        organizationId,
+        gitRemoteUrl: gitRemoteUrl.trim() || undefined,
+      });
       useToastStore.getState().push("success", `Project "${name}" created`);
       onDone();
     } catch (err) {
@@ -251,6 +256,18 @@ function CreateProjectForm({
         <Label htmlFor="project-name">Project name</Label>
         <Input id="project-name" autoFocus required value={name} onChange={(e) => setName(e.target.value)} />
         <FieldError>{error}</FieldError>
+      </div>
+      <div>
+        <Label htmlFor="project-git-remote">Git repository (optional)</Label>
+        <Input
+          id="project-git-remote"
+          value={gitRemoteUrl}
+          onChange={(e) => setGitRemoteUrl(e.target.value)}
+          placeholder="https://github.com/you/your-app.git"
+        />
+        <p className="mt-1.5 text-xs text-muted">
+          Link your repo now so the CLI can find this project with `nvault init`.
+        </p>
       </div>
       <div className="flex justify-end gap-2">
         <DialogClose asChild>

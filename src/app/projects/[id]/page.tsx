@@ -16,7 +16,7 @@ import {
   Trash,
 } from "@phosphor-icons/react";
 import { isDotenvStyleFile } from "@/lib/schemas";
-import { RequireAuth } from "@/components/require-auth";
+import { GitRemoteCard } from "@/components/git-remote-card";
 import { RequireVaultUnlocked } from "@/components/require-vault-unlocked";
 import { AppShell } from "@/components/app-shell";
 import { Spinner } from "@/components/spinner";
@@ -97,6 +97,8 @@ function ProjectDetail({ projectId }: { projectId: string }) {
           </div>
         )}
       </div>
+
+      <GitRemoteCard project={project} />
 
       {keyError && (
         <Card className="border-red-500/40 p-4 text-sm text-red-700 dark:text-red-300">
