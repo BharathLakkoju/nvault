@@ -61,6 +61,7 @@ describeIf("nvault API (integration)", () => {
     revokeSession: require("@/app/api/v1/auth/sessions/[id]/route").DELETE as Handler,
     projects: require("@/app/api/v1/projects/route"),
     project: require("@/app/api/v1/projects/[id]/route"),
+    byGitRemote: require("@/app/api/v1/projects/by-git-remote/route").GET as Handler,
     files: require("@/app/api/v1/projects/[id]/files/route"),
     fileVersions: require("@/app/api/v1/projects/[id]/files/[fileId]/versions/route")
       .GET as Handler,
@@ -1676,7 +1677,9 @@ describeIf("nvault API (integration)", () => {
 
   it("links a git remote to an existing project for CLI auto-detection", async () => {
     const user = await registerUser("git remote link vault passphrase");
-    const { id: projectId } = await createPersonalProject(user, "nvault-app");
+    const createRes = await makePersonalProject(user.token, "nvault-app");
+    expect(createRes.status).toBe(201);
+    const projectId = createRes.body.project.id as string;
     const remote = "https://github.com/BharathLakkoju/nvault.git";
 
     const linkRes = await call(routes.project.PATCH, {
