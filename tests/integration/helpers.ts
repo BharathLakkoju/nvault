@@ -39,20 +39,24 @@ export interface CallResult {
 export async function call(fn: Handler, opts: CallOpts): Promise<CallResult> {
   const headers: Record<string, string> = { "content-type": "application/json", ...opts.headers };
   if (opts.token) headers.authorization = `Bearer ${opts.token}`;
+  const body = opts.body !== undefined ? JSON.stringify(opts.body) : undefined;
+  if (body !== undefined) {
+    headers["content-length"] = String(Buffer.byteLength(body, "utf8"));
+  }
   const req = new NextRequest(`http://localhost${opts.path}`, {
     method: opts.method,
     headers,
-    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+    body,
   });
   const res = await fn(req, { params: opts.params ?? {} });
   const raw = await res.text();
-  let body: unknown;
+  let parsed: unknown;
   try {
-    body = raw ? JSON.parse(raw) : undefined;
+    parsed = raw ? JSON.parse(raw) : undefined;
   } catch {
-    body = undefined;
+    parsed = undefined;
   }
-  return { status: res.status, body, raw };
+  return { status: res.status, body: parsed, raw };
 }
 
 // ---------------------------------------------------------------------------

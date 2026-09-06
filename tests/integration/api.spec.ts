@@ -41,10 +41,14 @@ interface CallOpts {
 async function call(fn: Handler, opts: CallOpts) {
   const headers: Record<string, string> = { "content-type": "application/json" };
   if (opts.token) headers.authorization = `Bearer ${opts.token}`;
+  const body = opts.body !== undefined ? JSON.stringify(opts.body) : undefined;
+  if (body !== undefined) {
+    headers["content-length"] = String(Buffer.byteLength(body, "utf8"));
+  }
   const req = new NextRequest(`http://localhost${opts.path}`, {
     method: opts.method,
     headers,
-    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+    body,
   });
   const res = await fn(req, { params: opts.params ?? {} });
   const text = await res.text();
