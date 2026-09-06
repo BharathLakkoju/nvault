@@ -73,13 +73,14 @@ export function handler(fn: RouteHandler) {
 
 async function readBodyText(req: Request, maxBytes?: number): Promise<string> {
   if (!maxBytes) return await req.text();
-  const declared = req.headers.get("content-length");
-  if (declared === null) {
-    throw new ApiError(411, "Content-Length header is required.");
-  }
-  const length = Number(declared);
-  if (!Number.isSafeInteger(length) || length < 0 || length > maxBytes) {
-    throw new ApiError(413, "Request body is too large.");
+  const declaredHeader = req.headers.get("content-length");
+  let declared: number | null = null;
+  if (declaredHeader !== null) {
+    const length = Number(declaredHeader);
+    if (!Number.isSafeInteger(length) || length < 0 || length > maxBytes) {
+      throw new ApiError(413, "Request body is too large.");
+    }
+    declared = length;
   }
   if (!req.body) return "";
   const reader = req.body.getReader();
@@ -96,7 +97,7 @@ async function readBodyText(req: Request, maxBytes?: number): Promise<string> {
   } finally {
     reader.releaseLock();
   }
-  if (total !== length) {
+  if (declared !== null && total !== declared) {
     throw new ApiError(400, "Request body length does not match Content-Length.");
   }
   const body = new Uint8Array(total);

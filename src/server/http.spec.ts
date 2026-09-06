@@ -13,13 +13,23 @@ describe("readJson body limits", () => {
     });
   }
 
-  it("rejects bodies without Content-Length when a max is enforced", async () => {
+  it("accepts bodies without Content-Length when they fit within the max", async () => {
     const req = new Request("http://localhost/test", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ value: "ok" }),
     });
-    await expect(readJson(req, schema, 64)).rejects.toMatchObject({ status: 411 });
+    await expect(readJson(req, schema, 64)).resolves.toEqual({ value: "ok" });
+  });
+
+  it("rejects bodies without Content-Length that exceed the max while streaming", async () => {
+    const big = JSON.stringify({ value: "x".repeat(100) });
+    const req = new Request("http://localhost/test", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: big,
+    });
+    await expect(readJson(req, schema, 32)).rejects.toMatchObject({ status: 413 });
   });
 
   it("rejects declared lengths above the max before reading the stream", async () => {

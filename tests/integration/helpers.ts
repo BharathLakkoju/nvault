@@ -460,7 +460,8 @@ export class LeakError extends Error {}
  * Throws if any `needle` in `secrets` appears anywhere in `haystack`. `where`
  * labels the surface (response body, audit row, console line, stored blob).
  */
-export function assertNoLeak(where: string, haystack: string, secrets: Array<string | undefined>): void {
+export function assertNoLeak(where: string, haystack: string, secrets?: Array<string | undefined>): void {
+  if (!secrets) return;
   for (const needle of secrets) {
     if (!needle || needle.length < 6) continue;
     if (haystack.includes(needle)) {

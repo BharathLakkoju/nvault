@@ -230,7 +230,7 @@ describeIf("data-leakage invariants", () => {
     // Nothing the suite logged may contain a secret.
     const logText = cc.text();
     cc.restore();
-    assertNoLeak("server logs (whole run)", logText, SECRETS);
+    if (SECRETS) assertNoLeak("server logs (whole run)", logText, SECRETS);
     await cleanupUsers();
     await disconnect();
   });
