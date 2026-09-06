@@ -305,13 +305,18 @@ export function clearAccountEnv(): void {
  * tests). Cascades away when the user is deleted in cleanup.
  */
 export async function grantPro(userId: string): Promise<void> {
+  const polarSubscriptionId = `sub_cli_it_${userId}`;
+  const existing = await db.subscription.findFirst({
+    where: { ownerUserId: userId, plan: "PRO" },
+  });
+  if (existing) return;
   await db.subscription.create({
     data: {
       plan: "PRO",
       ownerUserId: userId,
       status: "ACTIVE",
       polarCustomerId: `cus_cli_it_${userId.slice(0, 8)}`,
-      polarSubscriptionId: `sub_cli_it_${userId.slice(0, 8)}`,
+      polarSubscriptionId,
       polarProductId: process.env.POLAR_PRO_PRODUCT_ID ?? "prod_pro_cli_it",
       currentPeriodEnd: new Date(Date.now() + 28 * 864e5),
       cancelAtPeriodEnd: false,

@@ -285,7 +285,7 @@ describeIf("nvault CLI ⇄ API (integration)", () => {
       const acct = await createAccount(undefined, { pro: false });
       useAccountEnv(acct);
 
-      await expect(pushCommand("verproj", ".env", { yes: true })).rejects.toMatchObject({
+      await expect(filesCommand("verproj")).rejects.toMatchObject({
         name: "ApiError",
         status: 403,
       });
@@ -293,7 +293,6 @@ describeIf("nvault CLI ⇄ API (integration)", () => {
 
     it("Pro: `restore .env 1` re-publishes v1's bytes as a new version", async () => {
       const acct = await createAccount();
-      await grantPro(acct.userId);
       useAccountEnv(acct);
       await projectCreateCommand("proproj");
 
