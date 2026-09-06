@@ -17,6 +17,10 @@ import {
 } from "lucide-react";
 import { isDotenvStyleFile } from "@/lib/schemas";
 import { GitRemoteCard } from "@/components/git-remote-card";
+<<<<<<< Updated upstream
+=======
+import { RequireAuth } from "@/components/require-auth";
+>>>>>>> Stashed changes
 import { RequireVaultUnlocked } from "@/components/require-vault-unlocked";
 import { AppShell } from "@/components/app-shell";
 import { Spinner } from "@/components/spinner";
