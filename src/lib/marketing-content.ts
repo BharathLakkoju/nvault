@@ -106,7 +106,7 @@ export const faqs: ReadonlyArray<FaqItem> = [
   {
     question: "Is there a command-line interface?",
     answer:
-      "The web app is available today. A first-class CLI for headless, SSH and WSL workflows — including device-code login and 'nvault run' to inject secrets without writing a .env file — is on the roadmap and the API is already designed for it.",
+      "Yes. Install `@lbharath/nvault` from npm and run `nvault login` — a browser device-code flow signs you in without typing your account password into the terminal. Push, pull, init, and version history work from WSL, SSH, and remote servers. CLI access requires Pro or Team.",
   },
   {
     question: "How is the server-side storage protected?",

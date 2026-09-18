@@ -53,6 +53,21 @@ export const CreateApiTokenRequestSchema = z.object({
 });
 export type CreateApiTokenRequest = z.infer<typeof CreateApiTokenRequestSchema>;
 
+export const StartDeviceAuthRequestSchema = z.object({
+  clientName: z.string().trim().min(1).max(100).optional(),
+});
+export type StartDeviceAuthRequest = z.infer<typeof StartDeviceAuthRequestSchema>;
+
+export const PollDeviceAuthRequestSchema = z.object({
+  device_code: z.string().min(16).max(256),
+});
+export type PollDeviceAuthRequest = z.infer<typeof PollDeviceAuthRequestSchema>;
+
+export const ApproveDeviceAuthRequestSchema = z.object({
+  userCode: z.string().trim().min(4).max(16),
+});
+export type ApproveDeviceAuthRequest = z.infer<typeof ApproveDeviceAuthRequestSchema>;
+
 // ---------------------------------------------------------------------------
 // Projects
 // ---------------------------------------------------------------------------

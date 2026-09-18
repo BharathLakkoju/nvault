@@ -105,7 +105,7 @@ database.
 
 ## 5. Verify
 
-- `GET https://<your-app>/api/v1/health` → `{"status":"ok",...}`
+- `GET https://<your-app>/api/v1/health` → `{"status":"ok","db":"ok",...}` (returns `503` if the database is unreachable)
 - Register an account, unlock the vault, create a project, upload a `.env`,
   download it back, confirm the bytes match.
 - `pnpm test:integration` against the same database exercises the whole

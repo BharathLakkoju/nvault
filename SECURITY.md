@@ -260,7 +260,10 @@ archive in the browser from already-decrypted files).
 the billing checkout / portal endpoints are rate-limited by `"<route>:<ip>"`
 (invite creation additionally per org; billing additionally per user)
 using a Postgres fixed-window counter
-([src/server/ratelimit.ts](src/server/ratelimit.ts)). Because the counter is
+([src/server/ratelimit.ts](src/server/ratelimit.ts)). File upload and download
+routes are additionally capped per user and per IP (`files/upload:*`,
+`files/download:*`). Device authorization (`auth/device/*`) is rate-limited to
+prevent code-guessing and poll abuse. Because the counter is
 in the database, the limit holds across every concurrent serverless instance
 without an external store. This is the deliberate trade for a Vercel-only,
 no-Redis deployment: one small upsert per limited request.

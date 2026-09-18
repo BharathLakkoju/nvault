@@ -22,18 +22,28 @@ The package is published as `@lbharath/nvault`; the installed command is
 
 ## Authenticate
 
-nvault is self-hosted, so point the CLI at your server and authenticate
-with a **CLI token** created in the web app under **Settings → CLI Tokens**.
-Your account password is never typed into the terminal.
+nvault is self-hosted, so point the CLI at your server. By default, `nvault login`
+ues a **browser device-code flow** — your account password is never typed into
+the terminal.
 
 > CLI access requires a **Pro or Team** plan. On the Free plan the token
 > page shows an upgrade prompt instead of a "New token" button, and
 > `POST /api/v1/auth/tokens` returns `402`. (Self-hosted deployments with
 > billing not configured are unaffected.)
 
-The token's value is shown **once**, when you create it — the server keeps
-only a hash, so it can't be retrieved again. You use it **once**, to sign in
-one terminal:
+### Interactive login (recommended)
+
+```bash
+nvault login --api-url https://vault.example.com
+```
+
+The CLI prints a short code and a URL. Open the URL in any browser, sign in,
+enter the code, and the terminal finishes automatically.
+
+### Token login (CI / headless)
+
+Create a **CLI token** in the web app under **Settings → CLI Tokens**. The
+token's value is shown **once** when you create it:
 
 ```bash
 nvault login --api-url https://vault.example.com --token evk_xxxxxxxx

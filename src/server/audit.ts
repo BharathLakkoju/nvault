@@ -5,6 +5,7 @@ export type AuditAction =
   | "auth.login"
   | "auth.login_failed"
   | "auth.logout"
+  | "auth.device_approved"
   | "session.revoked"
   | "session.revoked_all"
   | "session.evicted"

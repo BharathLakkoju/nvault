@@ -57,6 +57,7 @@ model User {
   keyEpochsRotated   OrganizationKeyEpoch[]   @relation("KeyEpochRotatedBy")
   subscriptionsOwned Subscription[]           @relation("SubscriptionOwner")
   webauthnCredentials WebAuthnCredential[]
+  deviceAuthRequests DeviceAuthRequest[]
 
   @@map("users")
 }

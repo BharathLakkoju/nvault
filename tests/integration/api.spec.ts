@@ -91,6 +91,11 @@ describeIf("nvault API (integration)", () => {
     changeTier: require("@/app/api/v1/organizations/[id]/billing/change-tier/route").POST as Handler,
     orgPortal: require("@/app/api/v1/organizations/[id]/billing/portal/route").GET as Handler,
     purgeCron: require("@/app/api/v1/internal/purge-pending-orgs/route").GET as Handler,
+    health: require("@/app/api/v1/health/route").GET as Handler,
+    deviceStart: require("@/app/api/v1/auth/device/route").POST as Handler,
+    devicePoll: require("@/app/api/v1/auth/device/token/route").POST as Handler,
+    deviceApprove: require("@/app/api/v1/auth/device/approve/route").POST as Handler,
+    logout: require("@/app/api/v1/auth/logout/route").POST as Handler,
     plan: require("@/app/api/v1/billing/plan/route").GET as Handler,
     proCheckout: require("@/app/api/v1/billing/pro/checkout/route").POST as Handler,
     personalPortal: require("@/app/api/v1/billing/portal/route").GET as Handler,
@@ -1750,6 +1755,92 @@ describeIf("nvault API (integration)", () => {
     expect(revokeRes.status).toBe(204);
 
     const meRes = await call(routes.me, { method: "GET", path: "/api/v1/auth/me", token });
+    expect(meRes.status).toBe(401);
+  });
+
+  it("health check pings the database", async () => {
+    const res = await call(routes.health, { method: "GET", path: "/api/v1/health" });
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("ok");
+    expect(res.body.db).toBe("ok");
+    expect(res.body.timestamp).toBeTruthy();
+  });
+
+  it("device-code login issues a CLI token after browser approval", async () => {
+    const { signWebhookForTest } = require("@/server/billing/polar") as {
+      signWebhookForTest: (body: string, opts: { id: string; timestamp: Date }) => Record<string, string>;
+    };
+    const user = await registerUser("device auth vault passphrase");
+
+    const started = await call(routes.deviceStart, {
+      method: "POST",
+      path: "/api/v1/auth/device",
+      body: { clientName: "integration test CLI" },
+    });
+    expect(started.status).toBe(201);
+    expect(started.body.user_code).toMatch(/^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+    expect(started.body.device_code).toBeTruthy();
+
+    const pending = await call(routes.devicePoll, {
+      method: "POST",
+      path: "/api/v1/auth/device/token",
+      body: { device_code: started.body.device_code },
+    });
+    expect(pending.status).toBe(400);
+    expect(pending.body.error).toBe("authorization_pending");
+
+    // Grant Pro so CLI access is allowed, then approve in the browser.
+    const webhookBody = JSON.stringify({
+      type: "subscription.active",
+      data: {
+        id: `sub_it_device_${user.id.slice(0, 8)}`,
+        status: "active",
+        product_id: process.env.POLAR_PRO_PRODUCT_ID ?? "prod_pro_it",
+        customer_id: `cus_it_device_${user.id.slice(0, 8)}`,
+        metadata: { userId: user.id, plan: "PRO" },
+      },
+    });
+    const headers = signWebhookForTest(webhookBody, {
+      id: `evt_device_${randomUUID()}`,
+      timestamp: new Date(),
+    });
+    const webhookReq = new NextRequest("http://localhost/api/v1/webhooks/polar", {
+      method: "POST",
+      headers,
+      body: webhookBody,
+    });
+    const webhookRes = await routes.polarWebhook(webhookReq, { params: {} });
+    expect(webhookRes.status).toBe(200);
+
+    const approved = await call(routes.deviceApprove, {
+      method: "POST",
+      path: "/api/v1/auth/device/approve",
+      token: user.token,
+      body: { userCode: started.body.user_code },
+    });
+    expect(approved.status).toBe(204);
+
+    const completed = await call(routes.devicePoll, {
+      method: "POST",
+      path: "/api/v1/auth/device/token",
+      body: { device_code: started.body.device_code },
+    });
+    expect(completed.status).toBe(200);
+    expect(completed.body.token).toMatch(/^evk_/);
+    expect(completed.body.user.email).toBe(user.email);
+
+    const logoutRes = await call(routes.logout, {
+      method: "POST",
+      path: "/api/v1/auth/logout",
+      token: completed.body.token,
+    });
+    expect(logoutRes.status).toBe(204);
+
+    const meRes = await call(routes.me, {
+      method: "GET",
+      path: "/api/v1/auth/me",
+      token: completed.body.token,
+    });
     expect(meRes.status).toBe(401);
   });
 });

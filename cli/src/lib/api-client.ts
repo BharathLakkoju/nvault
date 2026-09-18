@@ -14,7 +14,7 @@ export class ApiError extends Error {
 
 export class NotLoggedInError extends Error {
   constructor() {
-    super("Not logged in. Run `nvault login --token <token>` first.");
+    super("Not logged in. Run `nvault login` first.");
     this.name = "NotLoggedInError";
   }
 }

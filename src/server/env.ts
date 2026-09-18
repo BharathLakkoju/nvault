@@ -47,6 +47,9 @@ const EnvSchema = z.object({
   TEAM_SCALE_PRICE_LABEL: z.string().min(1).default("$199 / month"),
   // Shared secret for the pending-org purge cron endpoint.
   CRON_SECRET: z.string().min(16).optional(),
+  // Optional error monitoring (Sentry). When unset, observability is disabled.
+  SENTRY_DSN: z.string().url().optional(),
+  SENTRY_ENVIRONMENT: z.string().min(1).optional(),
   // Origin used to build Polar success/return URLs. Falls back to the
   // marketing site origin.
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),

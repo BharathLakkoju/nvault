@@ -14,6 +14,7 @@ const ACTION_LABELS: Record<string, string> = {
   "auth.login": "Logged in",
   "auth.login_failed": "Failed login attempt",
   "auth.logout": "Logged out",
+  "auth.device_approved": "Approved CLI device login",
   "session.revoked": "Revoked a session",
   "session.revoked_all": "Revoked all other sessions",
   "apitoken.created": "Created a CLI access token",

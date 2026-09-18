@@ -8,10 +8,12 @@ import {
   Building2,
   CreditCard,
   Laptop,
+  FileLock,
   Terminal,
   History,
 } from "lucide-react";
 import { useProjects } from "@/hooks/use-projects";
+import { useFileSearch } from "@/hooks/use-file-search";
 import { useOrganizations } from "@/hooks/use-organizations";
 import { useOrgContext } from "@/lib/org-context-store";
 import { cn } from "@/lib/cn";
@@ -38,11 +40,24 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
   const [active, setActive] = useState(0);
   const { data: projects } = useProjects();
   const { data: orgs } = useOrganizations();
+  const { data: fileHits } = useFileSearch(query);
   const setCurrentOrg = useOrgContext((s) => s.setCurrentOrg);
 
   const entries = useMemo<Entry[]>(() => {
     const close = () => onOpenChange(false);
     const list: Entry[] = [];
+    for (const f of fileHits ?? []) {
+      list.push({
+        id: `file:${f.projectId}:${f.id}`,
+        label: `${f.filename} · ${f.projectName}`,
+        group: "File",
+        icon: <FileLock className={ICON_CLASS} />,
+        run: () => {
+          router.push(`/projects/${f.projectId}`);
+          close();
+        },
+      });
+    }
     for (const p of projects ?? []) {
       list.push({
         id: `project:${p.id}`,
@@ -99,7 +114,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
       });
     }
     return list;
-  }, [projects, orgs, router, setCurrentOrg, onOpenChange]);
+  }, [projects, orgs, fileHits, router, setCurrentOrg, onOpenChange]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -155,7 +170,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
                 onOpenChange(false);
               }
             }}
-            placeholder="Jump to a project, org, or setting…"
+            placeholder="Jump to a project, file, org, or setting…"
             className="flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-muted"
           />
           <span className="rounded-md border border-line px-1.5 py-0.5 text-[11px] text-muted">esc</span>

@@ -225,3 +225,45 @@ export async function exportProjectFiles(projectId: string) {
   }
   return results;
 }
+
+/** Search filenames across every project the user can access. */
+export async function searchFilesForUser(userId: string, query: string, limit = 40) {
+  const q = query.trim();
+  if (!q) return [];
+
+  const projects = await db.project.findMany({
+    where: {
+      OR: [
+        { ownerId: userId, organizationId: null },
+        {
+          organization: {
+            status: { in: ["ACTIVE", "SUSPENDED"] },
+            memberships: { some: { userId, status: "ACTIVE" } },
+          },
+        },
+      ],
+    },
+    select: { id: true, name: true },
+  });
+  const projectIds = projects.map((p) => p.id);
+  if (projectIds.length === 0) return [];
+
+  const projectNameById = new Map(projects.map((p) => [p.id, p.name]));
+
+  const files = await db.projectFile.findMany({
+    where: {
+      projectId: { in: projectIds },
+      filename: { contains: q, mode: "insensitive" },
+    },
+    select: { id: true, filename: true, projectId: true },
+    orderBy: { filename: "asc" },
+    take: Math.min(limit, 50),
+  });
+
+  return files.map((f) => ({
+    id: f.id,
+    filename: f.filename,
+    projectId: f.projectId,
+    projectName: projectNameById.get(f.projectId) ?? "Project",
+  }));
+}

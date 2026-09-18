@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -25,8 +25,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tag } from "@/components/ui/tag";
 import { Dialog, DialogContent, DialogClose, DialogTrigger } from "@/components/ui/dialog";
-import { Input, Label } from "@/components/ui/input";
-import { useProject } from "@/hooks/use-projects";
+import { Input, Label, FieldError } from "@/components/ui/input";
+import { useProject, useRenameProject } from "@/hooks/use-projects";
 import { useProjectKey } from "@/hooks/use-project-key";
 import {
   useDeleteFile,
@@ -83,7 +83,10 @@ function ProjectDetail({ projectId }: { projectId: string }) {
 
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-medium text-ink sm:text-[26px]">{project.name}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-medium text-ink sm:text-[26px]">{project.name}</h1>
+            <RenameProjectDialog projectId={project.id} name={project.name} />
+          </div>
           <p className="mt-0.5 text-muted">
             {fileList.length} environment file{fileList.length === 1 ? "" : "s"} · zero-knowledge encrypted
           </p>
@@ -125,6 +128,64 @@ function ProjectDetail({ projectId }: { projectId: string }) {
         </div>
       )}
     </div>
+  );
+}
+
+function RenameProjectDialog({ projectId, name }: { projectId: string; name: string }) {
+  const [open, setOpen] = useState(false);
+  const [nextName, setNextName] = useState(name);
+  const [error, setError] = useState<string | null>(null);
+  const rename = useRenameProject();
+
+  useEffect(() => {
+    if (open) setNextName(name);
+  }, [open, name]);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    try {
+      await rename.mutateAsync({ id: projectId, name: nextName.trim() });
+      useToastStore.getState().push("success", "Project renamed");
+      setOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to rename project");
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" className="h-8 px-2 text-xs text-muted">
+          Rename
+        </Button>
+      </DialogTrigger>
+      <DialogContent title="Rename project">
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <Label htmlFor="project-rename">Name</Label>
+            <Input
+              id="project-rename"
+              value={nextName}
+              maxLength={100}
+              onChange={(e) => setNextName(e.target.value)}
+              required
+            />
+            <FieldError>{error}</FieldError>
+          </div>
+          <div className="flex justify-end gap-2">
+            <DialogClose asChild>
+              <Button type="button" variant="secondary">
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button type="submit" loading={rename.isPending}>
+              Save
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 

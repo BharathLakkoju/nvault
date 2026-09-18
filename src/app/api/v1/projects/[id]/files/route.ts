@@ -4,6 +4,7 @@ import { requireAuth } from "@/server/auth/require-auth";
 import { ApiError, clientIp, handler, json, readJson } from "@/server/http";
 import { authorizeProject } from "@/server/authz/project-access";
 import { userHasActivePro } from "@/server/billing/service";
+import { enforceRateLimit } from "@/server/ratelimit";
 import { listFiles, uploadVersion } from "@/server/files/service";
 
 export const runtime = "nodejs";
@@ -38,6 +39,9 @@ export const GET = handler(async (req, { params }) => {
 
 export const POST = handler(async (req, { params }) => {
   const auth = await requireAuth(req);
+  const ip = clientIp(req);
+  await enforceRateLimit(`files/upload:${auth.userId}`, { limit: 60, windowMs: 60_000 });
+  await enforceRateLimit(`files/upload:ip:${ip ?? "unknown"}`, { limit: 120, windowMs: 60_000 });
 
   const { project, scope } = await authorizeProject(auth.userId, params.id, "write");
   const dto = await readJson(req, UploadFileVersionRequestSchema, MAX_BODY_BYTES);

@@ -42,7 +42,7 @@ export const post: BlogPost = {
     { t: "h2", c: "What the CLI stores" },
     {
       t: "p",
-      c: "The result of login is a **short-lived access token** and a refresh token — not your password, and not your [vault passphrase](/blog/zero-knowledge-encryption-explained), which is a separate secret you still supply per session to unlock encryption. Those tokens go into OS-appropriate secure storage: Keychain on macOS, the Credential Manager on Windows, the Secret Service API on Linux where available. Not a world-readable file in your home directory.",
+      c: "The result of login is a **CLI access token** (`evk_…`) — not your password, and not your [vault passphrase](/blog/zero-knowledge-encryption-explained), which is a separate secret you still supply per session to unlock encryption. That token is stored with owner-only file permissions in your per-user config directory (or injected via `NVAULT_TOKEN` in CI). Revoke it from **Settings → CLI Tokens** or run `nvault logout` to revoke it on the server immediately.",
     },
     { t: "h2", c: "Revocation" },
     {
@@ -51,7 +51,7 @@ export const post: BlogPost = {
     },
     {
       t: "note",
-      c: "Access tokens are intentionally short-lived so that a leaked one has a small window. The refresh happens quietly in the background; you re-run `nvault login` only when a device is fully de-authorised.",
+      c: "CLI tokens are long-lived credentials scoped to terminal access. Revoke any device from **Settings → CLI Tokens** or with `nvault logout` — the token stops working on the next request.",
     },
     {
       t: "quote",

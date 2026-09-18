@@ -42,17 +42,12 @@ export default function CliPage() {
             title="Your environment, one command away"
             description="The nvault CLI is designed for WSL, SSH sessions, remote servers, cloud VMs and CI — anywhere a browser is inconvenient or unavailable."
           />
-          <div className="mx-auto mt-6 max-w-2xl rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-center text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
-            The CLI is in <strong>preview</strong>. Some commands below (device-code login, <code>nvault run</code>) are
-            still landing; the{" "}
-            <Link href="/features" className="font-medium underline">
-              web app
-            </Link>{" "}
-            is available today. CLI access — and the CLI tokens that authenticate it — requires a{" "}
-            <Link href="/pricing" className="font-medium underline">
+          <div className="mx-auto mt-6 max-w-2xl rounded-lg border border-line bg-surface-2 px-4 py-3 text-center text-sm text-muted">
+            CLI access requires a{" "}
+            <Link href="/pricing" className="font-medium text-accent-600 hover:underline dark:text-accent-300">
               Pro or Team plan
             </Link>
-            .
+            . <code className="font-mono">nvault run</code> (inject secrets without writing a file) is still on the roadmap.
           </div>
 
           <div className="mx-auto mt-12 max-w-2xl">
@@ -247,12 +242,10 @@ export default function CliPage() {
             <Prose>
               <h2>Credentials &amp; configuration</h2>
               <p>
-                A CLI token (Pro or Team, created under Settings &rarr; CLI Tokens) is shown to you exactly once and
-                used exactly once &mdash; you paste it into <code>nvault login</code> to sign in a single terminal. That
-                login then persists: the CLI stores the credential in OS-appropriate secure storage &mdash; Keychain on
-                macOS, Credential Manager on Windows, the Secret Service API on Linux where available &mdash; and stays
-                signed in, so you never handle the token again on that machine. It never writes tokens to a plaintext
-                dotfile, and never prints them unless you ask. Your{" "}
+                Run <code>nvault login</code> to authenticate via a browser device-code flow — your account password is
+                never typed into the terminal. For CI, create a scoped token in Settings &rarr; CLI Tokens and pass it
+                with <code>--token</code> or <code>NVAULT_TOKEN</code>. The login persists in OS-appropriate secure
+                storage. Your{" "}
                 <Link href="/blog/zero-knowledge-encryption-explained">vault passphrase</Link> is a separate secret that
                 unlocks encryption per session and is never stored.
               </p>
@@ -291,8 +284,7 @@ export default function CliPage() {
 
               <h2>Availability</h2>
               <p>
-                The web application is available today. The CLI is in preview; the API is already versioned and shaped so
-                it can be added without server-side changes. Web and CLI are backed by the same domain model, so
+                The web application and CLI are both available today. Web and CLI are backed by the same domain model, so
                 behaviour stays identical across both. Read more in{" "}
                 <Link href="/blog/the-cli-is-a-product">The CLI is a product, not an afterthought</Link>.
               </p>

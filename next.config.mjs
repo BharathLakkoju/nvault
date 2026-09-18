@@ -27,6 +27,8 @@ const baseSecurityHeaders = [
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Load Sentry server instrumentation when a DSN is configured.
+  ...(process.env.SENTRY_DSN ? { instrumentationHook: true } : {}),
   // argon2 (native) and the Prisma runtime + pg driver must not be bundled
   // for server code.
   serverExternalPackages: [
