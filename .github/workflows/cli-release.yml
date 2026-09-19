@@ -51,8 +51,10 @@ jobs:
       - run: pnpm --filter ./cli test
       - run: pnpm --filter ./cli build
 
-      # Tokenless: pnpm performs the npm OIDC token exchange automatically
-      # because id-token:write is granted and a trusted publisher is
-      # configured for `@lbharath/nvault` on npmjs.com.
+      # Publish without provenance here. `--provenance` only works in a
+      # GitHub Actions environment that is configured as an npm Trusted Publisher
+      # with OIDC enabled. A local/manual publish from a workstation does not
+      # have a provider, so npm rejects it with "Automatic provenance generation
+      # not supported for provider: null".
       - name: Publish to npm
-        run: pnpm --filter ./cli publish --no-git-checks --access public --provenance
+        run: pnpm --filter ./cli publish --no-git-checks --access public
