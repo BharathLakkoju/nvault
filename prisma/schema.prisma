@@ -84,6 +84,36 @@ model WebAuthnCredential {
   @@map("webauthn_credentials")
 }
 
+enum DeviceAuthStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
+model DeviceAuthRequest {
+  id String @id @default(cuid())
+
+  deviceCodeHash String @unique
+  userCode       String @unique
+  status         DeviceAuthStatus @default(PENDING)
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  approvedToken     String?
+  approvedSessionId String?
+  clientName        String?
+  userAgent         String?
+  ipAddress         String?
+  pollCount         Int      @default(0)
+  lastPollAt        DateTime?
+  createdAt         DateTime @default(now())
+  expiresAt         DateTime
+
+  @@index([expiresAt])
+  @@map("device_auth_requests")
+}
+
 /// An authenticated browser session — the unit of session revocation.
 model Session {
   id     String @id @default(cuid())
