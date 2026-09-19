@@ -6,7 +6,7 @@ import {
 } from "@simplewebauthn/server";
 import type {
   AuthenticationResponseJSON,
-  AuthenticatorTransportFuture,
+  AuthenticatorTransport,
   RegistrationResponseJSON,
 } from "@simplewebauthn/server";
 import { SignJWT, jwtVerify } from "jose";
@@ -98,7 +98,7 @@ export async function beginPasskeyRegistration(userId: string) {
     attestationType: "none",
     excludeCredentials: existing.map((c) => ({
       id: c.credentialId,
-      transports: c.transports?.split(",") as AuthenticatorTransportFuture[] | undefined,
+      transports: c.transports?.split(",") as AuthenticatorTransport[] | undefined,
     })),
     authenticatorSelection: {
       residentKey: "preferred",
@@ -154,7 +154,7 @@ export async function beginPasskeyStepUp(userId: string) {
     rpID: rpId(),
     allowCredentials: credentials.map((c) => ({
       id: c.credentialId,
-      transports: c.transports?.split(",") as AuthenticatorTransportFuture[] | undefined,
+      transports: c.transports?.split(",") as AuthenticatorTransport[] | undefined,
     })),
     userVerification: "required",
   });
@@ -187,7 +187,7 @@ export async function finishPasskeyStepUp(
       id: credentialRow.credentialId,
       publicKey: Buffer.from(credentialRow.publicKey, "base64url"),
       counter: Number(credentialRow.counter),
-      transports: credentialRow.transports?.split(",") as AuthenticatorTransportFuture[] | undefined,
+      transports: credentialRow.transports?.split(",") as AuthenticatorTransport[] | undefined,
     },
   });
   if (!verification.verified) {
