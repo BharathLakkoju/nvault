@@ -66,7 +66,11 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       if (refreshed) {
         return rawRequest<T>(path, options);
       }
-      useAuthStore.getState().clearSession();
+
+      // Keep the account session alive, but lock the vault. The user can
+      // re-enter their vault passphrase without going through a full logout/login
+      // flow again. Full logout remains the explicit action in the account menu.
+      useAuthStore.getState().lockVault();
     }
     throw err;
   }

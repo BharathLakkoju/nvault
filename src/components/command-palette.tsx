@@ -33,7 +33,13 @@ const ICON_CLASS = "h-4 w-4";
  * navigates to a settings page — a keyboard-first way around the app. Purely a
  * navigation aid; every destination re-checks authorization on its own.
  */
-export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export function CommandPalette({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
@@ -95,11 +101,31 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
       });
     }
     const pages: [string, string, React.ReactNode][] = [
-      ["/settings/organizations", "Organizations", <Building2 key="o" className={ICON_CLASS} />],
-      ["/settings/billing", "Billing", <CreditCard key="b" className={ICON_CLASS} />],
-      ["/settings/sessions", "Sessions", <Laptop key="s" className={ICON_CLASS} />],
-      ["/settings/tokens", "CLI tokens", <Terminal key="t" className={ICON_CLASS} />],
-      ["/settings/security", "Activity", <History key="a" className={ICON_CLASS} />],
+      [
+        "/settings/organizations",
+        "Organizations",
+        <Building2 key="o" className={ICON_CLASS} />,
+      ],
+      [
+        "/settings/billing",
+        "Billing",
+        <CreditCard key="b" className={ICON_CLASS} />,
+      ],
+      [
+        "/settings/sessions",
+        "Sessions",
+        <Laptop key="s" className={ICON_CLASS} />,
+      ],
+      [
+        "/settings/tokens",
+        "CLI tokens",
+        <Terminal key="t" className={ICON_CLASS} />,
+      ],
+      [
+        "/settings/security",
+        "Activity",
+        <History key="a" className={ICON_CLASS} />,
+      ],
     ];
     for (const [href, label, icon] of pages) {
       list.push({
@@ -119,7 +145,10 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return entries;
-    return entries.filter((e) => e.label.toLowerCase().includes(q) || e.group.toLowerCase().includes(q));
+    return entries.filter(
+      (e) =>
+        e.label.toLowerCase().includes(q) || e.group.toLowerCase().includes(q),
+    );
   }, [entries, query]);
 
   useEffect(() => {
@@ -173,11 +202,15 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
             placeholder="Jump to a project, file, org, or setting…"
             className="flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-muted"
           />
-          <span className="rounded-md border border-line px-1.5 py-0.5 text-[11px] text-muted">esc</span>
+          <span className="rounded-md border border-line px-1.5 py-0.5 text-[11px] text-muted">
+            esc
+          </span>
         </div>
         <div className="dc-scroll flex max-h-[50vh] flex-col gap-0.5 overflow-y-auto p-2">
           {filtered.length === 0 && (
-            <div className="px-3 py-6 text-center text-sm text-muted">No matches</div>
+            <div className="px-3 py-6 text-center text-sm text-muted">
+              No matches
+            </div>
           )}
           {filtered.map((entry, i) => (
             <button
@@ -189,7 +222,9 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
                 i === active ? "bg-accent-500/12" : "hover:bg-ink/[0.04]",
               )}
             >
-              <span className="text-accent-600 dark:text-accent-300">{entry.icon}</span>
+              <span className="text-accent-600 dark:text-accent-300">
+                {entry.icon}
+              </span>
               <span className="flex-1 truncate">{entry.label}</span>
               <span className="text-[11px] text-muted">{entry.group}</span>
             </button>

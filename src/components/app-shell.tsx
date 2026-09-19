@@ -115,10 +115,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="relative flex flex-shrink-0 items-center gap-3 border-b border-line px-4 py-3 sm:px-7">
+        <header className="relative flex shrink-0 items-center gap-3 border-b border-line px-4 py-3 sm:px-7">
           <button
             aria-label="Open menu"
-            className="focus-ring -ml-1 inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-muted hover:bg-ink/[0.06] md:hidden"
+            className="focus-ring -ml-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-ink/6 md:hidden"
             onClick={() => setMobileOpen(true)}
           >
             <Menu size={18} />
@@ -129,8 +129,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onClick={() => setPaletteOpen(true)}
             className="focus-ring flex min-w-0 flex-1 items-center gap-2.5 rounded-lg border border-line bg-surface px-3 py-2 text-[13px] text-muted md:hidden"
           >
-            <Search size={15} className="flex-shrink-0" />
-            <span className="flex-1 truncate text-left">Search projects, files, people…</span>
+            <Search size={15} className="shrink-0" />
+            <span className="flex-1 truncate text-left">
+              Search projects, files, people…
+            </span>
           </button>
 
           {/* Desktop: search centered in the header */}
@@ -138,9 +140,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onClick={() => setPaletteOpen(true)}
             className="focus-ring absolute left-1/2 hidden w-full max-w-md -translate-x-1/2 items-center gap-3 rounded-lg border border-line bg-surface px-3.5 py-2 text-[13px] text-muted md:flex lg:max-w-lg"
           >
-            <Search size={15} className="flex-shrink-0" />
-            <span className="flex-1 truncate text-left">Search projects, files, people…</span>
-            <kbd className="inline-flex flex-shrink-0 items-center gap-1 rounded-md border border-line bg-surface-2 px-2 py-1 font-mono text-[11px] leading-none text-muted">
+            <Search size={15} className="shrink-0" />
+            <span className="flex-1 truncate text-left">
+              Search projects, files, people…
+            </span>
+            <kbd className="inline-flex shrink-0 items-center gap-1 rounded-md border border-line bg-surface-2 px-2 py-1 font-mono text-[11px] leading-none text-muted">
               <Command size={12} />
               <span className="text-xs">K</span>
             </kbd>
@@ -180,12 +184,17 @@ function Sidebar({
     <aside
       className={cn(
         "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-line bg-surface transition-transform md:static md:translate-x-0 md:transition-[width]",
-        collapsed ? "md:w-[68px]" : "md:w-56",
+        collapsed ? "md:w-17" : "md:w-56",
         "w-64",
         mobileOpen ? "translate-x-0" : "-translate-x-full",
       )}
     >
-      <div className={cn("flex flex-shrink-0 items-center gap-2.5 px-4 py-4", collapsed && "md:justify-center md:px-0")}>
+      <div
+        className={cn(
+          "flex shrink-0 items-center gap-2.5 px-4 py-4",
+          collapsed && "md:justify-center md:px-0",
+        )}
+      >
         <Link href="/dashboard" className="focus-ring rounded">
           <Logo className={cn("text-[15px]", collapsed && "md:hidden")} />
           <LogoMark className={cn("hidden", collapsed && "md:block")} />
@@ -194,7 +203,7 @@ function Sidebar({
           onClick={onToggleCollapsed}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           className={cn(
-            "focus-ring ml-auto h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-muted hover:bg-ink/[0.06] hidden md:inline-flex",
+            "focus-ring ml-auto h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-ink/6 hidden md:inline-flex",
             collapsed && "md:hidden",
           )}
         >
@@ -205,7 +214,7 @@ function Sidebar({
         <button
           onClick={onToggleCollapsed}
           title="Expand sidebar"
-          className="focus-ring mx-auto mb-1 hidden h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-ink/[0.06] md:inline-flex"
+          className="focus-ring mx-auto mb-1 hidden h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-ink/6 md:inline-flex"
         >
           <ChevronRight size={14} />
         </button>
@@ -227,21 +236,23 @@ function Sidebar({
                 "focus-ring flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px]",
                 active
                   ? "bg-accent-500/15 text-accent-700 dark:text-accent-100"
-                  : "text-ink/75 hover:bg-ink/[0.05]",
+                  : "text-ink/75 hover:bg-ink/5",
                 collapsed && "md:justify-center",
               )}
             >
               <Icon
                 size={17}
-                className={cn("flex-shrink-0", active && "stroke-[2.25]")}
+                className={cn("shrink-0", active && "stroke-[2.25]")}
               />
-              <span className={cn("truncate", collapsed && "md:hidden")}>{item.label}</span>
+              <span className={cn("truncate", collapsed && "md:hidden")}>
+                {item.label}
+              </span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="flex flex-shrink-0 flex-col border-t border-line pt-2">
+      <div className="flex shrink-0 flex-col border-t border-line pt-2">
         <div
           className={cn(
             "px-3 pb-1 pt-1 text-[10px] font-medium uppercase tracking-[0.08em] text-muted",
@@ -290,12 +301,18 @@ function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
   }, [hydrated, hydrate]);
 
   useEffect(() => {
-    if (hydrated && currentOrgId && orgs && !orgs.some((o) => o.id === currentOrgId)) {
+    if (
+      hydrated &&
+      currentOrgId &&
+      orgs &&
+      !orgs.some((o) => o.id === currentOrgId)
+    ) {
       setCurrentOrg(null);
     }
   }, [hydrated, currentOrgId, orgs, setCurrentOrg]);
 
-  const isPro = billing?.pro.status === "ACTIVE" || billing?.pro.status === "PAST_DUE";
+  const isPro =
+    billing?.pro.status === "ACTIVE" || billing?.pro.status === "PAST_DUE";
   const activeOrgs = (orgs ?? []).filter((o) => o.status === "ACTIVE");
   const hasPendingInvite = (orgs ?? []).some((o) => o.status === "INVITED");
   const currentOrg = activeOrgs.find((o) => o.id === currentOrgId) ?? null;
@@ -315,20 +332,24 @@ function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
           <button
             title="Switch workspace"
             className={cn(
-              "focus-ring flex w-full items-center gap-2.5 rounded-lg border border-line bg-canvas px-2.5 py-2 text-left hover:bg-ink/[0.04]",
+              "focus-ring flex w-full items-center gap-2.5 rounded-lg border border-line bg-canvas px-2.5 py-2 text-left hover:bg-ink/4",
               collapsed && "md:justify-center md:gap-0 md:px-0",
             )}
           >
-            <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-accent-500/15 text-accent-700 dark:text-accent-200">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent-500/15 text-accent-700 dark:text-accent-200">
               <CurrentIcon size={15} />
             </span>
             <span className={cn("min-w-0 flex-1", collapsed && "md:hidden")}>
-              <span className="block truncate text-[13px] font-medium text-ink">{currentName}</span>
-              <span className="block truncate text-[11px] text-muted">{currentPlan}</span>
+              <span className="block truncate text-[13px] font-medium text-ink">
+                {currentName}
+              </span>
+              <span className="block truncate text-[11px] text-muted">
+                {currentPlan}
+              </span>
             </span>
             <ChevronsUpDown
               size={14}
-              className={cn("flex-shrink-0 text-muted", collapsed && "md:hidden")}
+              className={cn("shrink-0 text-muted", collapsed && "md:hidden")}
             />
           </button>
         </DropdownMenu.Trigger>
@@ -336,9 +357,9 @@ function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
           <DropdownMenu.Content
             align="start"
             sideOffset={6}
-            className="z-[70] w-60 rounded-lg border border-line bg-surface p-1 shadow-xl"
+            className="z-70 w-60 rounded-lg border border-line bg-surface p-1 shadow-xl"
           >
-            <DropdownMenu.Label className="px-2 py-1.5 text-[10px] font-medium uppercase tracking-[0.1em] text-muted">
+            <DropdownMenu.Label className="px-2 py-1.5 text-[10px] font-medium uppercase tracking-widest text-muted">
               Switch workspace
             </DropdownMenu.Label>
 
@@ -371,7 +392,7 @@ function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
             <DropdownMenu.Item asChild>
               <Link
                 href="/settings/organizations"
-                className="focus-ring flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[13px] text-ink outline-none hover:bg-ink/[0.06]"
+                className="focus-ring flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[13px] text-ink outline-none hover:bg-ink/6"
               >
                 <Plus size={14} /> New organization
               </Link>
@@ -379,7 +400,7 @@ function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
             <DropdownMenu.Item asChild>
               <Link
                 href="/settings/billing"
-                className="focus-ring flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[13px] text-ink outline-none hover:bg-ink/[0.06]"
+                className="focus-ring flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[13px] text-ink outline-none hover:bg-ink/6"
               >
                 <CreditCard size={14} /> Plans &amp; billing
               </Link>
@@ -415,18 +436,25 @@ function WorkspaceRow({
   return (
     <DropdownMenu.Item
       onSelect={onSelect}
-      className="focus-ring flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 outline-none hover:bg-ink/[0.06]"
+      className="focus-ring flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 outline-none hover:bg-ink/6"
     >
-      <Icon size={15} className="flex-shrink-0 text-muted" />
+      <Icon size={15} className="shrink-0 text-muted" />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
           <span className="truncate text-[13px] text-ink">{name}</span>
-          {dot && <span className={cn("h-1.5 w-1.5 flex-shrink-0 rounded-full", dot)} />}
+          {dot && (
+            <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dot)} />
+          )}
         </span>
-        <span className="block truncate text-[11px] capitalize text-muted">{detail}</span>
+        <span className="block truncate text-[11px] capitalize text-muted">
+          {detail}
+        </span>
       </span>
       {active && (
-        <Check size={13} className="flex-shrink-0 text-accent-600 dark:text-accent-300" />
+        <Check
+          size={13}
+          className="shrink-0 text-accent-600 dark:text-accent-300"
+        />
       )}
     </DropdownMenu.Item>
   );
@@ -455,16 +483,18 @@ function AccountBadge() {
         <DropdownMenu.Content
           align="end"
           sideOffset={8}
-          className="z-[70] min-w-[13rem] rounded-lg border border-line bg-surface p-1 shadow-xl"
+          className="z-70 min-w-52 rounded-lg border border-line bg-surface p-1 shadow-xl"
         >
           {user?.email && (
-            <div className="truncate px-2 py-1.5 text-xs text-muted">{user.email}</div>
+            <div className="truncate px-2 py-1.5 text-xs text-muted">
+              {user.email}
+            </div>
           )}
           <DropdownMenu.Separator className="my-1 h-px bg-line" />
           {masterKey && (
             <DropdownMenu.Item
               onSelect={() => lockVault()}
-              className="focus-ring flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-ink outline-none hover:bg-ink/[0.06]"
+              className="focus-ring flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-ink outline-none hover:bg-ink/6"
             >
               <Lock size={14} />
               Lock vault
