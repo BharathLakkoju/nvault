@@ -1,6 +1,6 @@
 {
   "name": "@lbharath/nvault",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Terminal CLI for nvault — a secure, zero-knowledge developer environment/configuration vault. Your development environment, available anywhere.",
   "type": "commonjs",
   "license": "MIT",

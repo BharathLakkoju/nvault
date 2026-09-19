@@ -112,6 +112,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   async bootstrap() {
     const ok = await get().tryRefresh();
     if (!ok) {
+      // Do not force a full account logout just because the vault needs to be
+      // re-locked. If the user was already authenticated in this tab, keep the
+      // account session alive and only clear in-memory vault material.
+      if (get().user) {
+        set({ status: "authenticated" });
+        get().lockVault();
+        return;
+      }
       set({ status: "unauthenticated" });
     }
   },
@@ -166,6 +174,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   lockVault() {
+    const state = get();
+    if (state.masterKey === null && state.privateKey === null) return;
     set({ masterKey: null, privateKey: null });
   },
 

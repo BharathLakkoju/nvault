@@ -53,4 +53,18 @@ describe("apiRequest auth retry behavior", () => {
     expect(useAuthStore.getState().masterKey).toBeNull();
     expect(useAuthStore.getState().privateKey).toBeNull();
   });
+
+  it("keeps the account authenticated during bootstrap when refresh fails and only locks the vault", async () => {
+    const bootstrap = useAuthStore.getState().bootstrap;
+    const tryRefreshSpy = jest.spyOn(useAuthStore.getState(), "tryRefresh").mockResolvedValue(false);
+    const lockSpy = jest.spyOn(useAuthStore.getState(), "lockVault");
+
+    await bootstrap();
+
+    expect(tryRefreshSpy).toHaveBeenCalled();
+    expect(lockSpy).toHaveBeenCalled();
+    expect(useAuthStore.getState().status).toBe("authenticated");
+    expect(useAuthStore.getState().masterKey).toBeNull();
+    expect(useAuthStore.getState().privateKey).toBeNull();
+  });
 });
