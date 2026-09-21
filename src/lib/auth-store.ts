@@ -30,10 +30,26 @@ type BootStatus = "loading" | "authenticated" | "unauthenticated";
  * the one in-flight promise instead.
  */
 let inFlightRefresh: Promise<boolean> | null = null;
+let accessTokenRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleAccessTokenRefresh(expiresInSeconds: number | null | undefined) {
+  if (accessTokenRefreshTimer) {
+    clearTimeout(accessTokenRefreshTimer);
+    accessTokenRefreshTimer = null;
+  }
+
+  if (!expiresInSeconds || expiresInSeconds <= 30) return;
+
+  const msUntilRefresh = Math.max(0, (expiresInSeconds - 30) * 1000);
+  accessTokenRefreshTimer = setTimeout(() => {
+    void useAuthStore.getState().tryRefresh();
+  }, msUntilRefresh);
+}
 
 interface AuthState {
   status: BootStatus;
   accessToken: string | null;
+  accessTokenExpiresInSeconds: number | null;
   user: PublicUser | null;
   vaultKeyMaterial: VaultKeyMaterial | null;
   keyPairMaterial: UserKeyPairMaterial | null;
@@ -62,6 +78,7 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set, get) => ({
   status: "loading",
   accessToken: null,
+  accessTokenExpiresInSeconds: null,
   user: null,
   vaultKeyMaterial: null,
   keyPairMaterial: null,
@@ -69,9 +86,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   privateKey: null,
 
   setSession(result) {
+    scheduleAccessTokenRefresh(result.accessTokenExpiresInSeconds);
     set({
       status: "authenticated",
       accessToken: result.accessToken,
+      accessTokenExpiresInSeconds: result.accessTokenExpiresInSeconds,
       user: result.user,
       vaultKeyMaterial: result.vaultKeyMaterial,
       keyPairMaterial: result.keyPairMaterial ?? null,
@@ -79,9 +98,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   clearSession() {
+    if (accessTokenRefreshTimer) {
+      clearTimeout(accessTokenRefreshTimer);
+      accessTokenRefreshTimer = null;
+    }
     set({
       status: "unauthenticated",
       accessToken: null,
+      accessTokenExpiresInSeconds: null,
       user: null,
       vaultKeyMaterial: null,
       keyPairMaterial: null,

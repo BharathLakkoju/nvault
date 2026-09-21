@@ -18,6 +18,10 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "types": [
+      "node",
+      "jest"
+    ],
     "jsx": "react-jsx",
     "incremental": true,
     "plugins": [
@@ -40,7 +44,6 @@
   ],
   "exclude": [
     "node_modules",
-    "**/*.spec.ts",
     "tests",
     "scripts",
     "cli"

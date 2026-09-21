@@ -1,3 +1,5 @@
+/// <reference types="jest" />
+
 import { apiRequest } from "./api-client";
 import { useAuthStore } from "./auth-store";
 
@@ -21,6 +23,8 @@ describe("apiRequest auth retry behavior", () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+    jest.clearAllTimers();
+    jest.useRealTimers();
   });
 
   it("locks the vault instead of clearing the authenticated session when refresh fails", async () => {
@@ -66,5 +70,27 @@ describe("apiRequest auth retry behavior", () => {
     expect(useAuthStore.getState().status).toBe("authenticated");
     expect(useAuthStore.getState().masterKey).toBeNull();
     expect(useAuthStore.getState().privateKey).toBeNull();
+  });
+
+  it("schedules a refresh before the access token expires", () => {
+    const setTimeoutSpy = jest.spyOn(globalThis, "setTimeout").mockImplementation((fn: TimerHandler) => {
+      return 0 as unknown as ReturnType<typeof setTimeout>;
+    });
+
+    useAuthStore.getState().setSession({
+      accessToken: "fresh-token",
+      accessTokenExpiresInSeconds: 60,
+      user: {
+        id: "user_123",
+        email: "user@example.com",
+        name: "Test User",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
+      vaultKeyMaterial: {} as any,
+      keyPairMaterial: null,
+    });
+
+    expect(setTimeoutSpy).toHaveBeenCalledTimes(1);
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 30_000);
   });
 });
