@@ -21,7 +21,7 @@ function normalizeUrl(value: string | undefined, fallback: string): string {
   }
 }
 
-export const SITE_URL = normalizeUrl(process.env.NEXT_PUBLIC_SITE_URL, "https://nvault.dev");
+export const SITE_URL = normalizeUrl(process.env.NEXT_PUBLIC_SITE_URL, "https://nvaults.vercel.app");
 
 export const siteConfig = {
   name: "nvault",

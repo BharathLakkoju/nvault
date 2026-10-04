@@ -29,7 +29,7 @@ export const post: BlogPost = {
     {
       t: "code",
       lang: "text",
-      c: "$ nvault login\n\nOpen:  https://app.nvault.dev/device\nCode:  X7KD-29PL\n\nWaiting for authentication...\n✓ Device authenticated",
+      c: "$ nvault login\n\nOpen:  https://nvaults.vercel.app/device\nCode:  X7KD-29PL\n\nWaiting for authentication...\n✓ Device authenticated",
     },
     {
       t: "ol",
