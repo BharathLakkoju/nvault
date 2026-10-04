@@ -147,7 +147,13 @@ jobs:
           NEXT: ${{ steps.version.outputs.next }}
         run: |
           set -euo pipefail
-          git push --force-with-lease origin "release/cli-v${NEXT}"
+          BRANCH="release/cli-v${NEXT}"
+          REMOTE_SHA="$(git ls-remote --heads origin "$BRANCH" | awk '{print $1}')"
+          if [ -n "$REMOTE_SHA" ]; then
+            git push --force-with-lease="refs/heads/${BRANCH}:${REMOTE_SHA}" origin "$BRANCH"
+          else
+            git push origin "$BRANCH"
+          fi
 
       - name: Open pull request
         env:
@@ -172,9 +178,10 @@ jobs:
           EOF
           )"
           BRANCH="release/cli-v${NEXT}"
-          if gh pr view "$BRANCH" >/dev/null 2>&1; then
-            echo "Pull request already exists for ${BRANCH}; updating title and body."
-            gh pr edit "$BRANCH" --title "$TITLE" --body "$BODY"
+          PR_NUMBER="$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')"
+          if [ -n "$PR_NUMBER" ]; then
+            echo "Open pull request #${PR_NUMBER} for ${BRANCH}; updating title and body."
+            gh pr edit "$PR_NUMBER" --title "$TITLE" --body "$BODY"
           else
             gh pr create \
               --base master \
