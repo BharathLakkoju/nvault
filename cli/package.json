@@ -30,7 +30,7 @@
     "provenance": true
   },
   "bin": {
-    "nvault": "./bin/nvault.js"
+    "nvault": "bin/nvault.js"
   },
   "files": [
     "dist",

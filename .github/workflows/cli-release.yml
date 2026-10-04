@@ -118,7 +118,7 @@ jobs:
           set -euo pipefail
           LOG="$(mktemp)"
           if ! npm publish --provenance --access public 2>&1 | tee "$LOG"; then
-            if grep -qiE 'AUTH_TOKEN_EXCHANGE|token exchange|ERR_PNPM_AUTH_TOKEN|E404.*registry\.npmjs\.org' "$LOG"; then
+            if grep -qiE 'AUTH_TOKEN_EXCHANGE|token exchange|ERR_PNPM_AUTH_TOKEN|E404.*registry\.npmjs\.org|code E404|404 Not Found - PUT' "$LOG"; then
               echo "" >&2
               echo "::error::npm OIDC token exchange failed. Configure Trusted Publishing on npmjs.com for package @lbharath/nvault:" >&2
               echo "  Publisher: GitHub Actions" >&2
