@@ -17,13 +17,14 @@ import { historyCommand } from "./commands/history";
 import { restoreCommand } from "./commands/restore";
 import { statusCommand } from "./commands/status";
 import { runCommand } from "./commands/run";
+import { readCliVersion } from "./lib/version";
 
 const program = new Command();
 
 program
   .name("nvault")
   .description("Your development environment, available anywhere.")
-  .version("0.1.0");
+  .version(readCliVersion());
 
 program
   .command("login")
@@ -99,11 +100,12 @@ program
 program
   .command("run [project]")
   .description("Run a command with the project's environment injected — nothing is written to disk")
+  .option("--allow-empty", "Run even when the project has no secrets to inject (default: fail closed)")
   .allowUnknownOption()
-  .action(async (projectName: string | undefined) => {
+  .action(async (projectName: string | undefined, opts: { allowEmpty?: boolean }) => {
     const dashIndex = process.argv.indexOf("--");
     const commandParts = dashIndex === -1 ? [] : process.argv.slice(dashIndex + 1);
-    await runCommand(projectName, commandParts);
+    await runCommand(projectName, commandParts, { allowEmpty: opts.allowEmpty });
   });
 
 async function main() {
