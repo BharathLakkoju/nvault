@@ -16,6 +16,7 @@ concurrency:
 
 permissions:
   contents: write
+  actions: write # workflow_dispatch Publish CLI via GITHUB_TOKEN
 
 jobs:
   skip:
@@ -98,3 +99,19 @@ jobs:
           fi
           git remote set-url origin "https://x-access-token:${NVAULT_RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}"
           git push origin "$TAG"
+
+      - name: Trigger Publish CLI if not on npm
+        if: steps.meta.outputs.tag != ''
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#cli-v}"
+          PUBLISHED="$(npm view "@lbharath/nvault@${VERSION}" version 2>/dev/null || true)"
+          if [ "$PUBLISHED" = "$VERSION" ]; then
+            echo "@lbharath/nvault@${VERSION} is already on npm; not dispatching Publish CLI." >&2
+            exit 0
+          fi
+          echo "Dispatching Publish CLI for tag $TAG (npm does not have $VERSION yet)." >&2
+          gh workflow run cli-release.yml --ref "$TAG"

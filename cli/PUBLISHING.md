@@ -67,10 +67,10 @@ Fine-grained PAT or GitHub App installation token with **`contents: write`** (an
 
 | Configured | Release PR | Tag push | npm publish |
 | ---------- | ---------- | -------- | ----------- |
-| **Yes** | Normal **CI** checks on the PR | Tag push triggers **Publish CLI** (`on: push tags`) | Trusted Publishing (OIDC) in **Publish CLI** |
+| **Yes** | Normal **CI** checks on the PR | Tag pushed with the PAT | **CLI Tag Release** dispatches **Publish CLI** (`workflow_dispatch`) |
 | **No** | In-workflow CI in **CLI Version Bump** before the PR is opened; PR may show no CI checks | **CLI Tag Release** fails when pushing the tag (no npm publish) | — |
 
-**CLI Tag Release** requires **`NVAULT_RELEASE_TOKEN`** to push the release tag. Tags created with the default `GITHUB_TOKEN` do not fire tag-push workflows, so **Publish CLI** only runs when the tag is pushed with that secret.
+**CLI Tag Release** requires **`NVAULT_RELEASE_TOKEN`** to push the release tag. Tags pushed with the default `GITHUB_TOKEN` do not trigger other workflows on tag push, so **Publish CLI** is started explicitly with `gh workflow run` (still the same workflow file npm Trusted Publishing must list).
 
 Store the value only in **Settings → Secrets and variables → Actions** as `NVAULT_RELEASE_TOKEN`. Do not commit it.
 
@@ -102,13 +102,38 @@ This runs `esbuild` and writes a single bundled `dist/index.js` (shared `@core/c
 
 ## 4. Publish to npm
 
+### npm Trusted Publishing (required for CI)
+
+In [npmjs.com](https://www.npmjs.com/) → **@lbharath/nvault** → **Settings** → **Trusted Publisher** → **GitHub Actions**, add:
+
+| Field | Value |
+| ----- | ----- |
+| **Organization or user** | `BharathLakkoju` |
+| **Repository** | `nvault` |
+| **Workflow filename** | `cli-release.yml` |
+| **Environment name** | *(leave empty)* |
+
+The package owner must save this once. **Publish CLI** uses OIDC (`id-token: write`) and `npm publish --provenance`; no `NPM_TOKEN` secret is stored in GitHub.
+
+If the workflow fails with an OIDC / token-exchange error, the trusted publisher is missing or does not match the table above.
+
 ### CI (after merge)
 
-**Publish CLI** (`.github/workflows/cli-release.yml`) publishes when a `cli-v*` tag is pushed.
+1. **CLI Tag Release** creates tag `cli-vX.Y.Z` on merge (needs **`NVAULT_RELEASE_TOKEN`** to push the tag).
+2. It dispatches **Publish CLI** (`.github/workflows/cli-release.yml`) for that tag when the version is not already on npm.
+3. **Publish CLI** also runs on `push` of `cli-v*` tags when your git host delivers that event; the dispatch step covers PAT-pushed tags that do not trigger tag workflows.
 
-**CLI Tag Release** must push that tag using **`NVAULT_RELEASE_TOKEN`** (see above). Without it, the tag step fails and npm publish does not run.
+Re-running **Publish CLI** for the same tag is safe: it skips with success if `@lbharath/nvault@X.Y.Z` is already published.
 
-### Manual
+### Publish an existing tag from Actions (manual)
+
+Use this when a tag exists (for example `cli-v0.2.0`) but npm never received that version:
+
+1. GitHub → **Actions** → **Publish CLI** → **Run workflow**.
+2. Either choose **Use workflow from** → pick tag `cli-vX.Y.Z`, **or** run from `master` and set **tag** to `cli-vX.Y.Z`.
+3. Confirm the run checks out that tag and that `cli/package.json` matches.
+
+### Manual (from your machine)
 
 ```bash
 cd cli

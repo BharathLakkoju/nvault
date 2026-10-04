@@ -1,22 +1,30 @@
 name: Publish CLI
 
 # Publishes the `@lbharath/nvault` npm package from cli/ when a tag matching
-# `cli-v*` is pushed (e.g. `cli-v0.1.0`). The tag version must match
-# cli/package.json's "version". The published package is `@lbharath/nvault`;
-# the command it installs is `nvault`.
+# `cli-v*` is pushed (e.g. `cli-v0.1.0`), when **CLI Tag Release** dispatches
+# this workflow, or manually from Actions (workflow_dispatch). The tag version
+# must match cli/package.json's "version".
 #
-# Auth is via npm Trusted Publishing (OIDC) — no token. Configure a trusted
-# publisher for `@lbharath/nvault` on npmjs.com (package → Settings →
-# Trusted Publisher) pointing at this repo + this workflow file. The very
-# first publish must be done once manually from a workstation (npm won't
-# let you configure a trusted publisher for a package that does not exist
-# yet); every release after that runs here tokenless. Provenance is
-# attested from the workflow's OIDC identity (id-token: write).
+# Auth is via npm Trusted Publishing (OIDC) — no long-lived npm token.
+# Configure a trusted publisher for `@lbharath/nvault` on npmjs.com (see
+# cli/PUBLISHING.md). The first publish may need to be done once manually;
+# subsequent releases run here tokenless. Provenance is attested from the
+# workflow OIDC identity (id-token: write).
 
 on:
   push:
     tags:
       - "cli-v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. cli-v0.2.0). Ignored when this run uses a tag ref."
+        required: false
+        type: string
+
+concurrency:
+  group: cli-publish-${{ github.event_name == 'push' && github.ref_name || (github.ref_type == 'tag' && github.ref_name || github.event.inputs.tag) }}
+  cancel-in-progress: false
 
 jobs:
   publish:
@@ -26,35 +34,99 @@ jobs:
       id-token: write # npm provenance + Trusted Publishing (OIDC)
 
     steps:
+      - name: Resolve release tag
+        id: release
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "push" ]; then
+            TAG="${GITHUB_REF_NAME}"
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
+            TAG="${GITHUB_REF_NAME}"
+          elif [ -n "${INPUT_TAG:-}" ]; then
+            TAG="${INPUT_TAG}"
+          else
+            echo "workflow_dispatch requires a tag ref or the 'tag' input (e.g. cli-v0.2.0)." >&2
+            exit 1
+          fi
+          if [[ ! "$TAG" =~ ^cli-v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release tag: $TAG (expected cli-vX.Y.Z)" >&2
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ steps.release.outputs.tag }}
 
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
           registry-url: "https://registry.npmjs.org"
+
+      - name: Ensure npm supports Trusted Publishing
+        run: |
+          set -euo pipefail
+          npm install -g npm@latest
+          npm --version
+          node --version
 
       - run: pnpm install --frozen-lockfile
 
       - name: Verify tag matches cli/package.json version
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
-          TAG_VERSION="${GITHUB_REF_NAME#cli-v}"
+          set -euo pipefail
+          TAG_VERSION="${RELEASE_TAG#cli-v}"
           PKG_VERSION="$(node -p "require('./cli/package.json').version")"
           if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
-            echo "Tag $GITHUB_REF_NAME implies version $TAG_VERSION but cli/package.json is $PKG_VERSION" >&2
+            echo "Tag $RELEASE_TAG implies version $TAG_VERSION but cli/package.json is $PKG_VERSION" >&2
             exit 1
+          fi
+          echo "version=$TAG_VERSION" >> "$GITHUB_ENV"
+
+      - name: Skip if version already on npm
+        id: npm
+        run: |
+          set -euo pipefail
+          PUBLISHED="$(npm view "@lbharath/nvault@${VERSION}" version 2>/dev/null || true)"
+          if [ "$PUBLISHED" = "$VERSION" ]; then
+            echo "@lbharath/nvault@${VERSION} is already on npm; skipping publish." >&2
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
       - run: pnpm --filter ./cli typecheck
-      - run: pnpm --filter ./cli test
-      - run: pnpm --filter ./cli build
+        if: steps.npm.outputs.skip != 'true'
 
-      # Publish without provenance here. `--provenance` only works in a
-      # GitHub Actions environment that is configured as an npm Trusted Publisher
-      # with OIDC enabled. A local/manual publish from a workstation does not
-      # have a provider, so npm rejects it with "Automatic provenance generation
-      # not supported for provider: null".
+      - run: pnpm --filter ./cli test
+        if: steps.npm.outputs.skip != 'true'
+
+      - run: pnpm --filter ./cli build
+        if: steps.npm.outputs.skip != 'true'
+
       - name: Publish to npm
-        run: pnpm --filter ./cli publish --no-git-checks --access public
+        if: steps.npm.outputs.skip != 'true'
+        working-directory: cli
+        run: |
+          set -euo pipefail
+          LOG="$(mktemp)"
+          if ! npm publish --provenance --access public 2>&1 | tee "$LOG"; then
+            if grep -qiE 'AUTH_TOKEN_EXCHANGE|token exchange|ERR_PNPM_AUTH_TOKEN|E404.*registry\.npmjs\.org' "$LOG"; then
+              echo "" >&2
+              echo "::error::npm OIDC token exchange failed. Configure Trusted Publishing on npmjs.com for package @lbharath/nvault:" >&2
+              echo "  Publisher: GitHub Actions" >&2
+              echo "  Owner: BharathLakkoju" >&2
+              echo "  Repository: nvault" >&2
+              echo "  Workflow filename: cli-release.yml" >&2
+              echo "  Environment: (leave empty)" >&2
+              echo "See cli/PUBLISHING.md for details." >&2
+            fi
+            exit 1
+          fi
