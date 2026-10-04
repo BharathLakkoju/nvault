@@ -88,7 +88,7 @@ jobs:
             echo "Tag $RELEASE_TAG implies version $TAG_VERSION but cli/package.json is $PKG_VERSION" >&2
             exit 1
           fi
-          echo "version=$TAG_VERSION" >> "$GITHUB_ENV"
+          echo "VERSION=$TAG_VERSION" >> "$GITHUB_ENV"
 
       - name: Skip if version already on npm
         id: npm
