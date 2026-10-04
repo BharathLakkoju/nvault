@@ -55,8 +55,21 @@ nvault whoami
 1. In GitHub: **Actions → CLI Version Bump → Run workflow**.
    - Choose **patch** / **minor** / **major**, or set **version** to an explicit `X.Y.Z` (must be greater than the current version).
 2. The workflow opens a PR from `release/cli-vX.Y.Z` to `master` titled `chore(cli): release vX.Y.Z` (bumps `cli/package.json` and `pnpm-lock.yaml`).
+   - If **`NVAULT_RELEASE_TOKEN`** is **not** configured, the bump workflow runs the same lint/test/build steps as CI on the release branch **before** opening the PR (and fails without creating a PR if anything breaks).
+   - If **`NVAULT_RELEASE_TOKEN`** **is** set, the workflow uses it to push the branch and open the PR so the normal **CI** workflow runs on the PR (duplicate checks are skipped in the bump workflow).
 3. Review and merge the PR.
 4. **CLI Tag Release** runs on merge, creates git tag `cli-vX.Y.Z`, then **Publish CLI** runs (see below).
+
+### Optional secret: `NVAULT_RELEASE_TOKEN`
+
+Fine-grained PAT or GitHub App installation token with **`contents: write`** (and **`pull-requests: write`** if the token must open PRs) on this repository.
+
+| Configured | Release PR | Tag push | npm publish |
+| ---------- | ---------- | -------- | ----------- |
+| **Yes** | Normal **CI** checks on the PR | Tag push triggers **Publish CLI** (`on: push tags`) | Trusted Publishing (OIDC) in **Publish CLI** |
+| **No** | In-workflow CI in **CLI Version Bump** before the PR is opened; PR may show no CI checks | Tag pushed with `GITHUB_TOKEN` does **not** fire tag workflows | **Publish CLI** still runs via `workflow_run` after **CLI Tag Release** |
+
+Store the value only in **Settings → Secrets and variables → Actions** as `NVAULT_RELEASE_TOKEN`. Do not commit it.
 
 Dry-run the bump logic locally (does not write files):
 
@@ -93,7 +106,7 @@ This runs `esbuild` and writes a single bundled `dist/index.js` (shared `@core/c
 - A `cli-v*` tag is pushed, or
 - **CLI Tag Release** completes and the new tag is on `master` (`workflow_run` fallback).
 
-GitHub does **not** run tag-push workflows for tags created with the default `GITHUB_TOKEN`. To have publish run from the tag push alone, add a repository secret **`RELEASE_TOKEN`** (fine-scoped PAT with `contents: write`) used by **CLI Tag Release** when pushing the tag. Without it, publish still runs via the `workflow_run` hook after tagging.
+GitHub does **not** run tag-push workflows for tags created with the default `GITHUB_TOKEN`. With **`NVAULT_RELEASE_TOKEN`** configured, **CLI Tag Release** pushes the tag using that secret so **Publish CLI** runs on `push: tags`. Without it, publish still runs via the `workflow_run` hook after tagging.
 
 ### Manual
 

@@ -1,7 +1,7 @@
 name: CLI Version Bump
 
 # Opens a release PR that bumps cli/package.json (and the lockfile). After merge,
-# "CLI Tag Release" tags master and (via workflow_run) triggers "Publish CLI".
+# "CLI Tag Release" tags master and triggers "Publish CLI" (tag push and/or workflow_run).
 
 on:
   workflow_dispatch:
@@ -31,6 +31,28 @@ permissions:
 jobs:
   bump:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: envvault
+          POSTGRES_PASSWORD: envvault
+          POSTGRES_DB: envvault
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U envvault"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://envvault:envvault@localhost:5432/envvault?schema=public
+      DIRECT_DATABASE_URL: postgresql://envvault:envvault@localhost:5432/envvault?schema=public
+      JWT_SECRET: ci-jwt-secret-ci-jwt-secret-ci-jwt-secret
+      STORAGE_ENCRYPTION_KEY: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=
+
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -38,7 +60,7 @@ jobs:
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - name: Resolve next CLI version
@@ -86,6 +108,40 @@ jobs:
           git add cli/package.json pnpm-lock.yaml
           git commit -m "chore(cli): release v${NEXT}"
 
+      # PRs opened with GITHUB_TOKEN do not run the repo CI workflow. Validate here
+      # before push/PR when NVAULT_RELEASE_TOKEN is absent (PR will get normal CI when set).
+      - name: Verify (same checks as CI build job)
+        env:
+          NVAULT_RELEASE_TOKEN: ${{ secrets.NVAULT_RELEASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${NVAULT_RELEASE_TOKEN:-}" ]; then
+            echo "NVAULT_RELEASE_TOKEN is set; skipping in-workflow CI (release PR will run the repo CI workflow)."
+            exit 0
+          fi
+          pnpm install --frozen-lockfile
+          pnpm prisma generate
+          pnpm typecheck
+          pnpm typecheck:test
+          pnpm lint
+          pnpm test
+          pnpm prisma migrate deploy
+          pnpm test:integration
+          pnpm test:cli:integration
+          pnpm build
+          pnpm --filter ./cli typecheck
+          pnpm --filter ./cli test
+          pnpm --filter ./cli build
+
+      - name: Configure git remote for release token
+        env:
+          NVAULT_RELEASE_TOKEN: ${{ secrets.NVAULT_RELEASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${NVAULT_RELEASE_TOKEN:-}" ]; then
+            git remote set-url origin "https://x-access-token:${NVAULT_RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}"
+          fi
+
       - name: Push branch
         env:
           NEXT: ${{ steps.version.outputs.next }}
@@ -95,11 +151,16 @@ jobs:
 
       - name: Open pull request
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NVAULT_RELEASE_TOKEN: ${{ secrets.NVAULT_RELEASE_TOKEN }}
           NEXT: ${{ steps.version.outputs.next }}
           CURRENT: ${{ steps.version.outputs.current }}
         run: |
           set -euo pipefail
+          if [ -n "${NVAULT_RELEASE_TOKEN:-}" ]; then
+            export GH_TOKEN="$NVAULT_RELEASE_TOKEN"
+          else
+            export GH_TOKEN="${{ github.token }}"
+          fi
           TITLE="chore(cli): release v${NEXT}"
           BODY="$(cat <<EOF
           ## CLI release v${NEXT}
@@ -107,7 +168,7 @@ jobs:
           - Bumps \`cli/package.json\` from **${CURRENT}** to **${NEXT}**
           - Updates \`pnpm-lock.yaml\`
 
-          After this PR merges to \`master\`, the [CLI Tag Release](.github/workflows/cli-tag-release.yml) workflow creates tag \`cli-v${NEXT}\`, which triggers [Publish CLI](.github/workflows/cli-release.yml) (see \`cli/PUBLISHING.md\` for token / \`workflow_run\` notes).
+          After this PR merges to \`master\`, [CLI Tag Release](.github/workflows/cli-tag-release.yml) creates tag \`cli-v${NEXT}\`, which triggers [Publish CLI](.github/workflows/cli-release.yml). See \`cli/PUBLISHING.md\` for \`NVAULT_RELEASE_TOKEN\` / fallback behavior.
           EOF
           )"
           gh pr create \

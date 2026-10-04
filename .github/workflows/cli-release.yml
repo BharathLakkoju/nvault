@@ -18,7 +18,7 @@ on:
     tags:
       - "cli-v*"
   # Tags created by GITHUB_TOKEN in "CLI Tag Release" do not fire tag-push
-  # workflows. Configure RELEASE_TOKEN on that workflow, or rely on this hook.
+  # workflows. Configure NVAULT_RELEASE_TOKEN on that workflow, or rely on this hook.
   workflow_run:
     workflows: ["CLI Tag Release"]
     types: [completed]
