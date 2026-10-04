@@ -1,0 +1,117 @@
+name: CLI Version Bump
+
+# Opens a release PR that bumps cli/package.json (and the lockfile). After merge,
+# "CLI Tag Release" tags master and (via workflow_run) triggers "Publish CLI".
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Semver bump when version override is empty
+        required: true
+        type: choice
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
+      version:
+        description: Optional explicit X.Y.Z (must be > current; overrides bump)
+        required: false
+        type: string
+
+concurrency:
+  group: cli-version-bump
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Resolve next CLI version
+        id: version
+        env:
+          BUMP: ${{ inputs.bump }}
+          OVERRIDE: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          CURRENT="$(node -p "require('./cli/package.json').version")"
+          ARGS=(apply --dry-run --bump "$BUMP")
+          if [ -n "${OVERRIDE// }" ]; then
+            ARGS+=(--version "$OVERRIDE")
+          fi
+          NEXT="$(node --experimental-strip-types scripts/cli-bump-version.ts "${ARGS[@]}" | tail -n1)"
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "next=$NEXT" >> "$GITHUB_OUTPUT"
+          echo "Next version: $CURRENT → $NEXT"
+
+      - name: Create release branch and bump files
+        env:
+          NEXT: ${{ steps.version.outputs.next }}
+          BUMP: ${{ inputs.bump }}
+          OVERRIDE: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          BRANCH="release/cli-v${NEXT}"
+          git checkout -b "$BRANCH"
+          ARGS=(apply --bump "$BUMP")
+          if [ -n "${OVERRIDE// }" ]; then
+            ARGS+=(--version "$OVERRIDE")
+          fi
+          node --experimental-strip-types scripts/cli-bump-version.ts "${ARGS[@]}"
+
+      - name: Update lockfile
+        run: pnpm install --lockfile-only
+
+      - name: Commit version bump
+        env:
+          NEXT: ${{ steps.version.outputs.next }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cli/package.json pnpm-lock.yaml
+          git commit -m "chore(cli): release v${NEXT}"
+
+      - name: Push branch
+        env:
+          NEXT: ${{ steps.version.outputs.next }}
+        run: |
+          set -euo pipefail
+          git push --force-with-lease origin "release/cli-v${NEXT}"
+
+      - name: Open pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEXT: ${{ steps.version.outputs.next }}
+          CURRENT: ${{ steps.version.outputs.current }}
+        run: |
+          set -euo pipefail
+          TITLE="chore(cli): release v${NEXT}"
+          BODY="$(cat <<EOF
+          ## CLI release v${NEXT}
+
+          - Bumps \`cli/package.json\` from **${CURRENT}** to **${NEXT}**
+          - Updates \`pnpm-lock.yaml\`
+
+          After this PR merges to \`master\`, the [CLI Tag Release](.github/workflows/cli-tag-release.yml) workflow creates tag \`cli-v${NEXT}\`, which triggers [Publish CLI](.github/workflows/cli-release.yml) (see \`cli/PUBLISHING.md\` for token / \`workflow_run\` notes).
+          EOF
+          )"
+          gh pr create \
+            --base master \
+            --head "release/cli-v${NEXT}" \
+            --title "$TITLE" \
+            --body "$BODY"

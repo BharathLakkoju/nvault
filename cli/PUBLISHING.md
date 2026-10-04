@@ -50,6 +50,23 @@ nvault whoami
 
 ## 2. Bump the version
 
+### Automated (recommended)
+
+1. In GitHub: **Actions → CLI Version Bump → Run workflow**.
+   - Choose **patch** / **minor** / **major**, or set **version** to an explicit `X.Y.Z` (must be greater than the current version).
+2. The workflow opens a PR from `release/cli-vX.Y.Z` to `master` titled `chore(cli): release vX.Y.Z` (bumps `cli/package.json` and `pnpm-lock.yaml`).
+3. Review and merge the PR.
+4. **CLI Tag Release** runs on merge, creates git tag `cli-vX.Y.Z`, then **Publish CLI** runs (see below).
+
+Dry-run the bump logic locally (does not write files):
+
+```bash
+node --experimental-strip-types scripts/cli-bump-version.ts resolve --current "$(node -p "require('./cli/package.json').version")" --bump patch
+node --experimental-strip-types scripts/cli-bump-version.ts apply --dry-run --bump minor
+```
+
+### Manual
+
 Edit `cli/package.json` → `"version"` (semver).
 
 Follow [semver](https://semver.org/):
@@ -68,6 +85,17 @@ pnpm run build
 This runs `esbuild` and writes a single bundled `dist/index.js` (shared `@core/crypto` is inlined).
 
 ## 4. Publish to npm
+
+### CI (after merge)
+
+**Publish CLI** (`.github/workflows/cli-release.yml`) publishes when:
+
+- A `cli-v*` tag is pushed, or
+- **CLI Tag Release** completes and the new tag is on `master` (`workflow_run` fallback).
+
+GitHub does **not** run tag-push workflows for tags created with the default `GITHUB_TOKEN`. To have publish run from the tag push alone, add a repository secret **`RELEASE_TOKEN`** (fine-scoped PAT with `contents: write`) used by **CLI Tag Release** when pushing the tag. Without it, publish still runs via the `workflow_run` hook after tagging.
+
+### Manual
 
 ```bash
 cd cli
@@ -125,7 +153,8 @@ See [DEPLOYMENT.md](../DEPLOYMENT.md) for environment variables and platform not
 
 ## Checklist (copy before each release)
 
-- [ ] `cli/package.json` version bumped
+- [ ] `cli/package.json` version bumped (via **CLI Version Bump** workflow or manual edit)
+- [ ] Release PR merged; tag `cli-vX.Y.Z` exists on `master`
 - [ ] `pnpm --filter @lbharath/nvault test` passes
 - [ ] `pnpm --filter @lbharath/nvault build` passes
 - [ ] Smoke-tested against target API URL

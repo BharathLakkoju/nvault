@@ -1,0 +1,92 @@
+name: CLI Tag Release
+
+# When a release PR (branch release/cli-v*) merges to master, create git tag cli-vX.Y.Z.
+# Tags pushed with the default GITHUB_TOKEN do not trigger other workflows (including
+# tag-push publish). Use secret RELEASE_TOKEN (PAT with contents: write) to push the
+# tag so "Publish CLI" runs on push; otherwise publish is triggered via workflow_run.
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [master]
+
+concurrency:
+  group: cli-tag-release-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  skip:
+    if: >-
+      github.event.pull_request.merged != true ||
+      !startsWith(github.event.pull_request.head.ref, 'release/cli-v')
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Not a merged CLI release PR; no tag created."
+
+  tag:
+    if: >-
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'release/cli-v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - name: Resolve version from branch name
+        id: meta
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          VERSION="${HEAD_REF#release/cli-v}"
+          if ! node --experimental-strip-types scripts/cli-bump-version.ts resolve \
+            --current "$VERSION" --bump patch >/dev/null; then
+            echo "Invalid version in branch name: $VERSION" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=cli-v${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify cli/package.json matches release branch
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          set -euo pipefail
+          PKG_VERSION="$(node -p "require('./cli/package.json').version")"
+          if [ "$PKG_VERSION" != "$VERSION" ]; then
+            echo "cli/package.json is $PKG_VERSION but release branch implies $VERSION" >&2
+            exit 1
+          fi
+
+      - name: Create tag if missing
+        id: tag
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists; skipping" >&2
+            echo "created=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "CLI release ${TAG#cli-v}"
+          echo "created=true" >> "$GITHUB_OUTPUT"
+
+      - name: Push tag
+        if: steps.tag.outputs.created == 'true'
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${RELEASE_TOKEN:-}" ]; then
+            git remote set-url origin "https://x-access-token:${RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}"
+          fi
+          git push origin "$TAG"
