@@ -1821,6 +1821,9 @@ describeIf("nvault API (integration)", () => {
     });
     expect(approved.status).toBe(204);
 
+    // RFC 8628: polls faster than `interval` (5s) after the pending check get slow_down (429).
+    await new Promise((resolve) => setTimeout(resolve, 5_000));
+
     const completed = await call(routes.devicePoll, {
       method: "POST",
       path: "/api/v1/auth/device/token",
