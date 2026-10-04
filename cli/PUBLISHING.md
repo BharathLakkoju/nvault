@@ -54,7 +54,8 @@ nvault whoami
 
 1. In GitHub: **Actions → CLI Version Bump → Run workflow**.
    - Choose **patch** / **minor** / **major**, or set **version** to an explicit `X.Y.Z` (must be greater than the current version).
-2. The workflow opens a PR from `release/cli-vX.Y.Z` to `master` titled `chore(cli): release vX.Y.Z` (bumps `cli/package.json` and `pnpm-lock.yaml`). Re-running the workflow for the same target version force-updates that branch and refreshes the existing PR instead of failing with a duplicate.
+2. The workflow opens a PR from `release/cli-vX.Y.Z` to `master` titled `chore(cli): release vX.Y.Z` (bumps `cli/package.json` and `pnpm-lock.yaml`).
+   - Re-running for the same target version updates the remote release branch (explicit `--force-with-lease` via `git ls-remote` when the branch already exists), refreshes an **open** release PR, or opens a new PR if the previous one was closed.
    - If **`NVAULT_RELEASE_TOKEN`** is **not** configured, the bump workflow runs the same lint/test/build steps as CI on the release branch **before** opening the PR (and fails without creating a PR if anything breaks).
    - If **`NVAULT_RELEASE_TOKEN`** **is** set, the workflow uses it to push the branch and open the PR so the normal **CI** workflow runs on the PR (duplicate checks are skipped in the bump workflow).
 3. Review and merge the PR.
