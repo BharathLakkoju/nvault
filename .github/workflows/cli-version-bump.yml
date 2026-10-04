@@ -1,7 +1,7 @@
 name: CLI Version Bump
 
 # Opens a release PR that bumps cli/package.json (and the lockfile). After merge,
-# "CLI Tag Release" tags master and triggers "Publish CLI" (tag push and/or workflow_run).
+# "CLI Tag Release" tags master and triggers "Publish CLI" on tag push.
 
 on:
   workflow_dispatch:
@@ -168,7 +168,7 @@ jobs:
           - Bumps \`cli/package.json\` from **${CURRENT}** to **${NEXT}**
           - Updates \`pnpm-lock.yaml\`
 
-          After this PR merges to \`master\`, [CLI Tag Release](.github/workflows/cli-tag-release.yml) creates tag \`cli-v${NEXT}\`, which triggers [Publish CLI](.github/workflows/cli-release.yml). See \`cli/PUBLISHING.md\` for \`NVAULT_RELEASE_TOKEN\` / fallback behavior.
+          After this PR merges to \`master\`, [CLI Tag Release](.github/workflows/cli-tag-release.yml) creates tag \`cli-v${NEXT}\`, which triggers [Publish CLI](.github/workflows/cli-release.yml). See \`cli/PUBLISHING.md\` for \`NVAULT_RELEASE_TOKEN\` setup.
           EOF
           )"
           gh pr create \

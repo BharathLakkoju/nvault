@@ -67,7 +67,9 @@ Fine-grained PAT or GitHub App installation token with **`contents: write`** (an
 | Configured | Release PR | Tag push | npm publish |
 | ---------- | ---------- | -------- | ----------- |
 | **Yes** | Normal **CI** checks on the PR | Tag push triggers **Publish CLI** (`on: push tags`) | Trusted Publishing (OIDC) in **Publish CLI** |
-| **No** | In-workflow CI in **CLI Version Bump** before the PR is opened; PR may show no CI checks | Tag pushed with `GITHUB_TOKEN` does **not** fire tag workflows | **Publish CLI** still runs via `workflow_run` after **CLI Tag Release** |
+| **No** | In-workflow CI in **CLI Version Bump** before the PR is opened; PR may show no CI checks | **CLI Tag Release** fails when pushing the tag (no npm publish) | — |
+
+**CLI Tag Release** requires **`NVAULT_RELEASE_TOKEN`** to push the release tag. Tags created with the default `GITHUB_TOKEN` do not fire tag-push workflows, so **Publish CLI** only runs when the tag is pushed with that secret.
 
 Store the value only in **Settings → Secrets and variables → Actions** as `NVAULT_RELEASE_TOKEN`. Do not commit it.
 
@@ -101,12 +103,9 @@ This runs `esbuild` and writes a single bundled `dist/index.js` (shared `@core/c
 
 ### CI (after merge)
 
-**Publish CLI** (`.github/workflows/cli-release.yml`) publishes when:
+**Publish CLI** (`.github/workflows/cli-release.yml`) publishes when a `cli-v*` tag is pushed.
 
-- A `cli-v*` tag is pushed, or
-- **CLI Tag Release** completes and the new tag is on `master` (`workflow_run` fallback).
-
-GitHub does **not** run tag-push workflows for tags created with the default `GITHUB_TOKEN`. With **`NVAULT_RELEASE_TOKEN`** configured, **CLI Tag Release** pushes the tag using that secret so **Publish CLI** runs on `push: tags`. Without it, publish still runs via the `workflow_run` hook after tagging.
+**CLI Tag Release** must push that tag using **`NVAULT_RELEASE_TOKEN`** (see above). Without it, the tag step fails and npm publish does not run.
 
 ### Manual
 

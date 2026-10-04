@@ -17,57 +17,9 @@ on:
   push:
     tags:
       - "cli-v*"
-  # Tags created by GITHUB_TOKEN in "CLI Tag Release" do not fire tag-push
-  # workflows. Configure NVAULT_RELEASE_TOKEN on that workflow, or rely on this hook.
-  workflow_run:
-    workflows: ["CLI Tag Release"]
-    types: [completed]
-    branches: [master]
 
 jobs:
-  release-gate:
-    if: >-
-      github.event_name == 'workflow_run' &&
-      github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
-    outputs:
-      should_publish: ${{ steps.check.outputs.should_publish }}
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          ref: master
-          fetch-depth: 0
-
-      - name: Check for new release tag on master
-        id: check
-        run: |
-          set -euo pipefail
-          PKG_VERSION="$(node -p "require('./cli/package.json').version")"
-          TAG="cli-v${PKG_VERSION}"
-          git fetch --tags origin "refs/tags/${TAG}:refs/tags/${TAG}" 2>/dev/null || true
-          if ! git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG not found; skipping publish." >&2
-            echo "should_publish=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          HEAD="$(git rev-parse HEAD)"
-          TAG_COMMIT="$(git rev-parse "$TAG^{commit}")"
-          if [ "$HEAD" = "$TAG_COMMIT" ]; then
-            echo "should_publish=true" >> "$GITHUB_OUTPUT"
-            echo "Publishing CLI v${PKG_VERSION} (tag $TAG on master)"
-          else
-            echo "should_publish=false" >> "$GITHUB_OUTPUT"
-            echo "Tag $TAG is not on master HEAD; skipping publish." >&2
-          fi
-
   publish:
-    needs: [release-gate]
-    if: >-
-      always() && (
-        github.event_name == 'push' ||
-        (needs.release-gate.result == 'success' &&
-          needs.release-gate.outputs.should_publish == 'true')
-      )
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -75,8 +27,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          ref: ${{ github.event_name == 'workflow_run' && 'master' || github.ref }}
 
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
 
@@ -89,7 +39,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Verify tag matches cli/package.json version
-        if: github.event_name == 'push'
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#cli-v}"
           PKG_VERSION="$(node -p "require('./cli/package.json').version")"

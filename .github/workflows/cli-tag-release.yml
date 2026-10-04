@@ -2,8 +2,8 @@ name: CLI Tag Release
 
 # When a release PR (branch release/cli-v*) merges to master, create git tag cli-vX.Y.Z.
 # Tags pushed with the default GITHUB_TOKEN do not trigger other workflows (including
-# tag-push publish). Use secret NVAULT_RELEASE_TOKEN (PAT with contents: write) to push
-# the tag so "Publish CLI" runs on push; otherwise publish is triggered via workflow_run.
+# tag-push publish). Secret NVAULT_RELEASE_TOKEN (PAT with contents: write) is required
+# to push the tag so "Publish CLI" runs on push.
 
 on:
   pull_request:
@@ -36,6 +36,10 @@ jobs:
         with:
           ref: master
           fetch-depth: 0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
 
       - name: Resolve version from branch name
         id: meta
@@ -86,7 +90,11 @@ jobs:
           NVAULT_RELEASE_TOKEN: ${{ secrets.NVAULT_RELEASE_TOKEN }}
         run: |
           set -euo pipefail
-          if [ -n "${NVAULT_RELEASE_TOKEN:-}" ]; then
-            git remote set-url origin "https://x-access-token:${NVAULT_RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}"
+          if [ -z "${NVAULT_RELEASE_TOKEN:-}" ]; then
+            echo "ERROR: NVAULT_RELEASE_TOKEN is required to push the release tag." >&2
+            echo "Tags pushed with GITHUB_TOKEN do not trigger other workflows (including Publish CLI)." >&2
+            echo "Add a fine-grained PAT with contents:write as repository secret NVAULT_RELEASE_TOKEN." >&2
+            exit 1
           fi
+          git remote set-url origin "https://x-access-token:${NVAULT_RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}"
           git push origin "$TAG"
