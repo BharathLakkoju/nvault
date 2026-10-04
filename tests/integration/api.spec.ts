@@ -1810,7 +1810,8 @@ describeIf("nvault API (integration)", () => {
       body: webhookBody,
     });
     const webhookRes = await routes.polarWebhook(webhookReq, { params: {} });
-    expect(webhookRes.status).toBe(200);
+    expect(webhookRes.status).toBe(202);
+    expect((await webhookRes.json()).outcome).toBe("applied");
 
     const approved = await call(routes.deviceApprove, {
       method: "POST",
