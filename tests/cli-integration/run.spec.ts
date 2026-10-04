@@ -28,7 +28,7 @@ import {
 } from "./harness";
 import { projectCreateCommand } from "../../cli/src/commands/project";
 import { pushCommand } from "../../cli/src/commands/push";
-import { runCommand } from "../../cli/src/commands/run";
+import { ERR_EMPTY_DOTENV_VARS, ERR_NO_DOTENV_FILES, runCommand } from "../../cli/src/commands/run";
 
 const describeIf = process.env.DATABASE_URL ? describe : describe.skip;
 const spawnMock = spawn as unknown as jest.Mock;
@@ -87,7 +87,11 @@ describeIf("nvault run (integration)", () => {
    * fake child + the spawn call args. Surfaces any real rejection from the
    * async chain instead of hiding it.
    */
-  async function driveToSpawn(project: string, parts: string[]) {
+  async function driveToSpawn(
+    project: string,
+    parts: string[],
+    runOptions?: { allowEmpty?: boolean },
+  ) {
     const child = new EventEmitter();
     spawnMock.mockReturnValue(child);
 
@@ -95,7 +99,7 @@ describeIf("nvault run (integration)", () => {
     let settled = false;
     // runCommand's returned promise only settles via process.exit; we watch for
     // an *early* rejection (auth/decrypt failure) so the test fails loudly.
-    void runCommand(project, parts).then(
+    void runCommand(project, parts, runOptions).then(
       () => {
         settled = true;
       },
@@ -116,8 +120,8 @@ describeIf("nvault run (integration)", () => {
     if (spawnMock.mock.calls.length === 0) {
       throw new Error("runCommand never reached spawn() and did not reject within 30s");
     }
-    const [command, args, options] = spawnMock.mock.calls[0];
-    return { child, command, args, options };
+    const [command, args, spawnOptions] = spawnMock.mock.calls[0];
+    return { child, command, args, options: spawnOptions };
   }
 
   it("injects decrypted vars into the child env and never writes a file", async () => {
@@ -171,5 +175,66 @@ describeIf("nvault run (integration)", () => {
     const acct = await createAccount();
     useAccountEnv(acct);
     await expect(runCommand("whatever", [])).rejects.toThrow(/Usage: nvault run/);
+  });
+
+  it("refuses to run when the project has no dotenv-style files", async () => {
+    const acct = await createAccount();
+    useAccountEnv(acct);
+    await projectCreateCommand("empty-run-proj");
+
+    spawnMock.mockReturnValue(new EventEmitter());
+
+    await expect(runCommand("empty-run-proj", ["cmd"])).rejects.toThrow(ERR_NO_DOTENV_FILES);
+    expect(spawnMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses to run when dotenv files are empty", async () => {
+    const acct = await createAccount();
+    useAccountEnv(acct);
+    await projectCreateCommand("empty-env-run");
+
+    const dir = mkTmp();
+    writeFileSync(join(dir, ".env"), "# no variables here\n");
+    process.chdir(dir);
+    await pushCommand("empty-env-run", ".env", { yes: true });
+
+    spawnMock.mockReturnValue(new EventEmitter());
+
+    await expect(runCommand("empty-env-run", ["cmd"])).rejects.toThrow(ERR_EMPTY_DOTENV_VARS);
+    expect(spawnMock).not.toHaveBeenCalled();
+  });
+
+  it("runs with --allow-empty when the project has no dotenv files", async () => {
+    const acct = await createAccount();
+    useAccountEnv(acct);
+    await projectCreateCommand("allow-empty-proj");
+
+    const { child, options } = await driveToSpawn("allow-empty-proj", ["cmd"], { allowEmpty: true });
+
+    expect(options.env.INJECTED_TOKEN).toBeUndefined();
+    expect(cc.text()).toMatch(/No secrets to inject/);
+    expect(() => child.emit("exit", 0, null)).toThrow(ExitError);
+  });
+
+  it("still refuses decrypt failures with --allow-empty", async () => {
+    const acct = await createAccount();
+    useAccountEnv(acct);
+    await projectCreateCommand("bad-decrypt-run");
+
+    const dir = mkTmp();
+    writeFileSync(join(dir, ".env"), "SECRET=1\n");
+    process.chdir(dir);
+    await pushCommand("bad-decrypt-run", ".env", { yes: true });
+
+    spawnMock.mockReturnValue(new EventEmitter());
+
+    const prev = process.env.NVAULT_PASSPHRASE;
+    process.env.NVAULT_PASSPHRASE = "wrong-passphrase-for-decrypt-test";
+
+    await expect(runCommand("bad-decrypt-run", ["cmd"], { allowEmpty: true })).rejects.toThrow();
+    expect(spawnMock).not.toHaveBeenCalled();
+
+    if (prev === undefined) delete process.env.NVAULT_PASSPHRASE;
+    else process.env.NVAULT_PASSPHRASE = prev;
   });
 });

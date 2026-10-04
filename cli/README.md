@@ -23,7 +23,7 @@ The package is published as `@lbharath/nvault`; the installed command is
 ## Authenticate
 
 nvault is self-hosted, so point the CLI at your server. By default, `nvault login`
-ues a **browser device-code flow** — your account password is never typed into
+uses a **browser device-code flow** — your account password is never typed into
 the terminal.
 
 > CLI access requires a **Pro or Team** plan. On the Free plan the token
@@ -95,8 +95,13 @@ nvault delete <project> <file> [-y]
 nvault history <file> [-p <project>]
 nvault restore <file> <version> [-p <project>]
 
-nvault run [project] -- <command>  # inject secrets into a child process, no file written
+nvault run [project] [--allow-empty] -- <command>  # inject secrets; no file written
 ```
+
+`nvault run` is **fail-closed** by default: if the project has no dotenv-style
+files, or those files contain no variables, the command exits with an error and
+the child process is not started. Pass `--allow-empty` to run anyway (a one-line
+warning is printed; only your existing shell environment is passed through).
 
 `push` and `pull` auto-detect the project from the current directory's git
 remote (`origin`). Pass a project name explicitly when there's no match.
