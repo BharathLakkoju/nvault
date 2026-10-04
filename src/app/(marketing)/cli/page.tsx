@@ -58,7 +58,7 @@ export default function CliPage() {
                   command: "nvault login",
                   output: [
                     "",
-                    "Open:  https://app.nvault.dev/device",
+                    "Open:  https://nvaults.vercel.app/device",
                     "Code:  X7KD-29PL",
                     "",
                     "Waiting for authentication...",

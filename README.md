@@ -39,9 +39,27 @@ nvault. See [DEPLOYMENT.md](./DEPLOYMENT.md#billing-polar--required-in-productio
 for setup; the paywall is disabled automatically when `POLAR_*` is unset
 (local dev / self-host).
 
-> The terminal CLI (`nvault`) and `nvault run` process injection are not
-> part of this deployment. The API surface is designed so a future CLI could
-> be added without server changes.
+## Terminal CLI
+
+The `nvault` CLI is shipped and published on npm as
+[`@lbharath/nvault`](https://www.npmjs.com/package/@lbharath/nvault). It
+pulls your `.env` files onto any machine (WSL, SSH sessions, remote servers,
+CI) without a browser, and `nvault run` injects them straight into a process
+so nothing is written to disk. CLI access needs a **Pro** or **Team** plan
+(self-hosted deployments without billing configured are unaffected).
+
+```bash
+npm install -g @lbharath/nvault        # Node.js >= 20
+nvault login --api-url https://nvaults.vercel.app   # browser device-code sign-in
+cd my-repo && nvault init              # find this repo's project, restore its files
+nvault run -- pnpm dev                 # start with secrets injected, no file written
+```
+
+Encryption stays client-side in the CLI too: your vault passphrase is never
+stored and is asked for only by commands that read or write file contents.
+Full command list, CI usage with `NVAULT_TOKEN`, and the safety rules are in
+[cli/README.md](./cli/README.md). Release steps are in
+[cli/PUBLISHING.md](./cli/PUBLISHING.md).
 
 ## Prerequisites
 

@@ -5,7 +5,7 @@
   "type": "commonjs",
   "license": "MIT",
   "author": "nvault",
-  "homepage": "https://github.com/BharathLakkoju/nvault/tree/master/cli#readme",
+  "homepage": "https://nvaults.vercel.app",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/BharathLakkoju/nvault.git",
