@@ -3,7 +3,7 @@ name: CLI Tag Release
 # When a release PR (branch release/cli-v*) merges to master, create git tag cli-vX.Y.Z.
 # Tags pushed with the default GITHUB_TOKEN do not trigger other workflows (including
 # tag-push publish). Secret NVAULT_RELEASE_TOKEN (PAT with contents: write) is required
-# to push the tag so "Publish CLI" runs on push.
+# to push the tag. Publish CLI is dispatched explicitly (tag-push may not run).
 
 on:
   pull_request:
@@ -37,6 +37,8 @@ jobs:
         with:
           ref: master
           fetch-depth: 0
+          # Do not store GITHUB_TOKEN in git config; it would override the PAT push URL.
+          persist-credentials: false
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
