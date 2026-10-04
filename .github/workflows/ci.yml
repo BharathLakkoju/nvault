@@ -83,3 +83,50 @@ jobs:
       - run: pnpm --filter ./cli test
 
       - run: pnpm --filter ./cli build
+
+  cli-npm-publish-dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install npm (publish bin validation)
+        run: |
+          set -euo pipefail
+          npm install -g npm@latest
+          npm --version
+          node --version
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm --filter ./cli build
+
+      - name: npm publish dry-run keeps nvault bin
+        working-directory: cli
+        run: |
+          set -euo pipefail
+          LOG="$(mktemp)"
+          if ! npm publish --dry-run --provenance=false --ignore-scripts 2>&1 | tee "$LOG"; then
+            echo "npm publish --dry-run failed" >&2
+            exit 1
+          fi
+          if grep -qiE 'invalid and removed|auto-corrected' "$LOG"; then
+            echo "::error::npm would strip or rewrite the bin entry" >&2
+            grep -iE 'invalid and removed|auto-corrected' "$LOG" >&2
+            exit 1
+          fi
+          PACKED="$(npm pack --silent)"
+          cleanup() { rm -f "$PACKED"; }
+          trap cleanup EXIT
+          BIN="$(tar -xOf "$PACKED" package/package.json | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).bin.nvault")"
+          if [ "$BIN" != "bin/nvault.js" ]; then
+            echo "::error::packed package.json bin.nvault is '$BIN', expected 'bin/nvault.js'" >&2
+            exit 1
+          fi
+          echo "packed bin.nvault=$BIN"
