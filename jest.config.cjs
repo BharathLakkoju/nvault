@@ -42,6 +42,7 @@ module.exports = {
       testPathIgnorePatterns: ignoreCli,
       testMatch: [
         "<rootDir>/src/**/*.spec.ts",
+        "<rootDir>/scripts/**/*.spec.ts",
       ],
     },
     {

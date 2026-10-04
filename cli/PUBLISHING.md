@@ -50,6 +50,38 @@ nvault whoami
 
 ## 2. Bump the version
 
+### Automated (recommended)
+
+1. In GitHub: **Actions → CLI Version Bump → Run workflow**.
+   - Choose **patch** / **minor** / **major**, or set **version** to an explicit `X.Y.Z` (must be greater than the current version).
+2. The workflow opens a PR from `release/cli-vX.Y.Z` to `master` titled `chore(cli): release vX.Y.Z` (bumps `cli/package.json` and `pnpm-lock.yaml`).
+   - If **`NVAULT_RELEASE_TOKEN`** is **not** configured, the bump workflow runs the same lint/test/build steps as CI on the release branch **before** opening the PR (and fails without creating a PR if anything breaks).
+   - If **`NVAULT_RELEASE_TOKEN`** **is** set, the workflow uses it to push the branch and open the PR so the normal **CI** workflow runs on the PR (duplicate checks are skipped in the bump workflow).
+3. Review and merge the PR.
+4. **CLI Tag Release** runs on merge, creates git tag `cli-vX.Y.Z`, then **Publish CLI** runs (see below).
+
+### Optional secret: `NVAULT_RELEASE_TOKEN`
+
+Fine-grained PAT or GitHub App installation token with **`contents: write`** (and **`pull-requests: write`** if the token must open PRs) on this repository.
+
+| Configured | Release PR | Tag push | npm publish |
+| ---------- | ---------- | -------- | ----------- |
+| **Yes** | Normal **CI** checks on the PR | Tag push triggers **Publish CLI** (`on: push tags`) | Trusted Publishing (OIDC) in **Publish CLI** |
+| **No** | In-workflow CI in **CLI Version Bump** before the PR is opened; PR may show no CI checks | **CLI Tag Release** fails when pushing the tag (no npm publish) | — |
+
+**CLI Tag Release** requires **`NVAULT_RELEASE_TOKEN`** to push the release tag. Tags created with the default `GITHUB_TOKEN` do not fire tag-push workflows, so **Publish CLI** only runs when the tag is pushed with that secret.
+
+Store the value only in **Settings → Secrets and variables → Actions** as `NVAULT_RELEASE_TOKEN`. Do not commit it.
+
+Dry-run the bump logic locally (does not write files):
+
+```bash
+node --experimental-strip-types scripts/cli-bump-version.ts resolve --current "$(node -p "require('./cli/package.json').version")" --bump patch
+node --experimental-strip-types scripts/cli-bump-version.ts apply --dry-run --bump minor
+```
+
+### Manual
+
 Edit `cli/package.json` → `"version"` (semver).
 
 Follow [semver](https://semver.org/):
@@ -68,6 +100,14 @@ pnpm run build
 This runs `esbuild` and writes a single bundled `dist/index.js` (shared `@core/crypto` is inlined).
 
 ## 4. Publish to npm
+
+### CI (after merge)
+
+**Publish CLI** (`.github/workflows/cli-release.yml`) publishes when a `cli-v*` tag is pushed.
+
+**CLI Tag Release** must push that tag using **`NVAULT_RELEASE_TOKEN`** (see above). Without it, the tag step fails and npm publish does not run.
+
+### Manual
 
 ```bash
 cd cli
@@ -125,7 +165,8 @@ See [DEPLOYMENT.md](../DEPLOYMENT.md) for environment variables and platform not
 
 ## Checklist (copy before each release)
 
-- [ ] `cli/package.json` version bumped
+- [ ] `cli/package.json` version bumped (via **CLI Version Bump** workflow or manual edit)
+- [ ] Release PR merged; tag `cli-vX.Y.Z` exists on `master`
 - [ ] `pnpm --filter @lbharath/nvault test` passes
 - [ ] `pnpm --filter @lbharath/nvault build` passes
 - [ ] Smoke-tested against target API URL
