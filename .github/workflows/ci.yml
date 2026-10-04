@@ -113,8 +113,13 @@ jobs:
           set -euo pipefail
           LOG="$(mktemp)"
           if ! npm publish --dry-run --provenance=false --ignore-scripts 2>&1 | tee "$LOG"; then
-            echo "npm publish --dry-run failed" >&2
-            exit 1
+            if grep -q 'cannot publish over the previously published versions' "$LOG" \
+              && grep -q 'Tarball Contents' "$LOG"; then
+              echo "Dry-run rejected republishing an existing version; tarball preview is sufficient."
+            else
+              echo "npm publish --dry-run failed" >&2
+              exit 1
+            fi
           fi
           if grep -qiE 'invalid and removed|auto-corrected' "$LOG"; then
             echo "::error::npm would strip or rewrite the bin entry" >&2
