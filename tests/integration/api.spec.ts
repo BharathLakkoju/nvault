@@ -1810,7 +1810,8 @@ describeIf("nvault API (integration)", () => {
       body: webhookBody,
     });
     const webhookRes = await routes.polarWebhook(webhookReq, { params: {} });
-    expect(webhookRes.status).toBe(200);
+    expect(webhookRes.status).toBe(202);
+    expect((await webhookRes.json()).outcome).toBe("applied");
 
     const approved = await call(routes.deviceApprove, {
       method: "POST",
@@ -1819,6 +1820,9 @@ describeIf("nvault API (integration)", () => {
       body: { userCode: started.body.user_code },
     });
     expect(approved.status).toBe(204);
+
+    // RFC 8628: polls faster than `interval` (5s) after the pending check get slow_down (429).
+    await new Promise((resolve) => setTimeout(resolve, 5_000));
 
     const completed = await call(routes.devicePoll, {
       method: "POST",

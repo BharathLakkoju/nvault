@@ -2,6 +2,10 @@ import reactHooks from "eslint-plugin-react-hooks";
 import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
 
 // Flat config (ESLint 9 / Next 16 — `next lint` and .eslintrc are gone).
+// Stay on ESLint 9. eslint-config-next's bundled Babel parser
+// (eslint-config-next/parser) does not implement ScopeManager#addGlobals,
+// which ESLint 10 calls while finalizing every file, so `eslint .` crashes
+// before it reports any lint results.
 // `eslint-config-next/core-web-vitals` already bundles the Next, React and
 // TypeScript rule sets.
 const config = [
