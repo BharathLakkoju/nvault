@@ -90,7 +90,7 @@ describeIf("nvault run (integration)", () => {
   async function driveToSpawn(
     project: string,
     parts: string[],
-    options?: { allowEmpty?: boolean },
+    runOptions?: { allowEmpty?: boolean },
   ) {
     const child = new EventEmitter();
     spawnMock.mockReturnValue(child);
@@ -99,7 +99,7 @@ describeIf("nvault run (integration)", () => {
     let settled = false;
     // runCommand's returned promise only settles via process.exit; we watch for
     // an *early* rejection (auth/decrypt failure) so the test fails loudly.
-    void runCommand(project, parts, options).then(
+    void runCommand(project, parts, runOptions).then(
       () => {
         settled = true;
       },
@@ -120,8 +120,8 @@ describeIf("nvault run (integration)", () => {
     if (spawnMock.mock.calls.length === 0) {
       throw new Error("runCommand never reached spawn() and did not reject within 30s");
     }
-    const [command, args, options] = spawnMock.mock.calls[0];
-    return { child, command, args, options };
+    const [command, args, spawnOptions] = spawnMock.mock.calls[0];
+    return { child, command, args, options: spawnOptions };
   }
 
   it("injects decrypted vars into the child env and never writes a file", async () => {
