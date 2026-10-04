@@ -36,11 +36,19 @@ export async function runCommand(projectName: string | undefined, commandParts: 
     Object.assign(injected, parseDotenv(bytesToUtf8(plaintext)));
   }
 
-  if (envFiles.length > 0) {
-    console.error(`Injecting: ${envFiles.map((f) => f.filename).join(", ")}`);
-  } else {
-    console.error("No dotenv-style files found in this project — running with no injected variables.");
+  if (envFiles.length === 0) {
+    throw new Error(
+      "No dotenv-style environment files in this project. Push files such as `.env` before using `nvault run`, or pass a different project name.",
+    );
   }
+
+  if (Object.keys(injected).length === 0) {
+    throw new Error(
+      "No environment variables to inject — the project's dotenv file(s) are empty. Refusing to run the command without secrets.",
+    );
+  }
+
+  console.error(`Injecting: ${envFiles.map((f) => f.filename).join(", ")}`);
 
   const [command, ...args] = commandParts;
   const child = spawn(resolveExecutable(command), args, {

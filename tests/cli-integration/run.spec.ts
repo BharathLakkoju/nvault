@@ -172,4 +172,31 @@ describeIf("nvault run (integration)", () => {
     useAccountEnv(acct);
     await expect(runCommand("whatever", [])).rejects.toThrow(/Usage: nvault run/);
   });
+
+  it("refuses to run when the project has no dotenv-style files", async () => {
+    const acct = await createAccount();
+    useAccountEnv(acct);
+    await projectCreateCommand("empty-run-proj");
+
+    spawnMock.mockReturnValue(new EventEmitter());
+
+    await expect(runCommand("empty-run-proj", ["cmd"])).rejects.toThrow(/No dotenv-style environment files/);
+    expect(spawnMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses to run when dotenv files are empty", async () => {
+    const acct = await createAccount();
+    useAccountEnv(acct);
+    await projectCreateCommand("empty-env-run");
+
+    const dir = mkTmp();
+    writeFileSync(join(dir, ".env"), "# no variables here\n");
+    process.chdir(dir);
+    await pushCommand("empty-env-run", ".env", { yes: true });
+
+    spawnMock.mockReturnValue(new EventEmitter());
+
+    await expect(runCommand("empty-env-run", ["cmd"])).rejects.toThrow(/No environment variables to inject/);
+    expect(spawnMock).not.toHaveBeenCalled();
+  });
 });
