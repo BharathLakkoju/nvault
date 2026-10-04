@@ -171,8 +171,14 @@ jobs:
           After this PR merges to \`master\`, [CLI Tag Release](.github/workflows/cli-tag-release.yml) creates tag \`cli-v${NEXT}\`, which triggers [Publish CLI](.github/workflows/cli-release.yml). See \`cli/PUBLISHING.md\` for \`NVAULT_RELEASE_TOKEN\` setup.
           EOF
           )"
-          gh pr create \
-            --base master \
-            --head "release/cli-v${NEXT}" \
-            --title "$TITLE" \
-            --body "$BODY"
+          BRANCH="release/cli-v${NEXT}"
+          if gh pr view "$BRANCH" >/dev/null 2>&1; then
+            echo "Pull request already exists for ${BRANCH}; updating title and body."
+            gh pr edit "$BRANCH" --title "$TITLE" --body "$BODY"
+          else
+            gh pr create \
+              --base master \
+              --head "$BRANCH" \
+              --title "$TITLE" \
+              --body "$BODY"
+          fi
