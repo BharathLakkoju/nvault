@@ -1,8 +1,15 @@
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 
 const NODE = process.execPath;
 const SCRIPT = "scripts/cli-bump-version.ts";
 const NODE_ARGS = ["--experimental-strip-types", SCRIPT];
+const CLI_PACKAGE_JSON = "cli/package.json";
+
+function expectedPatchBump(version: string): string {
+  const [major, minor, patch] = version.split(".").map((part) => Number(part));
+  return `${major}.${minor}.${patch + 1}`;
+}
 
 function runCli(...args: string[]): string {
   return execFileSync(NODE, [...NODE_ARGS, ...args], {
@@ -74,11 +81,14 @@ describe("cli-bump-version CLI", () => {
   });
 
   it("dry-run apply does not change package.json", () => {
-    const before = runCli("resolve", "--current", "0.1.2", "--bump", "patch");
+    const packageContentsBefore = readFileSync(CLI_PACKAGE_JSON, "utf8");
+    const pkg = JSON.parse(packageContentsBefore) as { version: string };
+    const expectedNext = expectedPatchBump(pkg.version);
+
     const out = runCli("apply", "--dry-run", "--bump", "patch");
-    expect(out).toBe(before);
-    expect(runCli("resolve", "--current", "0.1.2", "--bump", "patch")).toBe(
-      "0.1.3",
-    );
+    expect(out).toBe(expectedNext);
+
+    const packageContentsAfter = readFileSync(CLI_PACKAGE_JSON, "utf8");
+    expect(packageContentsAfter).toBe(packageContentsBefore);
   });
 });
